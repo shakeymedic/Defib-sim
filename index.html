@@ -1024,7 +1024,7 @@
                         <p id="instructorSubtitle">Scenario in Progress</p>
                     </div>
                 </div>
-                <button class="minimise-btn" id="minimiseBtn" onclick="toggleInstructorPanel()">▲ Hide</button>
+                <button class="minimise-btn" id="minimiseBtn" onclick="toggleInstructorPanel(this)">▲ Hide</button>
             </div>
 
             <div class="control-grid">
@@ -1138,10 +1138,10 @@
                 <div class="mode-dial-container">
                     <div class="mode-dial" id="modeDial" style="--dial-rotation: 0deg;"></div>
                     <div class="mode-labels">
-                        <div class="mode-label active" onclick="setMode('monitor')">MONITOR</div>
-                        <div class="mode-label" onclick="setMode('defib')">DEFIB</div>
-                        <div class="mode-label" onclick="setMode('pacer')">PACER</div>
-                        <div class="mode-label" onclick="setMode('off')">OFF</div>
+                        <div class="mode-label active" onclick="setMode('monitor', this)">MONITOR</div>
+                        <div class="mode-label" onclick="setMode('defib', this)">DEFIB</div>
+                        <div class="mode-label" onclick="setMode('pacer', this)">PACER</div>
+                        <div class="mode-label" onclick="setMode('off', this)">OFF</div>
                     </div>
                 </div>
 
@@ -1305,6 +1305,16 @@
             actions: [],
             hasPulse: true
         };
+
+        // Audio context (reused)
+        let audioContext = null;
+
+        function getAudioContext() {
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            return audioContext;
+        }
 
         // Canvas
         let canvas, ctx, waveformX = 0, animationId;
@@ -1558,8 +1568,8 @@
             const scenario = scenarios[state.selectedScenario];
             let displayHR = state.hr;
             
-            // For pulseless rhythms, show 0 HR
-            if (scenario && !scenario.hasPulse) {
+            // For pulseless state, show 0 HR
+            if (!state.hasPulse) {
                 displayHR = 0;
             }
             
@@ -1931,7 +1941,7 @@
         function returnToMenu() {
             document.getElementById('simulatorContainer').style.display = 'none';
             document.getElementById('summaryScreen').style.display = 'none';
-            document.getElementById('certificateScreen').style.display = 'none'; // <-- FIX: Hide certificate screen
+            document.getElementById('certificateScreen').style.display = 'none'; // Hide certificate screen
             document.getElementById('scenarioScreen').style.display = 'none';
             
             document.getElementById('menuWrapper').style.display = 'flex';
@@ -1955,10 +1965,12 @@
         }
 
         // Device controls
-        function setMode(mode) {
+        function setMode(mode, el) {
             state.deviceMode = mode;
             document.querySelectorAll('.mode-label').forEach(l => l.classList.remove('active'));
-            event.target.classList.add('active');
+            if (el) {
+                el.classList.add('active');
+            }
             
             const rotations = { monitor: 0, defib: 90, pacer: 180, off: 270 };
             document.getElementById('modeDial').style.setProperty('--dial-rotation', `${rotations[mode]}deg`);
@@ -2008,6 +2020,12 @@
                 setMessage('SWITCH TO DEFIB MODE TO CHARGE', '');
                 return;
             }
+
+            const scenario = scenarios[state.selectedScenario];
+            if (!scenario) {
+                setMessage('NO ACTIVE SCENARIO', '');
+                return;
+            }
             
             setMessage('CHARGING...', '');
             logAction('Charge initiated', `${state.energy}J`);
@@ -2024,13 +2042,21 @@
 
         function deliverShock() {
             if (!state.charged) return;
-            
+
             const scenario = scenarios[state.selectedScenario];
+            if (!scenario) {
+                setMessage('NO ACTIVE SCENARIO', '');
+                state.charged = false;
+                document.getElementById('shockBtn').disabled = true;
+                return;
+            }
+            
+            const syncAtShock = state.syncMode;
             state.shockCount++;
             const shockEnergy = state.energy;
-            const shockType = state.syncMode ? 'synchronised' : 'unsynchronised';
+            const shockType = syncAtShock ? 'synchronised' : 'unsynchronised';
             state.charged = false;
-            document.getElementById('shockBtn').disabled = true; // <-- FIX: Disable button after shock
+            document.getElementById('shockBtn').disabled = true;
             
             playSound('shock');
             
@@ -2056,7 +2082,7 @@
                     }
                 } else if (scenario.category === 'cardioversion') {
                     // Cardioversion - check sync was used and appropriate energy
-                    if (state.syncMode && shockEnergy >= scenario.successEnergy - 30) {
+                    if (syncAtShock && shockEnergy >= scenario.successEnergy - 30) {
                         shouldConvert = true;
                     }
                 }
@@ -2068,6 +2094,7 @@
                     state.etco2 = scenario.successVitals.etco2;
                     state.bpSys = scenario.successVitals.bpSys;
                     state.bpDia = scenario.successVitals.bpDia;
+                    state.hasPulse = true;
                     
                     if (scenario.category === 'defibrillation') {
                         setMessage('RHYTHM CONVERTED - CHECK PULSE', 'ready');
@@ -2085,6 +2112,12 @@
         }
 
         function analyseRhythm() {
+            const scenario = scenarios[state.selectedScenario];
+            if (!scenario) {
+                setMessage('NO ACTIVE SCENARIO', '');
+                return;
+            }
+
             setMessage('ANALYSING...', '');
             logAction('Rhythm analysed');
             
@@ -2121,6 +2154,7 @@
                     state.bpSys = scenario.successVitals.bpSys;
                     state.bpDia = scenario.successVitals.bpDia;
                     state.pacingActive = true;
+                    state.hasPulse = true;
                     
                     setMessage(`CAPTURE ACHIEVED AT ${state.pacerOutput}mA`, 'ready');
                     logAction('Pacing capture achieved', `Electrical and mechanical capture at ${state.pacerOutput}mA`);
@@ -2144,13 +2178,14 @@
             updateDisplays();
         }
 
-        function toggleInstructorPanel() {
+        function toggleInstructorPanel(btn) {
             const panel = document.getElementById('instructorPanel');
             if (!panel) return;
             
             panel.classList.toggle('minimised');
-            const btn = event.target;
-            btn.textContent = panel.classList.contains('minimised') ? '▼ Show' : '▲ Hide';
+            if (btn) {
+                btn.textContent = panel.classList.contains('minimised') ? '▼ Show' : '▲ Hide';
+            }
         }
 
         // Pulse check function
@@ -2165,7 +2200,7 @@
             logAction('Pulse check performed');
             
             setTimeout(() => {
-                if (scenario.hasPulse) {
+                if (state.hasPulse) {
                     setMessage('PULSE PRESENT - CAROTID PULSE PALPABLE', 'ready');
                     logAction('Pulse check result', 'Pulse present');
                 } else {
@@ -2214,7 +2249,6 @@
             
             const shocks = state.actions.filter(a => a.action.includes('delivered'));
             const syncUsed = state.actions.find(a => a.action === 'Sync mode activated');
-            const modeChanges = state.actions.filter(a => a.action === 'Mode changed');
             const pulseChecks = state.actions.filter(a => a.action === 'Pulse check performed');
             
             if (shocks.length > 0) {
@@ -2272,7 +2306,7 @@
 
         // Audio
         function playSound(type) {
-            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const audioContext = getAudioContext();
             const oscillator = audioContext.createOscillator();
             const gainNode = audioContext.createGain();
             
