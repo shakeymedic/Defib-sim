@@ -26,7 +26,7 @@
             min-height: calc(100vh - 40px);
         }
 
-        /* Generic menu screen */
+        /* Initial Menu Screen */
         .menu-screen {
             display: none;
             flex-direction: column;
@@ -108,12 +108,6 @@
             max-width: 1600px;
             width: 100%;
             margin: 0 auto;
-            display: flex;
-            gap: 20px;
-            align-items: flex-start;
-            justify-content: center;
-            flex-wrap: wrap;
-            position: relative;
         }
 
         /* Back / Reset Buttons */
@@ -138,31 +132,29 @@
         }
 
         .reset-button {
-            background: #7f8c8d;
+            background: #3498db;
             margin-left: 10px;
         }
 
         .reset-button:hover {
-            background: #707b7c;
+            background: #2980b9;
         }
 
         /* Instructor Panel */
         .instructor-panel {
             background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
             border-radius: 10px;
-            padding: 16px;
+            padding: 25px;
+            margin-bottom: 20px;
             border: 3px solid #1a252f;
             transition: all 0.3s ease;
-            max-width: 320px;
-            width: 320px;
         }
 
         .instructor-panel.minimised {
-            padding: 10px 16px;
+            padding: 12px 18px;
         }
 
-        .instructor-panel.minimised .control-grid,
-        .instructor-panel.minimised .instructor-content {
+        .instructor-panel.minimised .control-grid {
             display: none !important;
         }
 
@@ -170,9 +162,9 @@
             background: #34495e;
             color: #ecf0f1;
             border: 2px solid #2c3e50;
-            padding: 6px 12px;
+            padding: 8px 16px;
             border-radius: 6px;
-            font-size: 11px;
+            font-size: 12px;
             cursor: pointer;
             transition: all 0.3s;
         }
@@ -191,11 +183,11 @@
         .instructor-logo {
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 15px;
         }
 
         .instructor-logo img {
-            height: 42px;
+            height: 40px;
             background: white;
             padding: 6px;
             border-radius: 8px;
@@ -208,27 +200,27 @@
 
         .instructor-title p {
             color: #bdc3c7;
-            font-size: 11px;
-            margin-top: 3px;
+            font-size: 12px;
+            margin-top: 4px;
         }
 
         .control-grid {
             display: grid;
-            grid-template-columns: 1fr;
-            gap: 12px;
-            margin-bottom: 12px;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 15px;
+            margin-top: 10px;
         }
 
         .control-section {
             background: #2c3e50;
-            padding: 12px;
+            padding: 15px;
             border-radius: 8px;
         }
 
         .control-section h4 {
             color: #3498db;
-            font-size: 12px;
-            margin-bottom: 8px;
+            font-size: 13px;
+            margin-bottom: 10px;
             text-transform: uppercase;
         }
 
@@ -236,16 +228,29 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 6px;
-            padding: 6px;
+            margin-bottom: 8px;
+            padding: 8px;
             background: #34495e;
             border-radius: 6px;
-            font-size: 12px;
         }
 
         .control-row label {
             color: #ecf0f1;
             font-size: 12px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .control-row input,
+        .control-row select {
+            width: 100px;
+            padding: 6px;
+            border-radius: 4px;
+            border: 1px solid #2c3e50;
+            background: #2c3e50;
+            color: #00ff00;
             font-weight: bold;
         }
 
@@ -255,51 +260,20 @@
             gap: 6px;
         }
 
-        .rhythm-btn,
-        .noise-btn,
-        .instructor-small-btn {
+        .rhythm-btn {
             background: #34495e;
             color: #ecf0f1;
             border: 2px solid #2c3e50;
-            padding: 6px 8px;
+            padding: 8px;
             border-radius: 6px;
             font-size: 11px;
             cursor: pointer;
             transition: all 0.2s;
-            text-align: center;
         }
 
         .rhythm-btn.active {
             background: #2980b9;
             border-color: #1f5f8b;
-        }
-
-        .noise-buttons {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 6px;
-        }
-
-        .noise-btn.active {
-            background: #8e44ad;
-            border-color: #6c3483;
-        }
-
-        .instructor-small-btn {
-            width: 100%;
-            margin-top: 6px;
-        }
-
-        .instructor-notes {
-            width: 100%;
-            min-height: 70px;
-            border-radius: 6px;
-            border: 1px solid #2c3e50;
-            background: #1f2a33;
-            color: #ecf0f1;
-            font-size: 12px;
-            padding: 6px;
-            resize: vertical;
         }
 
         /* ZOLL Device */
@@ -315,12 +289,6 @@
             gap: 20px;
             max-width: 1400px;
             margin: 0 auto;
-        }
-
-        @media (max-width: 1200px) {
-            .zoll-device {
-                grid-template-columns: 1fr;
-            }
         }
 
         /* Left Side - Screen */
@@ -485,6 +453,18 @@
             align-items: start;
         }
 
+        .btn-teal {
+            background: #17a2b8;
+            color: white;
+            border: 3px solid #138496;
+            padding: 15px 20px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+
         .btn-sync {
             background: #f39c12;
             color: white;
@@ -522,24 +502,16 @@
             overflow: hidden;
         }
 
-        .btn-shock .number {
+        .btn-shock::before {
+            content: '⚡';
             position: absolute;
-            top: 6px;
-            right: 8px;
-            font-size: 18px;
-            line-height: 1;
+            font-size: 80px;
+            opacity: 0.15;
             color: #fff;
-            z-index: 2;
+            z-index: 0;
         }
 
-        .btn-shock .bolt-icon {
-            font-size: 32px;
-            margin-bottom: 4px;
-            position: relative;
-            z-index: 1;
-        }
-
-        .btn-shock .label {
+        .btn-shock span {
             position: relative;
             z-index: 1;
         }
@@ -547,6 +519,15 @@
         .btn-shock:disabled {
             opacity: 0.5;
             cursor: not-allowed;
+        }
+
+        .btn-shock .number {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 18px;
+            color: #fff;
         }
 
         /* Side buttons */
@@ -781,56 +762,6 @@
             cursor: pointer;
         }
 
-        /* Guided Mode Overlay */
-        .guided-overlay {
-            margin-top: 15px;
-            background: rgba(0, 0, 0, 0.65);
-            border-radius: 10px;
-            padding: 12px 16px;
-            color: #ecf0f1;
-            font-size: 12px;
-            max-width: 1400px;
-        }
-
-        .guided-overlay h4 {
-            font-size: 13px;
-            margin-bottom: 6px;
-            color: #f1c40f;
-        }
-
-        .guided-step {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            margin-bottom: 4px;
-        }
-
-        .guided-step span {
-            display: inline-block;
-        }
-
-        .guided-step.completed span.step-badge {
-            background: #27ae60;
-            color: #fff;
-        }
-
-        .guided-step .step-badge {
-            width: 18px;
-            height: 18px;
-            border-radius: 50%;
-            background: #7f8c8d;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 10px;
-            font-weight: bold;
-        }
-
-        .guided-step.completed .step-text {
-            text-decoration: line-through;
-            opacity: 0.8;
-        }
-
         /* ZOLL Branding */
         .zoll-branding {
             background: linear-gradient(180deg, #e8eef3 0%, #d8dee3 100%);
@@ -849,44 +780,10 @@
             text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
         }
 
-        /* Teaching banner & watermark */
-        .teaching-banner {
-            position: fixed;
-            top: 10px;
-            right: 10px;
-            background: #27ae60;
-            color: #ecf0f1;
-            padding: 6px 12px;
-            border-radius: 8px;
-            font-size: 12px;
-            font-weight: bold;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
-            z-index: 1000;
-        }
-
-        .watermark {
-            position: fixed;
-            bottom: 10px;
-            left: 10px;
-            font-size: 11px;
-            color: #7f8c8d;
-            background: rgba(0,0,0,0.3);
-            padding: 4px 8px;
-            border-radius: 6px;
-            z-index: 1000;
-        }
-
-        /* Summary RCUK card */
-        .rcuk-card {
-            background: #2c3e50;
-            padding: 25px;
-            border-radius: 10px;
-        }
-
-        .rcuk-card a {
-            color: #3498db;
-            text-decoration: underline;
-            font-size: 14px;
+        @media (max-width: 1200px) {
+            .zoll-device {
+                grid-template-columns: 1fr;
+            }
         }
 
         /* Print styles for certificate */
@@ -895,24 +792,22 @@
                 background: white;
                 padding: 0;
             }
-
+            
             .menu-wrapper {
                 min-height: 0;
             }
-
+            
             .menu-screen {
                 display: block !important;
                 box-shadow: none;
                 padding: 0;
                 background: white;
             }
-
-            .menu-option,
-            .teaching-banner,
-            .watermark {
+            
+            .menu-option {
                 display: none !important;
             }
-
+            
             #certificateContent {
                 box-shadow: none;
             }
@@ -921,14 +816,33 @@
 </head>
 <body>
     <div class="menu-wrapper" id="menuWrapper">
-        <!-- Scenario selection is the main/home screen -->
-        <div class="menu-screen" id="scenarioScreen" style="display: flex;">
+        <div class="menu-screen" id="modeSelectScreen" style="display: flex;">
             <div class="menu-logo">
                 <img src="https://iili.io/KGQOvkl.md.png" alt="WMEBEM Logo">
             </div>
             <div class="menu-title">
                 <h1>ZOLL R Series Simulator</h1>
-                <p>Select a clinical scenario to begin</p>
+                <p>Defibrillator Training | RCUK 2025 Guidelines</p>
+            </div>
+            <div class="menu-options">
+                <button class="menu-option" onclick="selectMode('education')">
+                    <div>Education Mode</div>
+                    <div class="subtitle">Instructor controls visible for teaching</div>
+                </button>
+                <button class="menu-option" onclick="selectMode('testing')">
+                    <div>Testing Mode</div>
+                    <div class="subtitle">Learner assessment with hidden controls</div>
+                </button>
+            </div>
+        </div>
+
+        <div class="menu-screen" id="scenarioScreen" style="display: none;">
+            <div class="menu-logo">
+                <img src="https://iili.io/KGQOvkl.md.png" alt="WMEBEM Logo">
+            </div>
+            <div class="menu-title">
+                <h1 id="modeTitle">Education Mode</h1>
+                <p>Select a clinical scenario</p>
             </div>
             <div style="max-width: 900px; display: grid; gap: 15px; width: 100%;">
                 <div style="background: #2c3e50; padding: 20px; border-radius: 10px;">
@@ -950,7 +864,7 @@
                     <div style="display: grid; gap: 10px;">
                         <button class="menu-option" style="padding: 20px; text-align: left;" onclick="selectScenario('unstable-vt')">
                             <div style="font-size: 16px;">VT with Pulse (Unstable)</div>
-                            <div class="subtitle">Broad complex tachycardia at 180/min with adverse features</div>
+                            <div class="subtitle">Conscious patient with adverse features - needs synchronised shock</div>
                         </button>
                         <button class="menu-option" style="padding: 20px; text-align: left;" onclick="selectScenario('unstable-svt')">
                             <div style="font-size: 16px;">SVT with Adverse Features</div>
@@ -958,7 +872,7 @@
                         </button>
                         <button class="menu-option" style="padding: 20px; text-align: left;" onclick="selectScenario('fast-af')">
                             <div style="font-size: 16px;">Fast AF with Adverse Features</div>
-                            <div class="subtitle">Rapid AF with shock or heart failure</div>
+                            <div class="subtitle">Rapid atrial fibrillation with shock or heart failure</div>
                         </button>
                     </div>
                 </div>
@@ -977,6 +891,9 @@
                     </div>
                 </div>
             </div>
+            <button class="back-button" onclick="backToModeSelect()" style="margin-top: 20px;">
+                ◀ Back
+            </button>
         </div>
 
         <div class="menu-screen" id="summaryScreen" style="display: none;">
@@ -1008,11 +925,6 @@
                     <h3 style="color: #3498db; font-size: 20px; margin-bottom: 15px;">Patient Outcome</h3>
                     <div id="summaryOutcome" style="color: #ecf0f1; font-size: 16px; line-height: 1.6;"></div>
                 </div>
-
-                <div class="rcuk-card">
-                    <h3 style="color: #3498db; font-size: 20px; margin-bottom: 15px;">RCUK Algorithm Reference</h3>
-                    <div id="rcukReference" style="color: #ecf0f1; font-size: 14px; line-height: 1.6;"></div>
-                </div>
             </div>
             <div style="display: flex; gap: 15px; margin-top: 20px; justify-content: center; flex-wrap: wrap;">
                 <button class="menu-option" onclick="tryAgain()" style="padding: 20px 40px;">
@@ -1022,7 +934,7 @@
                     📄 Print Certificate
                 </button>
                 <button class="menu-option" onclick="returnToMenu()" style="padding: 20px 40px;">
-                    ↩ Scenario Menu
+                    ↩ Main Menu
                 </button>
             </div>
         </div>
@@ -1035,18 +947,18 @@
                         <h1 style="color: #2c3e50; font-size: 42px; margin-bottom: 10px;">Certificate of Completion</h1>
                         <div style="width: 100px; height: 3px; background: #3498db; margin: 20px auto;"></div>
                     </div>
-
+                    
                     <div style="text-align: center; margin: 40px 0;">
                         <p style="font-size: 18px; color: #7f8c8d; margin-bottom: 20px;">This certifies that the learner has successfully completed</p>
                         <h2 id="certScenarioName" style="color: #2c3e50; font-size: 32px; margin: 20px 0; font-weight: bold;"></h2>
                         <p style="font-size: 16px; color: #7f8c8d;">ZOLL R Series Defibrillator Training</p>
                     </div>
-
+                    
                     <div style="background: #ecf0f1; padding: 25px; border-radius: 8px; margin: 30px 0;">
                         <h3 style="color: #2c3e50; font-size: 20px; margin-bottom: 15px; text-align: center;">Performance Summary</h3>
                         <div id="certPerformance" style="font-size: 14px; line-height: 2;"></div>
                     </div>
-
+                    
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 40px;">
                         <div style="text-align: center;">
                             <div style="border-top: 2px solid #2c3e50; padding-top: 10px; margin: 0 20px;">
@@ -1061,7 +973,7 @@
                             </div>
                         </div>
                     </div>
-
+                    
                     <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #bdc3c7;">
                         <p style="font-size: 12px; color: #95a5a6;">RCUK 2025 Guidelines | Simulation Training Exercise</p>
                     </div>
@@ -1079,25 +991,23 @@
     </div>
 
     <div class="simulator-container" id="simulatorContainer" style="display: none;">
-        <div style="flex-basis: 100%; display: flex; justify-content: flex-start;">
-            <button class="back-button" onclick="endScenario()">
-                ◀ End Scenario
-            </button>
-            <button class="back-button reset-button" onclick="resetScenario()">
-                ⟳ Reset Scenario
-            </button>
-        </div>
+        <button class="back-button" onclick="endScenario()">
+            ◀ End Scenario
+        </button>
+        <button class="back-button reset-button" onclick="resetScenario()">
+            🔄 Reset Scenario
+        </button>
 
         <div class="instructor-panel" id="instructorPanel" style="display: none;">
             <div class="instructor-header">
                 <div class="instructor-logo">
                     <img src="https://iili.io/KGQOvkl.md.png" alt="WMEBEM Logo">
                     <div class="instructor-title">
-                        <h2>Instructor</h2>
+                        <h2>Instructor Controls</h2>
                         <p id="instructorSubtitle">Scenario in Progress</p>
                     </div>
                 </div>
-                <button class="minimise-btn" id="minimiseBtn" onclick="toggleInstructorPanel(this)">▲ Hide</button>
+                <button class="minimise-btn" id="minimiseBtn" onclick="toggleInstructorPanel()">▲ Hide</button>
             </div>
 
             <div class="control-grid">
@@ -1109,47 +1019,45 @@
                         <button class="rhythm-btn" onclick="quickSetRhythm('vtach')">VT</button>
                         <button class="rhythm-btn" onclick="quickSetRhythm('svt')">SVT</button>
                         <button class="rhythm-btn" onclick="quickSetRhythm('afib')">AF</button>
+                        <button class="rhythm-btn" onclick="quickSetRhythm('sinus_brady')">SB</button>
+                        <button class="rhythm-btn" onclick="quickSetRhythm('sinus_tach')">ST</button>
+                        <button class="rhythm-btn" onclick="quickSetRhythm('asystole')">ASY</button>
+                        <button class="rhythm-btn" onclick="quickSetRhythm('chb')">CHB</button>
+                        <button class="rhythm-btn" onclick="quickSetRhythm('paced')">PACED</button>
+                        <button class="rhythm-btn" onclick="quickSetRhythm('idioventricular')">IVR</button>
                     </div>
-                    <button class="instructor-small-btn" onclick="nextRhythm()">Next rhythm ▶</button>
                 </div>
 
                 <div class="control-section">
-                    <h4>Status & Modes</h4>
-                    <div style="color: #ecf0f1; font-size: 12px; line-height: 1.6; margin-bottom: 6px;">
+                    <h4>Status</h4>
+                    <div style="color: #ecf0f1; font-size: 14px; line-height: 1.8;">
                         <div>Shocks: <strong id="shockCounter">0</strong></div>
                         <div>Sync mode: <strong id="syncStatus">OFF</strong></div>
                         <div>Pacing: <strong id="pacingStatus">OFF</strong></div>
                     </div>
-                    <div class="control-row">
-                        <label>Guided Mode</label>
-                        <input type="checkbox" id="guidedToggle" onchange="toggleGuidedMode(this.checked)">
-                    </div>
-                    <div class="control-row">
-                        <label>Teaching Mode</label>
-                        <input type="checkbox" id="teachingModeToggle" checked onchange="toggleTeachingMode(this.checked)">
-                    </div>
                 </div>
 
                 <div class="control-section">
-                    <h4>Noise & Audio</h4>
-                    <div class="noise-buttons">
-                        <button class="noise-btn" onclick="setNoiseMode('none')" id="noiseNoneBtn">No artefact</button>
-                        <button class="noise-btn" onclick="setNoiseMode('movement')">Movement</button>
-                        <button class="noise-btn" onclick="setNoiseMode('cpr')">CPR</button>
-                        <button class="noise-btn" onclick="setNoiseMode('leadOff')">Lead off</button>
+                    <h4>Artefact Overlays</h4>
+                    <div class="control-row">
+                        <label>
+                            <input type="checkbox" onchange="toggleArtefact('movement', this.checked)">
+                            Movement / patient motion
+                        </label>
                     </div>
-                    <div style="margin-top: 8px;">
-                        <label style="color:#ecf0f1; font-size:12px;">
-                            <input type="checkbox" id="qrsBeepToggle" onchange="toggleQRSBeep(this.checked)" style="margin-right:6px;">
-                            QRS beep (NSR/VT/AF)
+                    <div class="control-row">
+                        <label>
+                            <input type="checkbox" onchange="toggleArtefact('cpr', this.checked)">
+                            CPR interference
+                        </label>
+                    </div>
+                    <div class="control-row">
+                        <label>
+                            <input type="checkbox" onchange="toggleArtefact('leadoff', this.checked)">
+                            Lead-off / poor contact
                         </label>
                     </div>
                 </div>
-            </div>
-
-            <div class="control-section">
-                <h4>Instructor Notes</h4>
-                <textarea id="instructorNotes" class="instructor-notes" placeholder="Teaching prompts, drug doses, rhythm differentials..." oninput="saveInstructorNotes(this.value)"></textarea>
             </div>
         </div>
 
@@ -1162,7 +1070,7 @@
                         <div class="screen-info" id="modeInfo">MODE: MONITOR</div>
                         <div class="screen-info" id="timeInfo">00:00:00</div>
                     </div>
-
+                    
                     <div class="ecg-canvas-container">
                         <canvas id="ecgCanvas"></canvas>
                     </div>
@@ -1205,9 +1113,8 @@
                 <div class="top-buttons">
                     <button class="btn-sync" id="syncBtn" onclick="toggleSync()">SYNC</button>
                     <button class="btn-shock" id="shockBtn" onclick="deliverShock()" disabled>
+                        SHOCK
                         <span class="number">3</span>
-                        <span class="bolt-icon">⚡</span>
-                        <span class="label">SHOCK</span>
                     </button>
                 </div>
 
@@ -1240,7 +1147,7 @@
                 </div>
 
                 <div class="mode-dial-container">
-                    <div class="mode-dial" id="modeDial" style="--dial-rotation: 0deg;" onclick="cycleMode()"></div>
+                    <div class="mode-dial" id="modeDial" style="--dial-rotation: 0deg;"></div>
                     <div class="mode-labels">
                         <div class="mode-label active" data-mode="monitor" onclick="setMode('monitor')">MONITOR</div>
                         <div class="mode-label" data-mode="defib" onclick="setMode('defib')">DEFIB</div>
@@ -1252,7 +1159,7 @@
                 <div class="pacing-controls">
                     <div>
                         <div class="pacer-label">OUTPUT</div>
-                        <div class="pacer-dial" id="outputDial" style="--dial-rotation: 0deg;"></div>
+                        <div class="pacer-dial" style="--dial-rotation: 0deg;"></div>
                         <div class="pacer-value" id="outputDisplay">0</div>
                         <div class="pacer-label">mA</div>
                         <div class="pacer-controls-btn">
@@ -1262,7 +1169,7 @@
                     </div>
                     <div>
                         <div class="pacer-label">RATE</div>
-                        <div class="pacer-dial" id="rateDial" style="--dial-rotation: 0deg;"></div>
+                        <div class="pacer-dial" style="--dial-rotation: 0deg;"></div>
                         <div class="pacer-value" id="rateDisplay">60</div>
                         <div class="pacer-label">ppm</div>
                         <div class="pacer-controls-btn">
@@ -1277,15 +1184,7 @@
                 <div class="zoll-logo-text">ZOLL</div>
             </div>
         </div>
-
-        <div id="guidedOverlay" class="guided-overlay" style="display:none;">
-            <h4>Guided Mode – Key Steps</h4>
-            <div id="guidedStepsContainer"></div>
-        </div>
     </div>
-
-    <div id="teachingBanner" class="teaching-banner">Teaching Mode: ON</div>
-    <div class="watermark">WMEBEM Defib Simulator • v1.1 • RCUK 2025</div>
 
     <script>
         // Scenarios Configuration
@@ -1393,35 +1292,9 @@
             }
         };
 
-        // Guided Mode steps per category
-        const guidedStepsConfig = {
-            defibrillation: [
-                { id: 'confirm_unresponsive', label: 'Confirm unresponsive / not breathing normally' },
-                { id: 'check_pulse', label: 'Check pulse (max 10 seconds)' },
-                { id: 'defib_mode', label: 'Select DEFIB mode' },
-                { id: 'charge', label: 'Charge to recommended energy' },
-                { id: 'shock', label: 'Deliver shock promptly' },
-                { id: 'post_shock', label: 'Resume CPR and reassess' }
-            ],
-            cardioversion: [
-                { id: 'check_pulse', label: 'Confirm patient has a pulse and adverse features' },
-                { id: 'defib_mode', label: 'Select DEFIB mode' },
-                { id: 'sync_on', label: 'Activate SYNC mode' },
-                { id: 'charge', label: 'Charge to recommended energy' },
-                { id: 'shock', label: 'Deliver synchronised shock' },
-                { id: 'post_shock', label: 'Reassess rhythm and patient' }
-            ],
-            pacing: [
-                { id: 'check_pulse', label: 'Assess for bradycardia with adverse features' },
-                { id: 'pacer_mode', label: 'Select PACER mode' },
-                { id: 'rate_set', label: 'Set pacing rate (e.g. 60–80 ppm)' },
-                { id: 'output_increase', label: 'Increase output until capture' },
-                { id: 'capture', label: 'Confirm electrical + mechanical capture' }
-            ]
-        };
-
-        // Global State
+        // State
         const state = {
+            selectedMode: null,
             selectedScenario: null,
             scenarioActive: false,
             scenarioStartTime: null,
@@ -1439,238 +1312,342 @@
             shockCount: 0,
             pacerOutput: 0,
             pacerRate: 60,
-            pacingActive: false, // true when capture achieved
+            pacingActive: false,
             actions: [],
             hasPulse: true,
-            noiseMode: 'none',
-            guidedMode: false,
-            qrsBeepEnabled: false,
-            lastVFStartTime: null,
-            lastShockTime: null,
-            teachingMode: true,
-            scenarioCountdownActive: false
+            roscAchieved: false,
+            noise: {
+                movement: false,
+                cpr: false,
+                leadoff: false
+            }
         };
 
-        const instructorNotes = {};
-
-        // Canvas / waveform
+        // Canvas
         let canvas, ctx, waveformX = 0, animationId;
-        let lastTimestamp = 0;
-        const ecgSpeed = 125; // px/s
-
-        // Timers
-        let qrsBeepTimer = null;
-        let roscTrendTimer = null;
-        let scenarioCountdownTimer = null;
+        let lastTimestamp = 0; // For time-based animation
+        // 1 big square = 25px. 1 small square = 5px.
+        // Standard speed = 25mm/s = 5 big squares/s.
+        // Pixel speed = 5 * 25px/s = 125 px/s.
+        const ecgSpeed = 125; 
 
         function initCanvas() {
             canvas = document.getElementById('ecgCanvas');
             if (!canvas) return;
-
+            
             ctx = canvas.getContext('2d');
             canvas.width = canvas.offsetWidth;
             canvas.height = canvas.offsetHeight;
-
+            
             if (animationId) {
                 cancelAnimationFrame(animationId);
             }
-            lastTimestamp = 0;
+            lastTimestamp = 0; // Reset timestamp
             waveformX = 0;
             animationId = requestAnimationFrame(animate);
         }
 
-        // ECG Rhythms
+        // HELPER: Normal sinus beat template
+        function nsrTemplate(x, hr) {
+            const baseline = canvas.height / 2;
+            if (hr <= 0) return baseline;
+            const cycle = (60 / hr) * ecgSpeed;
+            const pos = (x % cycle);
+            const s = pos / cycle; // 0..1
+            let y = baseline;
+
+            // P wave: 0.00 - 0.08
+            if (s < 0.08) {
+                const p = s / 0.08;
+                y -= Math.sin(p * Math.PI) * 10;
+            }
+            // PR segment: 0.08 - 0.18
+            else if (s < 0.18) {
+                y = baseline;
+            }
+            // QRS: sharp, tall, consistent: 0.18 - 0.30
+            else if (s < 0.30) {
+                const qrsPos = (s - 0.18) / 0.12; // 0..1
+                if (qrsPos < 0.25) { // Q
+                    y += qrsPos / 0.25 * 15;
+                } else if (qrsPos < 0.5) { // Upstroke to R
+                    y += 15 - ((qrsPos - 0.25) / 0.25) * 85;
+                } else if (qrsPos < 0.75) { // Downstroke to S
+                    y -= 70 - ((qrsPos - 0.5) / 0.25) * 40;
+                } else { // Return to baseline
+                    y -= 30 - ((qrsPos - 0.75) / 0.25) * 30;
+                }
+            }
+            // ST + T wave: 0.30 - 0.46
+            else if (s < 0.46) {
+                const t = (s - 0.30) / 0.16;
+                y = baseline - Math.sin(t * Math.PI) * 20;
+            }
+            // Rest of cycle
+            else {
+                y = baseline;
+            }
+
+            return y;
+        }
+
+        // ECG Rhythms (deterministic, no frame-to-frame randomness)
         const rhythms = {
-            nsr: (x, hr) => {
-                if (hr === 0) return canvas.height / 2;
-                const cycle = (60 / hr) * ecgSpeed;
-                const pos = x % cycle;
-                const baseline = canvas.height / 2;
+            // Normal sinus rhythm
+            nsr: (x, hr) => nsrTemplate(x, hr || 75),
 
-                if (pos < cycle * 0.10) {
-                    return baseline - Math.sin((pos / (cycle * 0.10)) * Math.PI) * 12;
-                }
-                if (pos < cycle * 0.20) return baseline;
+            // Sinus bradycardia
+            sinus_brady: (x, hr) => nsrTemplate(x, hr || 45),
 
-                if (pos < cycle * 0.28) {
-                    const qrsPos = (pos - cycle * 0.20) / (cycle * 0.08);
-                    if (qrsPos < 0.15) return baseline + (qrsPos / 0.15) * 8;
-                    if (qrsPos < 0.5) return baseline + 8 - ((qrsPos - 0.15) / 0.35) * 88;
-                    if (qrsPos < 0.7) return baseline - 80 + ((qrsPos - 0.5) / 0.2) * 88;
-                    return baseline + 8 - ((qrsPos - 0.7) / 0.3) * 8;
-                }
-                if (pos < cycle * 0.40) return baseline;
+            // Sinus tachycardia
+            sinus_tach: (x, hr) => nsrTemplate(x, hr || 120),
 
-                if (pos < cycle * 0.55) {
-                    return baseline - Math.sin(((pos - cycle * 0.40) / (cycle * 0.15)) * Math.PI) * 25;
-                }
-                return baseline;
-            },
-
-            vfib: (x) => {
-                const baseline = canvas.height / 2;
-
-                // Coarse-to-fine behaviour over time in VF
-                let ampFactor = 1;
-                const now = Date.now();
-                const start = state.lastVFStartTime || state.scenarioStartTime || now;
-                const t = (now - start) / 1000; // seconds in VF
-                if (t < 60) {
-                    ampFactor = 1.2; // coarse early
-                } else if (t < 180) {
-                    const frac = (t - 60) / 120; // 0–1
-                    ampFactor = 1.2 - frac * 0.7; // down to ~0.5
-                } else {
-                    ampFactor = 0.5; // fine VF
-                }
-
-                const wave1 = Math.sin((2 * Math.PI * x) / 14) * 35;
-                const wave2 = Math.sin((2 * Math.PI * x) / 9 + 1.1) * 28;
-                const wave3 = Math.sin((2 * Math.PI * x) / 5 + 0.7) * 18;
-
-                return baseline + ampFactor * (wave1 + wave2 + wave3);
-            },
-
+            // Ventricular tachycardia - broad, uniform, monomorphic
             vtach: (x, hr) => {
-                if (hr === 0) hr = 180;
-                const cycle = (60 / hr) * ecgSpeed;
-                const pos = x % cycle;
                 const baseline = canvas.height / 2;
-                const qrsWidth = cycle * 0.60; // broad
+                const effectiveHr = hr && hr > 0 ? hr : 180;
+                const cycle = (60 / effectiveHr) * ecgSpeed;
+                const pos = (x % cycle);
+                const s = pos / cycle;
+                let y = baseline;
 
-                if (pos < qrsWidth) {
-                    const p = pos / qrsWidth;
-                    if (p < 0.20) return baseline - (p / 0.20) * 50;
-                    if (p < 0.45) return baseline - 50 - ((p - 0.20) / 0.25) * 35;
-                    if (p < 0.75) return baseline - 85 + ((p - 0.45) / 0.30) * 70;
-                    return baseline - 15 + ((p - 0.75) / 0.25) * 15;
+                // Broad, tall QRS occupying ~60% of cycle
+                if (s < 0.6) {
+                    const p = s / 0.6; // 0..1
+                    if (p < 0.25) {          // upstroke
+                        y -= p / 0.25 * 70;
+                    } else if (p < 0.5) {   // peak
+                        y -= 70 - (p - 0.25) / 0.25 * 20;
+                    } else if (p < 0.75) {  // downstroke
+                        y -= 50 - (p - 0.5) / 0.25 * 80;
+                    } else {                // terminal portion back to baseline
+                        y += (p - 0.75) / 0.25 * 20;
+                    }
+                } else {
+                    y = baseline;
                 }
-                return baseline;
+                return y;
             },
 
+            // Supraventricular tachycardia - narrow, regular, little/no P
             svt: (x, hr) => {
-                if (hr === 0) hr = 190;
-                const cycle = (60 / hr) * ecgSpeed;
-                const pos = x % cycle;
+                const baseline = canvas.height / 2;
+                const effectiveHr = hr && hr > 0 ? hr : 190;
+                const cycle = (60 / effectiveHr) * ecgSpeed;
+                const pos = (x % cycle);
+                const s = pos / cycle;
+                let y = baseline;
+
+                if (s < 0.18) {
+                    // Narrow QRS
+                    const q = s / 0.18;
+                    if (q < 0.3) {
+                        y += q / 0.3 * 15;
+                    } else if (q < 0.6) {
+                        y += 15 - (q - 0.3) / 0.3 * 80;
+                    } else {
+                        y -= 65 - (q - 0.6) / 0.4 * 65;
+                    }
+                } else if (s < 0.32) {
+                    y = baseline;
+                } else if (s < 0.5) {
+                    const t = (s - 0.32) / 0.18;
+                    y = baseline - Math.sin(t * Math.PI) * 15;
+                } else {
+                    y = baseline;
+                }
+                return y;
+            },
+
+            // Atrial fibrillation - irregular RR, variable QRS amplitude, fibrillatory baseline
+            afib: (x, hr, tSeconds = 0) => {
+                const baseline = canvas.height / 2;
+                const baseHr = hr && hr > 0 ? hr : 140;
+
+                // Slightly varying HR over time to give irregularity
+                const variability = 0.25 * Math.sin(tSeconds * 2.1) + 0.15 * Math.sin(tSeconds * 3.7);
+                const effectiveHr = baseHr * (1 + variability);
+                const cycle = (60 / effectiveHr) * ecgSpeed;
+                const pos = (x % cycle);
+                const s = pos / cycle;
+                let y = baseline;
+
+                // Fibrillatory baseline
+                const fibrillatory = Math.sin((x * 0.35) + tSeconds * 5) * 4 +
+                                     Math.sin((x * 0.9) + tSeconds * 3) * 2;
+
+                // QRS complex, slight beat-to-beat amplitude variation using deterministic function
+                if (s < 0.14) {
+                    const qrsPos = s / 0.14;
+                    const ampMod = 0.7 + 0.3 * Math.sin((tSeconds + x * 0.001) * 2.9);
+                    if (qrsPos < 0.3) {
+                        y += ampMod * (qrsPos / 0.3 * 20);
+                    } else if (qrsPos < 0.6) {
+                        y += ampMod * (20 - (qrsPos - 0.3) / 0.3 * 80);
+                    } else {
+                        y -= ampMod * (60 - (qrsPos - 0.6) / 0.4 * 60);
+                    }
+                } else {
+                    y = baseline;
+                }
+
+                return y + fibrillatory;
+            },
+
+            // Ventricular fibrillation - coarse -> fine over time
+            vfib: (x, hr, tSeconds = 0) => {
                 const baseline = canvas.height / 2;
 
-                if (pos < cycle * 0.15) {
-                    const qrsPos = pos / (cycle * 0.15);
-                    if (qrsPos < 0.2) return baseline + (qrsPos / 0.2) * 5;
-                    if (qrsPos < 0.5) return baseline + 5 - ((qrsPos - 0.2) / 0.3) * 85;
-                    return baseline - 80 + ((qrsPos - 0.5) / 0.5) * 80;
-                }
-                if (pos < cycle * 0.30) return baseline;
+                // Amplitude decays over time to represent "finer" VF if untreated
+                const timeFactor = Math.min(tSeconds / 120, 1); // up to 2 minutes
+                const coarseAmp = 40;
+                const fineAmp = 12;
+                const amplitude = coarseAmp * (1 - timeFactor) + fineAmp * timeFactor;
 
-                if (pos < cycle * 0.45) {
-                    return baseline - Math.sin(((pos - cycle * 0.30) / (cycle * 0.15)) * Math.PI) * 20;
-                }
-                return baseline;
+                const y =
+                    Math.sin((x * 0.25) + tSeconds * 3) * amplitude +
+                    Math.sin((x * 0.55) + tSeconds * 4.1) * (amplitude * 0.6);
+
+                return baseline + y;
             },
 
-            afib: (x, hr) => {
-                if (hr === 0) hr = 150;
-                const avgCycle = (60 / hr) * ecgSpeed;
+            // Bradycardia - sinus with low rate
+            brady: (x, hr) => nsrTemplate(x, hr || 38),
 
-                // Irregular R-R: vary cycle length
-                const cycleVar = 1 + 0.35 * Math.sin((2 * Math.PI * x) / 600);
-                const cycle = avgCycle * cycleVar;
-                const pos = x % cycle;
-                const baseline = canvas.height / 2;
-
-                // Fibrillatory baseline (no clear P waves)
-                const fibrillatory =
-                    Math.sin((2 * Math.PI * x) / 40) * 4 +
-                    Math.sin((2 * Math.PI * x) / 18 + 0.9) * 3 +
-                    Math.sin((2 * Math.PI * x) / 9 + 1.7) * 2;
-
-                // Irregular, moderately narrow QRS with variable amplitude
-                if (pos < cycle * 0.12) {
-                    const qrsPos = pos / (cycle * 0.12);
-                    const ampFactor = 0.7 + 0.6 * Math.sin((2 * Math.PI * x) / 500 + 0.4);
-                    if (qrsPos < 0.2) return baseline + fibrillatory + (qrsPos / 0.2) * 8 * ampFactor;
-                    if (qrsPos < 0.5) return baseline + fibrillatory - ((qrsPos - 0.2) / 0.3) * 70 * ampFactor;
-                    return baseline + fibrillatory - 62 * ampFactor + ((qrsPos - 0.5) / 0.5) * 70 * ampFactor;
-                }
-
-                return baseline + fibrillatory;
-            },
-
-            brady: (x, hr) => {
-                return rhythms.nsr(x, hr);
-            },
-
+            // Complete heart block - independent P and wide QRS at slower rate
             chb: (x, hr) => {
-                const pCycle = (60 / 85) * ecgSpeed;
-                const qrsCycle = (60 / hr) * ecgSpeed;
                 const baseline = canvas.height / 2;
+
+                // Atrial rate ~80, ventricular rate from hr or ~30
+                const pRate = 80;
+                const vRate = hr && hr > 0 ? hr : 32;
+
+                const pCycle = (60 / pRate) * ecgSpeed;
+                const qrsCycle = (60 / vRate) * ecgSpeed;
 
                 let y = baseline;
 
-                const pPos = x % pCycle;
-                if (pPos < pCycle * 0.08) {
-                    y += -Math.sin((pPos / (pCycle * 0.08)) * Math.PI) * 12;
+                // P wave
+                const pPos = (x % pCycle) / pCycle;
+                if (pPos < 0.08) {
+                    y -= Math.sin((pPos / 0.08) * Math.PI) * 8;
                 }
 
-                const qrsPos = x % qrsCycle;
-                if (qrsPos < qrsCycle * 0.18) {
-                    const p = qrsPos / (qrsCycle * 0.18);
-                    if (p < 0.3) y += -(p / 0.3) * 45;
-                    else if (p < 0.6) y += -45 - ((p - 0.3) / 0.3) * 40;
-                    else y += -85 + ((p - 0.6) / 0.4) * 85;
+                // Wide QRS at slow ventricular rate
+                const qPos = (x % qrsCycle) / qrsCycle;
+                if (qPos < 0.3) {
+                    const p = qPos / 0.3;
+                    if (p < 0.25) {
+                        y += p / 0.25 * 15;
+                    } else if (p < 0.5) {
+                        y += 15 - (p - 0.25) / 0.25 * 80;
+                    } else {
+                        y -= 65 - (p - 0.5) / 0.5 * 65;
+                    }
                 }
 
                 return y;
             },
 
-            paced: (x, hr) => {
-                if (hr === 0) hr = 70;
-                const cycle = (60 / hr) * ecgSpeed;
-                const pos = x % cycle;
-                const baseline = canvas.height / 2;
+            // Asystole - flatline
+            asystole: () => canvas.height / 2,
 
-                // Ultra-sharp pacing spike
-                if (pos < 3) {
+            // Idioventricular rhythm - slow, wide complexes
+            idioventricular: (x, hr) => {
+                const baseline = canvas.height / 2;
+                const effectiveHr = hr && hr > 0 ? hr : 40;
+                const cycle = (60 / effectiveHr) * ecgSpeed;
+                const pos = (x % cycle);
+                const s = pos / cycle;
+                let y = baseline;
+
+                if (s < 0.55) {
+                    const p = s / 0.55;
+                    if (p < 0.2) {
+                        y -= p / 0.2 * 50;
+                    } else if (p < 0.5) {
+                        y -= 50 - (p - 0.2) / 0.3 * 60;
+                    } else {
+                        y += (p - 0.5) / 0.5 * 20;
+                    }
+                } else {
+                    y = baseline;
+                }
+                return y;
+            },
+
+            // Paced rhythm - very sharp spikes + wide QRS
+            paced: (x, hr) => {
+                const baseline = canvas.height / 2;
+                const effectiveHr = hr && hr > 0 ? hr : 70;
+                const cycle = (60 / effectiveHr) * ecgSpeed;
+                const pos = (x % cycle);
+                let y = baseline;
+
+                // Very sharp pacing spike first couple of pixels
+                if (pos < 4) {
                     return baseline - 110;
                 }
 
-                // Wide QRS after pacing spike
-                if (pos < cycle * 0.20) {
-                    const qrsPos = (pos - 3) / (cycle * 0.20);
-                    if (qrsPos < 0.3) return baseline - ((qrsPos / 0.3) * 60);
-                    if (qrsPos < 0.6) return baseline - 60 + ((qrsPos - 0.3) / 0.3) * 80;
-                    return baseline + 20 - ((qrsPos - 0.6) / 0.4) * 20;
+                const s = pos / cycle;
+
+                // Immediately followed by wide QRS and T
+                if (s < 0.28) {
+                    const qrsPos = (s) / 0.28;
+                    if (qrsPos < 0.3) {
+                        y -= qrsPos / 0.3 * 70;
+                    } else if (qrsPos < 0.6) {
+                        y -= 70 - (qrsPos - 0.3) / 0.3 * 70;
+                    } else {
+                        y += (qrsPos - 0.6) / 0.4 * 30;
+                    }
+                } else if (s < 0.5) {
+                    const t = (s - 0.28) / 0.22;
+                    y = baseline - Math.sin(t * Math.PI) * 18;
+                } else {
+                    y = baseline;
                 }
 
-                if (pos < cycle * 0.45) {
-                    return baseline - Math.sin(((pos - cycle * 0.20) / (cycle * 0.25)) * Math.PI) * 30;
-                }
-                return baseline;
+                return y;
             }
         };
 
         function getRhythmHR(rhythm) {
             const hrs = {
-                nsr: 75, vfib: 0, vtach: 180, svt: 190, afib: 155,
-                brady: 38, chb: 32, paced: 70
+                nsr: 75,
+                vfib: 0,
+                vtach: 180,
+                svt: 190,
+                afib: 140,
+                brady: 38,
+                chb: 32,
+                paced: 70,
+                sinus_brady: 45,
+                sinus_tach: 120,
+                asystole: 0,
+                idioventricular: 40
             };
             return hrs[rhythm] || 75;
         }
 
         function animate(timestamp) {
             if (!canvas || !ctx) return;
-
+            
             if (lastTimestamp === 0) {
                 lastTimestamp = timestamp;
             }
-            const deltaTime = (timestamp - lastTimestamp) / 1000;
+            const deltaTime = (timestamp - lastTimestamp) / 1000; // in seconds
             lastTimestamp = timestamp;
-
+            
             const pixelsToMove = ecgSpeed * deltaTime;
 
+            const simTimeSeconds = state.scenarioStartTime
+                ? (Date.now() - state.scenarioStartTime) / 1000
+                : 0;
+            
             ctx.fillStyle = '#000';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
-
+            
             // Grid - small squares
             ctx.strokeStyle = '#0a2a0a';
             ctx.lineWidth = 0.5;
@@ -1686,7 +1663,7 @@
                 ctx.lineTo(canvas.width, i);
                 ctx.stroke();
             }
-
+            
             // Grid - big squares
             ctx.strokeStyle = '#1a3a1a';
             ctx.lineWidth = 1;
@@ -1702,35 +1679,44 @@
                 ctx.lineTo(canvas.width, i);
                 ctx.stroke();
             }
-
-            // Rhythm selection with pacing capture
-            const displayRhythm = state.pacingActive ? 'paced' : state.rhythm;
+            
+            // Draw rhythm
+            const displayRhythm =
+                (state.pacingActive && state.pacerOutput > 0) ? 'paced' : state.rhythm;
             const rhythmFunc = rhythms[displayRhythm];
-
+            
             if (rhythmFunc) {
                 ctx.strokeStyle = '#00ff00';
                 ctx.lineWidth = 2.5;
                 ctx.shadowColor = 'rgba(0, 255, 0, 0.5)';
                 ctx.shadowBlur = 3;
                 ctx.beginPath();
-                for (let x = 0; x < canvas.width; x++) {
-                    const displayHR = state.pacingActive ? state.pacerRate : state.hr;
-                    let y = rhythmFunc(waveformX + x, displayHR);
 
-                    // Noise artefacts
-                    if (state.noiseMode === 'movement') {
-                        const n1 = Math.sin((waveformX + x) / 7) * 5;
-                        const n2 = Math.sin((waveformX + x) / 3) * 3;
-                        y += n1 + n2;
-                    } else if (state.noiseMode === 'cpr') {
-                        const t = (waveformX + x) / ecgSpeed; // seconds
-                        const freq = 100 / 60; // ~100 compressions/min
-                        y += Math.sin(2 * Math.PI * freq * t) * 25;
-                    } else if (state.noiseMode === 'leadOff') {
-                        // Nearly flat line with low amplitude noise
-                        const baseline = canvas.height / 2;
-                        const n = Math.sin((waveformX + x) / 12) * 2 + Math.sin((waveformX + x) / 5) * 1;
-                        y = baseline + n;
+                const baseline = canvas.height / 2;
+                // Use displayHR derived in updateDisplays logic
+                const displayHR = (state.pacingActive && state.pacerOutput > 0)
+                    ? state.pacerRate
+                    : state.hr;
+
+                for (let x = 0; x < canvas.width; x++) {
+                    let y = rhythmFunc(waveformX + x, displayHR, simTimeSeconds);
+
+                    // Artefact overlays (deterministic)
+                    if (state.noise.movement) {
+                        y += Math.sin((waveformX + x) * 0.02 + simTimeSeconds * 3) * 6;
+                    }
+                    if (state.noise.cpr) {
+                        const cprPeriod = ecgSpeed * 0.5; // ~2 compressions per second
+                        const phase = (waveformX + x) % cprPeriod;
+                        if (phase < 12) {
+                            y -= 60 * (1 - phase / 12);
+                        }
+                    }
+                    if (state.noise.leadoff) {
+                        const pattern = Math.sin((waveformX + x) * 0.001 + simTimeSeconds);
+                        if (pattern > 0.6) {
+                            y = baseline;
+                        }
                     }
 
                     if (x === 0) ctx.moveTo(x, y);
@@ -1739,41 +1725,7 @@
                 ctx.stroke();
                 ctx.shadowBlur = 0;
             }
-
-            // Pacing spikes overlay (both before and after capture)
-            if (state.deviceMode === 'pacer' && state.pacerOutput > 0) {
-                let hr = state.pacerRate || 60;
-                const cycle = (60 / hr) * ecgSpeed;
-                const phase = waveformX % cycle;
-                ctx.strokeStyle = '#ffffff';
-                ctx.lineWidth = 1;
-                for (let xo = -phase; xo < canvas.width; xo += cycle) {
-                    if (xo >= 0) {
-                        ctx.beginPath();
-                        ctx.moveTo(xo, canvas.height * 0.15);
-                        ctx.lineTo(xo, canvas.height * 0.85);
-                        ctx.stroke();
-                    }
-                }
-            }
-
-            // Sync markers (yellow ticks near top)
-            const displayHR = state.pacingActive ? state.pacerRate : state.hr;
-            if (state.syncMode && displayHR > 0 && displayRhythm !== 'vfib' && state.noiseMode !== 'leadOff') {
-                const cycle = (60 / displayHR) * ecgSpeed;
-                const phase = waveformX % cycle;
-                ctx.strokeStyle = '#ffff00';
-                ctx.lineWidth = 1.5;
-                for (let xo = -phase; xo < canvas.width; xo += cycle) {
-                    if (xo >= 0) {
-                        ctx.beginPath();
-                        ctx.moveTo(xo, 5);
-                        ctx.lineTo(xo, 25);
-                        ctx.stroke();
-                    }
-                }
-            }
-
+            
             waveformX += pixelsToMove;
             animationId = requestAnimationFrame(animate);
         }
@@ -1781,15 +1733,20 @@
         function updateDisplays() {
             const scenario = scenarios[state.selectedScenario];
             let displayHR = state.hr;
-
-            if (scenario && !scenario.hasPulse && !state.pacingActive) {
+            
+            // For pulseless rhythms, show 0 HR unless ROSC
+            if (scenario && !scenario.hasPulse && !state.roscAchieved) {
                 displayHR = 0;
             }
-
-            if (state.pacingActive) {
-                displayHR = state.pacerRate;
+            
+            // When pacing with capture, show paced rate
+            if (state.pacingActive && state.pacerOutput > 0) {
+                const captureThreshold = scenario?.captureThreshold || 70;
+                if (state.pacerOutput >= captureThreshold) {
+                    displayHR = state.pacerRate;
+                }
             }
-
+            
             document.getElementById('hrDisplay').textContent = displayHR;
             document.getElementById('spo2Display').textContent = state.spo2;
             document.getElementById('etco2Display').textContent = state.etco2;
@@ -1798,7 +1755,8 @@
             document.getElementById('outputDisplay').textContent = state.pacerOutput;
             document.getElementById('rateDisplay').textContent = state.pacerRate;
             document.getElementById('modeInfo').textContent = `MODE: ${state.deviceMode.toUpperCase()}`;
-
+            
+            // Sync indicator
             const syncIndicator = document.getElementById('syncIndicator');
             if (state.syncMode) {
                 syncIndicator.textContent = 'SYNC';
@@ -1807,19 +1765,21 @@
                 syncIndicator.textContent = '';
                 syncIndicator.className = 'screen-info';
             }
-
+            
+            // Update vital signs styling
             const hrEl = document.getElementById('hrDisplay');
             hrEl.className = 'vital-value';
             if (displayHR === 0) {
                 hrEl.classList.add('critical');
             }
-
+            
             const spo2El = document.getElementById('spo2Display');
             spo2El.className = 'vital-value';
             if (state.spo2 === 0) {
                 spo2El.classList.add('critical');
             }
-
+            
+            // Update instructor panel if visible
             if (document.getElementById('shockCounter')) {
                 document.getElementById('shockCounter').textContent = state.shockCount;
             }
@@ -1829,25 +1789,6 @@
             if (document.getElementById('pacingStatus')) {
                 document.getElementById('pacingStatus').textContent = state.pacingActive ? 'ACTIVE' : 'OFF';
             }
-
-            // Ensure noise button highlighting
-            const noiseButtons = {
-                none: document.getElementById('noiseNoneBtn')
-            };
-            document.querySelectorAll('.noise-btn').forEach(btn => btn.classList.remove('active'));
-            const currentNoise = state.noiseMode;
-            if (currentNoise === 'none' && noiseButtons.none) {
-                noiseButtons.none.classList.add('active');
-            } else {
-                document.querySelectorAll('.noise-btn').forEach(btn => {
-                    if (btn.textContent.toLowerCase().includes(currentNoise)) {
-                        btn.classList.add('active');
-                    }
-                });
-            }
-
-            // Update QRS beep timer based on latest HR/mode
-            updateQRSBeepTimer();
         }
 
         function setMessage(text, type = 'ready') {
@@ -1857,69 +1798,8 @@
             msgEl.className = 'message-bar ' + type;
         }
 
-        function updateGuidedChecklist() {
-            const overlay = document.getElementById('guidedOverlay');
-            const container = document.getElementById('guidedStepsContainer');
-            if (!overlay || !container) return;
-
-            if (!state.guidedMode || !state.selectedScenario) {
-                overlay.style.display = 'none';
-                return;
-            }
-
-            const scenario = scenarios[state.selectedScenario];
-            if (!scenario) {
-                overlay.style.display = 'none';
-                return;
-            }
-
-            const steps = guidedStepsConfig[scenario.category];
-            if (!steps) {
-                overlay.style.display = 'none';
-                return;
-            }
-
-            overlay.style.display = 'block';
-
-            // Determine completed steps from action log
-            const actions = state.actions;
-            const completed = new Set();
-
-            actions.forEach(a => {
-                if (a.action === 'Pulse check performed') completed.add('check_pulse');
-                if (a.action === 'Mode changed' && a.details === 'DEFIB') completed.add('defib_mode');
-                if (a.action === 'Mode changed' && a.details === 'PACER') completed.add('pacer_mode');
-                if (a.action.startsWith('Charge initiated')) completed.add('charge');
-                if (a.action.startsWith('Shock')) completed.add('shock');
-                if (a.action.startsWith('ROSC achieved')) {
-                    completed.add('post_shock');
-                }
-                if (a.action.startsWith('Sync mode activated')) completed.add('sync_on');
-                if (a.action.startsWith('Pacing rate adjusted')) completed.add('rate_set');
-                if (a.action.startsWith('Pacing output adjusted')) completed.add('output_increase');
-                if (a.action.includes('capture achieved')) completed.add('capture');
-            });
-
-            // Assume first step ("confirm unresponsive") is conceptually done at scenario start for defib
-            if (scenario.category === 'defibrillation') {
-                completed.add('confirm_unresponsive');
-            }
-
-            let html = '';
-            steps.forEach((step, index) => {
-                const isCompleted = completed.has(step.id);
-                html += `
-                    <div class="guided-step ${isCompleted ? 'completed' : ''}">
-                        <span class="step-badge">${isCompleted ? '✓' : index + 1}</span>
-                        <span class="step-text">${step.label}</span>
-                    </div>`;
-            });
-
-            container.innerHTML = html;
-        }
-
         function logAction(action, details = '') {
-            const timestamp = state.scenarioStartTime ?
+            const timestamp = state.scenarioStartTime ? 
                 Math.floor((Date.now() - state.scenarioStartTime) / 1000) : 0;
             state.actions.push({
                 time: timestamp,
@@ -1927,47 +1807,35 @@
                 details: details
             });
             console.log(`[${timestamp}s] ${action}${details ? ': ' + details : ''}`);
-
-            if (state.guidedMode) {
-                updateGuidedChecklist();
-            }
         }
 
-        // Scenario selection
+        // Menu functions
+        function selectMode(mode) {
+            state.selectedMode = mode;
+            document.getElementById('modeSelectScreen').style.display = 'none';
+            document.getElementById('scenarioScreen').style.display = 'flex';
+            document.getElementById('modeTitle').textContent = mode === 'education' ? 'Education Mode' : 'Testing Mode';
+        }
+
+        function backToModeSelect() {
+            document.getElementById('scenarioScreen').style.display = 'none';
+            document.getElementById('modeSelectScreen').style.display = 'flex';
+            state.selectedMode = null;
+        }
+
         function selectScenario(scenarioId) {
             const scenario = scenarios[scenarioId];
             if (!scenario) return;
-
-            // Clear timers
-            if (qrsBeepTimer) {
-                clearTimeout(qrsBeepTimer);
-                qrsBeepTimer = null;
-            }
-            if (roscTrendTimer) {
-                clearInterval(roscTrendTimer);
-                roscTrendTimer = null;
-            }
-            if (scenarioCountdownTimer) {
-                clearInterval(scenarioCountdownTimer);
-                scenarioCountdownTimer = null;
-            }
-
+            
             state.selectedScenario = scenarioId;
-            state.scenarioStartTime = Date.now();
             state.actions = [];
             state.shockCount = 0;
             state.syncMode = false;
             state.pacingActive = false;
-            state.pacerOutput = 0;
-            state.pacerRate = 60;
-            state.energy = 120;
-            state.noiseMode = 'none';
             state.charged = false;
-            state.lastVFStartTime = scenario.initialRhythm === 'vfib' ? Date.now() : null;
-            state.lastShockTime = null;
-            state.scenarioActive = false;
-            state.scenarioCountdownActive = true;
-
+            state.roscAchieved = false;
+            
+            // Load scenario baseline
             state.rhythm = scenario.initialRhythm;
             state.hr = scenario.initialVitals.hr;
             state.spo2 = scenario.initialVitals.spo2;
@@ -1975,92 +1843,74 @@
             state.bpSys = scenario.initialVitals.bpSys;
             state.bpDia = scenario.initialVitals.bpDia;
             state.hasPulse = scenario.hasPulse;
-
+            
+            // Hide menus, show simulator
+            document.getElementById('scenarioScreen').style.display = 'none';
             document.getElementById('menuWrapper').style.display = 'none';
             document.getElementById('simulatorContainer').style.display = 'block';
             document.getElementById('zollDevice').style.display = 'grid';
-
-            document.getElementById('instructorPanel').style.display = 'block';
-            document.getElementById('instructorSubtitle').textContent = scenario.name;
-
-            // Load instructor notes for this scenario
-            const notesEl = document.getElementById('instructorNotes');
-            if (notesEl) {
-                notesEl.value = instructorNotes[scenarioId] || '';
+            
+            // Show instructor panel only in education mode (start minimised)
+            if (state.selectedMode === 'education') {
+                const panel = document.getElementById('instructorPanel');
+                const btn = document.getElementById('minimiseBtn');
+                panel.style.display = 'block';
+                panel.classList.add('minimised');
+                if (btn) btn.textContent = '▼ Show';
+                document.getElementById('instructorSubtitle').textContent = scenario.name;
+            } else {
+                document.getElementById('instructorPanel').style.display = 'none';
             }
 
-            setTimeout(() => {
-                initCanvas();
-                updateDisplays();
+            initCanvas();
+            updateDisplays();
 
-                let countdown = 3;
-                setMessage(`Scenario starting in ${countdown}...`, 'ready');
+            // 3-second countdown before scenario becomes active
+            state.scenarioActive = false;
+            let countdown = 3;
+            setMessage(`SCENARIO STARTING IN ${countdown}...`, 'ready');
 
-                scenarioCountdownTimer = setInterval(() => {
-                    countdown--;
-                    if (countdown > 0) {
-                        setMessage(`Scenario starting in ${countdown}...`, 'ready');
+            const countdownInterval = setInterval(() => {
+                countdown--;
+                if (countdown > 0) {
+                    setMessage(`SCENARIO STARTING IN ${countdown}...`, 'ready');
+                } else {
+                    clearInterval(countdownInterval);
+                    state.scenarioStartTime = Date.now();
+                    state.scenarioActive = true;
+
+                    let msg = scenario.description.toUpperCase();
+                    if (!scenario.hasPulse) {
+                        setMessage(msg, 'alert');
                     } else {
-                        clearInterval(scenarioCountdownTimer);
-                        scenarioCountdownTimer = null;
-                        state.scenarioCountdownActive = false;
-                        state.scenarioActive = true;
-
-                        let msg = scenario.description.toUpperCase();
-                        if (!scenario.hasPulse) {
-                            setMessage(msg, 'alert');
-                        } else {
-                            setMessage(msg, 'ready');
-                        }
-
-                        logAction('Scenario started', scenario.name);
-                        updateGuidedChecklist();
-                        updateQRSBeepTimer();
+                        setMessage(msg, 'ready');
                     }
-                }, 1000);
-            }, 100);
+                    logAction('Scenario started', scenario.name);
+                }
+            }, 1000);
         }
 
         function endScenario() {
+            if (!state.selectedScenario) {
+                returnToMenu();
+                return;
+            }
             if (!confirm('End the current scenario?')) return;
-
+            
             state.scenarioActive = false;
             logAction('Scenario ended');
-
+            
             if (animationId) {
                 cancelAnimationFrame(animationId);
                 animationId = null;
             }
-
-            if (qrsBeepTimer) {
-                clearTimeout(qrsBeepTimer);
-                qrsBeepTimer = null;
-            }
-
+            
             showSummary();
         }
 
         function resetScenario() {
             if (!state.selectedScenario) return;
-            if (!confirm('Reset this scenario from the beginning?')) return;
-
-            if (animationId) {
-                cancelAnimationFrame(animationId);
-                animationId = null;
-            }
-            if (qrsBeepTimer) {
-                clearTimeout(qrsBeepTimer);
-                qrsBeepTimer = null;
-            }
-            if (roscTrendTimer) {
-                clearInterval(roscTrendTimer);
-                roscTrendTimer = null;
-            }
-            if (scenarioCountdownTimer) {
-                clearInterval(scenarioCountdownTimer);
-                scenarioCountdownTimer = null;
-            }
-
+            if (!confirm('Reset this scenario?')) return;
             selectScenario(state.selectedScenario);
         }
 
@@ -2070,15 +1920,16 @@
                 returnToMenu();
                 return;
             }
-
+            
             document.getElementById('simulatorContainer').style.display = 'none';
             document.getElementById('menuWrapper').style.display = 'flex';
-            document.getElementById('scenarioScreen').style.display = 'none';
             document.getElementById('summaryScreen').style.display = 'flex';
-
+            
+            // Populate scenario info
             document.getElementById('summaryScenarioName').textContent = scenario.name;
             document.getElementById('summaryScenarioDesc').textContent = scenario.description;
-
+            
+            // Populate actions
             let actionsHTML = '';
             if (state.actions.length > 0) {
                 actionsHTML = '<div style="display: grid; gap: 8px;">';
@@ -2093,65 +1944,70 @@
                 actionsHTML = '<div style="color: #e74c3c;">No actions recorded</div>';
             }
             document.getElementById('summaryActions').innerHTML = actionsHTML;
-
+            
+            // Performance feedback
             const feedback = generateFeedback(scenario);
             document.getElementById('summaryFeedback').innerHTML = feedback;
-
+            
+            // Outcome
             const outcome = generateOutcome(scenario);
             document.getElementById('summaryOutcome').innerHTML = outcome;
-
-            const rcukHTML = getRCUKReferenceHtml(state.selectedScenario, scenario);
-            document.getElementById('rcukReference').innerHTML = rcukHTML;
         }
 
         function generateFeedback(scenario) {
             let html = '';
             const goodPoints = [];
             const improvementPoints = [];
-
+            
             const modeChanges = state.actions.filter(a => a.action === 'Mode changed');
-            const shocks = state.actions.filter(a => a.action.startsWith('Shock'));
+            const shocks = state.actions.filter(a => a.action.includes('delivered'));
             const syncActivated = state.actions.find(a => a.action === 'Sync mode activated');
             const pacingActions = state.actions.filter(a => a.action.includes('Pacing'));
             const pulseChecks = state.actions.filter(a => a.action === 'Pulse check performed');
-
+            
+            // Check pulse assessment
             if (pulseChecks.length > 0) {
                 goodPoints.push(`✓ Pulse checked ${pulseChecks.length} time(s)`);
+                
+                // Check timing of pulse check
                 if (pulseChecks[0].time <= 30) {
                     goodPoints.push('✓ Early pulse assessment performed');
                 }
             } else {
                 improvementPoints.push('⚠ No pulse check documented - critical for choosing correct intervention');
             }
-
+            
             if (scenario.category === 'defibrillation') {
+                // Check correct mode
                 const defibMode = modeChanges.find(m => m.details === 'DEFIB');
                 if (defibMode) {
                     goodPoints.push('✓ Defibrillator mode selected correctly');
                 } else {
                     improvementPoints.push('✗ Should switch to DEFIB mode for cardiac arrest');
                 }
-
+                
+                // Check sync NOT used
                 if (syncActivated) {
                     improvementPoints.push('✗ Sync mode should NOT be used for cardiac arrest (no pulse)');
                 } else {
                     goodPoints.push('✓ Correctly used unsynchronised shocks (no sync)');
                 }
-
+                
+                // Check shocks delivered
                 if (shocks.length > 0) {
                     goodPoints.push(`✓ ${shocks.length} shock(s) delivered`);
-
+                    
+                    // Check energy
                     const firstShock = shocks[0];
-                    if (
-                        firstShock.details.includes(`${scenario.recommendedEnergy}J`) ||
-                        firstShock.details.includes('150J') ||
-                        firstShock.details.includes('200J')
-                    ) {
+                    if (firstShock.details.includes(`${scenario.recommendedEnergy}J`) || 
+                        firstShock.details.includes('150J') || 
+                        firstShock.details.includes('200J')) {
                         goodPoints.push('✓ Appropriate energy level selected');
                     } else {
                         improvementPoints.push(`⚠ Recommended energy: ${scenario.recommendedEnergy}J or higher`);
                     }
-
+                    
+                    // Time to first shock - critical quality metric
                     const timeToShock = firstShock.time;
                     if (timeToShock <= 60) {
                         goodPoints.push(`✓ Rapid defibrillation (${timeToShock}s) - excellent`);
@@ -2163,30 +2019,34 @@
                 } else {
                     improvementPoints.push('✗ No shocks delivered - shockable rhythm requires defibrillation');
                 }
-
+                
             } else if (scenario.category === 'cardioversion') {
+                // Check sync mode
                 if (syncActivated) {
                     goodPoints.push('✓ Sync mode activated correctly');
                 } else {
                     improvementPoints.push('✗ CRITICAL: Must use SYNC mode for cardioversion (patient has pulse)');
                 }
-
+                
+                // Check appropriate mode
                 const defibMode = modeChanges.find(m => m.details === 'DEFIB');
                 if (defibMode) {
                     goodPoints.push('✓ Defibrillator mode selected');
                 }
-
+                
+                // Check shocks
                 if (shocks.length > 0) {
                     goodPoints.push('✓ Cardioversion attempted');
-
+                    
                     const firstShock = shocks[0];
-                    const energyUsed = parseInt(firstShock.details.match(/(\d+)J/)?.[1] || '0', 10);
+                    const energyUsed = parseInt(firstShock.details.match(/(\d+)J/)?.[1] || '0');
                     if (Math.abs(energyUsed - scenario.recommendedEnergy) <= 30) {
                         goodPoints.push(`✓ Appropriate energy used (${energyUsed}J)`);
                     } else {
                         improvementPoints.push(`⚠ Recommended energy: ${scenario.recommendedEnergy}J for this rhythm`);
                     }
-
+                    
+                    // Time to first shock
                     const timeToShock = firstShock.time;
                     if (timeToShock <= 60) {
                         goodPoints.push(`✓ Rapid cardioversion (${timeToShock}s)`);
@@ -2196,19 +2056,22 @@
                 } else {
                     improvementPoints.push('✗ No cardioversion attempted - patient has adverse features');
                 }
-
+                
             } else if (scenario.category === 'pacing') {
+                // Check pacing mode
                 const pacerMode = modeChanges.find(m => m.details === 'PACER');
                 if (pacerMode) {
                     goodPoints.push('✓ Pacing mode selected');
                 } else {
                     improvementPoints.push('✗ Should switch to PACER mode');
                 }
-
+                
+                // Check pacing actions
                 const outputAdjusted = pacingActions.find(a => a.action.includes('output'));
                 if (outputAdjusted) {
                     goodPoints.push('✓ Pacing output adjusted');
-
+                    
+                    // Check if capture achieved
                     const captureAchieved = pacingActions.find(a => a.action.includes('capture'));
                     if (captureAchieved) {
                         goodPoints.push('✓ Electrical and mechanical capture achieved');
@@ -2216,45 +2079,46 @@
                         improvementPoints.push('⚠ Increase output until capture achieved (check for palpable pulse)');
                     }
                 }
-
+                
                 const rateAdjusted = pacingActions.find(a => a.action.includes('rate'));
                 if (rateAdjusted) {
                     goodPoints.push('✓ Pacing rate set appropriately');
                 }
             }
-
+            
+            // Display feedback
             if (goodPoints.length > 0) {
                 html += '<div style="background: rgba(39, 174, 96, 0.1); border-left: 4px solid #27ae60; padding: 15px; margin: 10px 0; border-radius: 5px;">';
                 html += '<strong style="color: #27ae60;">Good Practice:</strong><ul style="margin: 10px 0; padding-left: 20px; color: #ecf0f1;">';
                 goodPoints.forEach(p => html += `<li style="margin: 5px 0;">${p}</li>`);
                 html += '</ul></div>';
             }
-
+            
             if (improvementPoints.length > 0) {
                 html += '<div style="background: rgba(231, 76, 60, 0.1); border-left: 4px solid #e74c3c; padding: 15px; margin: 10px 0; border-radius: 5px;">';
                 html += '<strong style="color: #e74c3c;">Areas for Improvement:</strong><ul style="margin: 10px 0; padding-left: 20px; color: #ecf0f1;">';
                 improvementPoints.forEach(i => html += `<li style="margin: 5px 0;">${i}</li>`);
                 html += '</ul></div>';
             }
-
+            
             if (html === '') {
                 html = '<div style="color: #f39c12;">No device actions performed</div>';
             }
-
+            
             return html;
         }
 
         function generateOutcome(scenario) {
             let html = '';
-
+            
             if (scenario.category === 'defibrillation' || scenario.category === 'cardioversion') {
-                const converted = state.rhythm === 'nsr' || state.hr < 100;
+                const converted = state.rhythm === 'nsr' || state.hr < 100 || state.roscAchieved;
                 if (converted) {
                     html = `<div style="color: #27ae60; font-size: 18px; font-weight: bold;">✓ RHYTHM CONVERTED</div>
-                        <div style="color: #ecf0f1; margin-top: 10px;">Patient now in sinus rhythm. Vital signs improving with ROSC.</div>`;
+                        <div style="color: #ecf0f1; margin-top: 10px;">Patient now in sinus rhythm. Vital signs improving.</div>`;
                 } else {
                     html = `<div style="color: #f39c12; font-size: 18px; font-weight: bold;">⚠ Rhythm not converted</div>
-                        <div style="color: #ecf0f1; margin-top: 10px;">Patient remains in abnormal rhythm. Continue guideline-based management.</div>`;
+                        <div style="color: #ecf0f1; margin-top: 10px;">Patient remains in abnormal rhythm. Continue management.</div>`;
                 }
             } else if (scenario.category === 'pacing') {
                 const captureAchieved = state.actions.find(a => a.action.includes('capture'));
@@ -2263,121 +2127,68 @@
                         <div style="color: #ecf0f1; margin-top: 10px;">Electrical and mechanical capture achieved. Patient stabilised.</div>`;
                 } else {
                     html = `<div style="color: #f39c12; font-size: 18px; font-weight: bold;">⚠ Pacing not successful</div>
-                        <div style="color: #ecf0f1; margin-top: 10px;">Capture not yet achieved. Continue to adjust output and reassess.</div>`;
+                        <div style="color: #ecf0f1; margin-top: 10px;">Capture not yet achieved. Continue to increase output.</div>`;
                 }
             }
-
+            
             return html;
-        }
-
-        function getRCUKReferenceHtml(scenarioId, scenario) {
-            if (!scenario) return '';
-
-            let title = '';
-            let description = '';
-            let url = '';
-
-            if (scenario.category === 'defibrillation') {
-                title = 'Adult Advanced Life Support – Shockable Rhythm (VF/pVT)';
-                description = 'Refer to the RCUK Adult ALS algorithm for shockable rhythms (VF/pVT).';
-                url = 'https://www.resus.org.uk/library/2021-resuscitation-guidelines/adult-advanced-life-support-algorithm';
-            } else if (scenario.category === 'cardioversion') {
-                title = 'Adult Tachycardia (with pulse) Algorithm';
-                description = 'Refer to the RCUK Adult tachycardia algorithm for unstable tachycardias.';
-                url = 'https://www.resus.org.uk/library/2021-resuscitation-guidelines/adult-advanced-life-support-tachycardia';
-            } else if (scenario.category === 'pacing') {
-                title = 'Adult Bradycardia Algorithm';
-                description = 'Refer to the RCUK Adult bradycardia algorithm for management of unstable bradycardia and complete heart block.';
-                url = 'https://www.resus.org.uk/library/2021-resuscitation-guidelines/adult-advanced-life-support-bradycardia';
-            }
-
-            if (!title) return '';
-
-            return `
-                <div style="margin-bottom: 10px;">
-                    <strong>${title}</strong>
-                </div>
-                <div style="margin-bottom: 10px;">
-                    ${description}
-                </div>
-                <div>
-                    <a href="${url}" target="_blank" rel="noopener noreferrer">Open RCUK algorithm (external link)</a>
-                </div>`;
         }
 
         function returnToMenu() {
             document.getElementById('simulatorContainer').style.display = 'none';
             document.getElementById('summaryScreen').style.display = 'none';
             document.getElementById('certificateScreen').style.display = 'none';
+            document.getElementById('scenarioScreen').style.display = 'none';
+            
             document.getElementById('menuWrapper').style.display = 'flex';
-            document.getElementById('scenarioScreen').style.display = 'flex';
-
+            document.getElementById('modeSelectScreen').style.display = 'flex';
+            
             if (animationId) {
                 cancelAnimationFrame(animationId);
                 animationId = null;
             }
-            if (qrsBeepTimer) {
-                clearTimeout(qrsBeepTimer);
-                qrsBeepTimer = null;
-            }
-            if (roscTrendTimer) {
-                clearInterval(roscTrendTimer);
-                roscTrendTimer = null;
-            }
-            if (scenarioCountdownTimer) {
-                clearInterval(scenarioCountdownTimer);
-                scenarioCountdownTimer = null;
-            }
-
+            
             state.scenarioActive = false;
             state.syncMode = false;
             state.pacingActive = false;
             state.charged = false;
             state.shockCount = 0;
+            state.selectedMode = null;
             state.selectedScenario = null;
             state.actions = [];
-            state.noiseMode = 'none';
-
+            state.roscAchieved = false;
+            
             updateDisplays();
         }
 
         // Device controls
         function setMode(mode) {
             state.deviceMode = mode;
-            document.querySelectorAll('.mode-label').forEach(l => {
-                l.classList.remove('active');
-                if (l.dataset.mode === mode) {
-                    l.classList.add('active');
+            const labels = document.querySelectorAll('.mode-label');
+            labels.forEach(label => {
+                if (label.dataset.mode === mode) {
+                    label.classList.add('active');
+                } else {
+                    label.classList.remove('active');
                 }
             });
-
+            
             const rotations = { monitor: 0, defib: 90, pacer: 180, off: 270 };
             document.getElementById('modeDial').style.setProperty('--dial-rotation', `${rotations[mode]}deg`);
-
+            
             logAction('Mode changed', mode.toUpperCase());
-
+            
+            // Auto-enable pacing if in pacer mode
             if (mode === 'pacer') {
-                // Pacing can be armed, capture still depends on output threshold
+                state.pacingActive = true;
             } else {
                 state.pacingActive = false;
             }
-
+            
             updateDisplays();
         }
 
-        function cycleMode() {
-            const modes = ['monitor', 'defib', 'pacer', 'off'];
-            const idx = modes.indexOf(state.deviceMode);
-            const next = modes[(idx + 1) % modes.length];
-            setMode(next);
-        }
-
         function toggleSync() {
-            if (!state.scenarioActive) {
-                setMessage('Scenario not yet active', 'ready');
-                return;
-            }
-
             state.syncMode = !state.syncMode;
             const btn = document.getElementById('syncBtn');
             if (state.syncMode) {
@@ -2393,8 +2204,6 @@
         }
 
         function adjustEnergy(dir) {
-            if (!state.scenarioActive) return;
-
             const idx = state.energyLevels.indexOf(state.energy);
             if (dir > 0 && idx < state.energyLevels.length - 1) {
                 state.energy = state.energyLevels[idx + 1];
@@ -2408,93 +2217,54 @@
         }
 
         function chargeDefib() {
-            if (!state.scenarioActive) {
-                setMessage('Scenario not yet active', 'ready');
-                return;
-            }
+            if (!state.scenarioActive) return;
             if (state.deviceMode !== 'defib') {
                 setMessage('SWITCH TO DEFIB MODE TO CHARGE', '');
                 return;
             }
-
+            
             setMessage('CHARGING...', '');
             logAction('Charge initiated', `${state.energy}J`);
             playSound('charging');
-
+            
             setTimeout(() => {
                 state.charged = true;
                 document.getElementById('shockBtn').disabled = false;
                 setMessage(`${state.energy}J READY - ${state.syncMode ? 'SYNC' : 'UNSYNC'}`, 'alert');
                 logAction('Charged', `${state.energy}J ready`);
                 playSound('charged');
-            }, 2100);
-        }
-
-        function startROSCTrend(targetVitals) {
-            if (roscTrendTimer) {
-                clearInterval(roscTrendTimer);
-                roscTrendTimer = null;
-            }
-            const duration = 10000; // 10 seconds
-            const steps = 20;
-            const interval = duration / steps;
-
-            const startVals = {
-                hr: state.hr,
-                spo2: state.spo2,
-                etco2: state.etco2,
-                bpSys: state.bpSys,
-                bpDia: state.bpDia
-            };
-
-            let currentStep = 0;
-            roscTrendTimer = setInterval(() => {
-                currentStep++;
-                const f = currentStep / steps;
-
-                state.hr = Math.round(startVals.hr + (targetVitals.hr - startVals.hr) * f);
-                state.spo2 = Math.round(startVals.spo2 + (targetVitals.spo2 - startVals.spo2) * f);
-                state.etco2 = Math.round(startVals.etco2 + (targetVitals.etco2 - startVals.etco2) * f);
-                state.bpSys = Math.round(startVals.bpSys + (targetVitals.bpSys - startVals.bpSys) * f);
-                state.bpDia = Math.round(startVals.bpDia + (targetVitals.bpDia - startVals.bpDia) * f);
-
-                updateDisplays();
-
-                if (currentStep >= steps) {
-                    clearInterval(roscTrendTimer);
-                    roscTrendTimer = null;
-                }
-            }, interval);
+            }, 2000);
         }
 
         function deliverShock() {
-            if (!state.charged || !state.scenarioActive) return;
-
+            if (!state.scenarioActive) return;
+            if (!state.charged) return;
+            
             const scenario = scenarios[state.selectedScenario];
             state.shockCount++;
             const shockEnergy = state.energy;
             const shockType = state.syncMode ? 'synchronised' : 'unsynchronised';
             state.charged = false;
             document.getElementById('shockBtn').disabled = true;
-
-            state.lastShockTime = Date.now();
-
+            
             playSound('shock');
-
+            
             logAction(`Shock ${state.shockCount} delivered`, `${shockEnergy}J ${shockType}`);
-
+            
+            // Flash
             if (canvas) {
                 canvas.style.background = '#fff';
                 setTimeout(() => canvas.style.background = '#000', 100);
             }
-
+            
             setMessage(`SHOCK ${state.shockCount} DELIVERED - ${shockEnergy}J`, 'alert');
-
+            
+            // Check if shock should convert rhythm
             setTimeout(() => {
                 let shouldConvert = false;
-
+                
                 if (scenario.category === 'defibrillation') {
-                    if (state.shockCount >= scenario.shockToConvert &&
+                    if (state.shockCount >= scenario.shockToConvert && 
                         shockEnergy >= scenario.successEnergy) {
                         shouldConvert = true;
                     }
@@ -2503,25 +2273,25 @@
                         shouldConvert = true;
                     }
                 }
-
+                
                 if (shouldConvert) {
                     state.rhythm = scenario.successRhythm;
-                    state.hasPulse = true; // ROSC implies pulse
-                    setMessage(
-                        scenario.category === 'defibrillation'
-                            ? 'RHYTHM CONVERTED - CHECK PULSE & CONTINUE POST-ROSC CARE'
-                            : 'RHYTHM CONVERTED TO SINUS - REASSESS PATIENT',
-                        'ready'
-                    );
-
+                    state.hr = scenario.successVitals.hr;
+                    state.spo2 = scenario.successVitals.spo2;
+                    state.etco2 = scenario.successVitals.etco2;
+                    state.bpSys = scenario.successVitals.bpSys;
+                    state.bpDia = scenario.successVitals.bpDia;
+                    state.hasPulse = true;
+                    state.roscAchieved = true;
+                    
                     if (scenario.category === 'defibrillation') {
+                        setMessage('RHYTHM CONVERTED - CHECK PULSE', 'ready');
                         logAction('ROSC achieved', 'Return of spontaneous circulation');
                     } else {
+                        setMessage('RHYTHM CONVERTED TO SINUS', 'ready');
                         logAction('Cardioversion successful', 'Converted to sinus rhythm');
                     }
-
-                    // ROSC trend for vitals
-                    startROSCTrend(scenario.successVitals);
+                    
                     updateDisplays();
                 } else {
                     setMessage('CHECK RHYTHM', 'ready');
@@ -2530,13 +2300,10 @@
         }
 
         function analyseRhythm() {
-            if (!state.scenarioActive) {
-                setMessage('Scenario not yet active', 'ready');
-                return;
-            }
+            if (!state.scenarioActive) return;
             setMessage('ANALYSING...', '');
             logAction('Rhythm analysed');
-
+            
             setTimeout(() => {
                 if (state.rhythm === 'vfib' || state.rhythm === 'vtach') {
                     setMessage('SHOCKABLE RHYTHM DETECTED', 'alert');
@@ -2550,90 +2317,81 @@
 
         function adjustPacer(param, change) {
             const scenario = scenarios[state.selectedScenario];
-
+            
             if (param === 'output') {
                 state.pacerOutput = Math.max(0, Math.min(140, state.pacerOutput + change));
                 logAction('Pacing output adjusted', `${state.pacerOutput}mA`);
-
+                
                 const rotation = (state.pacerOutput / 140) * 270;
-                const dial = document.getElementById('outputDial');
+                const dial = document.querySelector('.pacing-controls > div:first-child .pacer-dial');
                 if (dial) dial.style.setProperty('--dial-rotation', `${rotation}deg`);
-
-                if (scenario && scenario.requiresPacing &&
+                
+                // Check for capture
+                if (scenario && scenario.requiresPacing && 
                     state.pacerOutput >= scenario.captureThreshold &&
                     state.deviceMode === 'pacer') {
-
-                    state.pacingActive = true;
-
-                    // Set vitals to success values on capture
+                    
                     state.hr = scenario.successVitals.hr;
                     state.spo2 = scenario.successVitals.spo2;
                     state.etco2 = scenario.successVitals.etco2;
                     state.bpSys = scenario.successVitals.bpSys;
                     state.bpDia = scenario.successVitals.bpDia;
-
+                    state.pacingActive = true;
+                    
                     setMessage(`CAPTURE ACHIEVED AT ${state.pacerOutput}mA`, 'ready');
                     logAction('Pacing capture achieved', `Electrical and mechanical capture at ${state.pacerOutput}mA`);
-                } else {
-                    state.pacingActive = false;
                 }
-
+                
             } else if (param === 'rate') {
                 state.pacerRate = Math.max(30, Math.min(180, state.pacerRate + change));
                 logAction('Pacing rate adjusted', `${state.pacerRate}ppm`);
-
+                
                 const rotation = ((state.pacerRate - 30) / 150) * 270;
-                const dial = document.getElementById('rateDial');
+                const dial = document.querySelector('.pacing-controls > div:last-child .pacer-dial');
                 if (dial) dial.style.setProperty('--dial-rotation', `${rotation}deg`);
             }
-
+            
             updateDisplays();
         }
 
         function quickSetRhythm(rhythm) {
             state.rhythm = rhythm;
             state.hr = getRhythmHR(rhythm);
-
-            if (rhythm === 'vfib') {
-                state.lastVFStartTime = Date.now();
-            }
-
+            state.roscAchieved = false;
             updateDisplays();
         }
 
-        function nextRhythm() {
-            const order = ['nsr', 'vfib', 'vtach', 'svt', 'afib', 'brady', 'chb'];
-            const idx = order.indexOf(state.rhythm);
-            const next = order[(idx + 1) % order.length];
-            quickSetRhythm(next);
-            logAction('Instructor next rhythm', next.toUpperCase());
-        }
-
-        function toggleInstructorPanel(btn) {
+        function toggleInstructorPanel() {
             const panel = document.getElementById('instructorPanel');
-            if (!panel || !btn) return;
-
+            if (!panel) return;
+            const btn = document.getElementById('minimiseBtn');
+            
             panel.classList.toggle('minimised');
-            btn.textContent = panel.classList.contains('minimised') ? '▼ Show' : '▲ Hide';
+            if (panel.classList.contains('minimised')) {
+                btn.textContent = '▼ Show';
+            } else {
+                btn.textContent = '▲ Hide';
+            }
         }
 
+        function toggleArtefact(type, isOn) {
+            if (!state.noise.hasOwnProperty(type)) return;
+            state.noise[type] = isOn;
+        }
+
+        // Pulse check function
         function checkPulse() {
             const scenario = scenarios[state.selectedScenario];
             if (!scenario) {
                 setMessage('CHECK PULSE - SIMULATOR NOT IN SCENARIO MODE', '');
                 return;
             }
-
-            if (!state.scenarioActive) {
-                setMessage('Scenario not yet active', 'ready');
-                return;
-            }
-
+            
             setMessage('CHECKING FOR PULSE...', '');
             logAction('Pulse check performed');
-
+            
             setTimeout(() => {
-                if (state.hasPulse || scenario.hasPulse) {
+                if (scenario.hasPulse || state.roscAchieved) {
                     setMessage('PULSE PRESENT - CAROTID PULSE PALPABLE', 'ready');
                     logAction('Pulse check result', 'Pulse present');
                 } else {
@@ -2643,147 +2401,110 @@
             }, 1500);
         }
 
+        // Try again function
         function tryAgain() {
             const scenarioId = state.selectedScenario;
             if (!scenarioId) {
                 returnToMenu();
                 return;
             }
-
+            
+            // Hide summary, return to simulator
             document.getElementById('summaryScreen').style.display = 'none';
+            
+            // Reset and restart same scenario
             selectScenario(scenarioId);
         }
 
+        // Print certificate function
         function printCertificate() {
             const scenario = scenarios[state.selectedScenario];
             if (!scenario) return;
-
+            
+            // Hide summary, show certificate
             document.getElementById('summaryScreen').style.display = 'none';
             document.getElementById('certificateScreen').style.display = 'flex';
-
+            
+            // Populate certificate
             document.getElementById('certScenarioName').textContent = scenario.name;
-
+            
             const now = new Date();
             document.getElementById('certDate').textContent = now.toLocaleDateString('en-GB', {
                 day: 'numeric',
                 month: 'long',
                 year: 'numeric'
             });
-
+            
+            // Performance summary for certificate
             let perfHTML = '<div style="display: grid; gap: 10px;">';
-
-            const shocks = state.actions.filter(a => a.action.startsWith('Shock'));
+            
+            const shocks = state.actions.filter(a => a.action.includes('delivered'));
             const syncUsed = state.actions.find(a => a.action === 'Sync mode activated');
             const pulseChecks = state.actions.filter(a => a.action === 'Pulse check performed');
-            const pacingCapture = state.actions.find(a => a.action.includes('capture'));
-
+            const pacingActions = state.actions.filter(a => a.action.includes('Pacing'));
+            
             if (shocks.length > 0) {
                 perfHTML += `<div><strong>Shocks Delivered:</strong> ${shocks.length}</div>`;
             }
-
+            
             if (scenario.requiresSync) {
                 perfHTML += `<div><strong>Sync Mode:</strong> ${syncUsed ? '✓ Used correctly' : '✗ Not used'}</div>`;
             }
-
+            
             if (pulseChecks.length > 0) {
                 perfHTML += `<div><strong>Pulse Checks:</strong> ${pulseChecks.length} performed</div>`;
             }
-
+            
             if (scenario.category === 'pacing') {
-                perfHTML += `<div><strong>Pacing:</strong> ${pacingCapture ? '✓ Capture achieved' : 'Attempted'}</div>`;
+                const captureAchieved = pacingActions.find(a => a.action.includes('capture'));
+                perfHTML += `<div><strong>Pacing:</strong> ${captureAchieved ? '✓ Capture achieved' : 'Attempted'}</div>`;
             }
-
-            const converted = state.rhythm === 'nsr' || state.hr < 100;
+            
+            const converted = state.rhythm === 'nsr' || state.hr < 100 || state.roscAchieved;
             if (scenario.category === 'defibrillation' || scenario.category === 'cardioversion') {
                 perfHTML += `<div><strong>Outcome:</strong> ${converted ? '✓ Rhythm converted' : 'Rhythm not converted'}</div>`;
             }
-
+            
             perfHTML += `<div><strong>Total Actions:</strong> ${state.actions.length}</div>`;
-
+            
+            // Calculate time to first intervention
             let firstIntervention = null;
             if (shocks.length > 0) {
                 firstIntervention = shocks[0];
-            } else if (scenario.category === 'pacing') {
-                const pacingActions = state.actions.filter(a => a.action.includes('Pacing'));
-                if (pacingActions.length > 0) {
-                    firstIntervention = pacingActions[0];
-                }
+            } else if (pacingActions.length > 0) {
+                firstIntervention = pacingActions[0];
             }
-
+            
             if (firstIntervention) {
                 const timeToIntervention = firstIntervention.time;
                 const minutes = Math.floor(timeToIntervention / 60);
                 const seconds = timeToIntervention % 60;
                 perfHTML += `<div><strong>Time to First Intervention:</strong> ${minutes}:${String(seconds).padStart(2, '0')}</div>`;
             }
-
+            
             perfHTML += '</div>';
-
+            
             document.getElementById('certPerformance').innerHTML = perfHTML;
         }
 
+        // Back to summary function
         function backToSummary() {
             document.getElementById('certificateScreen').style.display = 'none';
             document.getElementById('summaryScreen').style.display = 'flex';
         }
 
-        function setNoiseMode(mode) {
-            state.noiseMode = mode;
-            logAction('Noise artefact', mode);
-            updateDisplays();
-        }
-
-        function toggleGuidedMode(on) {
-            state.guidedMode = on;
-            updateGuidedChecklist();
-        }
-
-        function toggleTeachingMode(on) {
-            state.teachingMode = on;
-            const banner = document.getElementById('teachingBanner');
-            if (!banner) return;
-            banner.style.display = on ? 'block' : 'none';
-        }
-
-        function saveInstructorNotes(text) {
-            if (!state.selectedScenario) return;
-            instructorNotes[state.selectedScenario] = text;
-        }
-
-        function toggleQRSBeep(on) {
-            state.qrsBeepEnabled = on;
-            updateQRSBeepTimer();
-        }
-
-        function updateQRSBeepTimer() {
-            if (qrsBeepTimer) {
-                clearTimeout(qrsBeepTimer);
-                qrsBeepTimer = null;
-            }
-            if (!state.qrsBeepEnabled || !state.scenarioActive) return;
-
-            let hr = state.pacingActive ? state.pacerRate : state.hr;
-            if (hr <= 0) return;
-
-            const interval = 60000 / hr;
-            qrsBeepTimer = setTimeout(() => {
-                playSound('qrs');
-                updateQRSBeepTimer();
-            }, interval);
-        }
-
+        // Audio
         function playSound(type) {
             const AudioCtx = window.AudioContext || window.webkitAudioContext;
             if (!AudioCtx) return;
-
             const audioContext = new AudioCtx();
             const oscillator = audioContext.createOscillator();
             const gainNode = audioContext.createGain();
-
+            
             oscillator.connect(gainNode);
             gainNode.connect(audioContext.destination);
-
-            switch (type) {
+            
+            switch(type) {
                 case 'charging':
                     oscillator.frequency.setValueAtTime(400, audioContext.currentTime);
                     oscillator.frequency.linearRampToValueAtTime(800, audioContext.currentTime + 2);
@@ -2791,7 +2512,7 @@
                     oscillator.start(audioContext.currentTime);
                     oscillator.stop(audioContext.currentTime + 2);
                     break;
-
+                    
                 case 'charged':
                     oscillator.frequency.setValueAtTime(1000, audioContext.currentTime);
                     gainNode.gain.setValueAtTime(0.4, audioContext.currentTime);
@@ -2799,7 +2520,7 @@
                     oscillator.start(audioContext.currentTime);
                     oscillator.stop(audioContext.currentTime + 0.5);
                     break;
-
+                    
                 case 'shock':
                     oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
                     gainNode.gain.setValueAtTime(0.5, audioContext.currentTime);
@@ -2807,56 +2528,42 @@
                     oscillator.start(audioContext.currentTime);
                     oscillator.stop(audioContext.currentTime + 0.3);
                     break;
-
-                case 'qrs':
-                    oscillator.frequency.setValueAtTime(900, audioContext.currentTime);
-                    gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
-                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.08);
-                    oscillator.start(audioContext.currentTime);
-                    oscillator.stop(audioContext.currentTime + 0.08);
-                    break;
             }
         }
 
         // Keyboard shortcuts
         document.addEventListener('keydown', (e) => {
-            const tag = (e.target && e.target.tagName) ? e.target.tagName.toLowerCase() : '';
-            if (tag === 'input' || tag === 'textarea') return;
             if (!state.scenarioActive) return;
+            const key = e.key.toLowerCase();
 
-            switch (e.key) {
-                case 'c':
-                case 'C':
-                    e.preventDefault();
-                    chargeDefib();
-                    break;
-                case 's':
-                case 'S':
-                    e.preventDefault();
-                    if (!document.getElementById('shockBtn').disabled) {
-                        deliverShock();
-                    }
-                    break;
-                case 'p':
-                case 'P':
-                    e.preventDefault();
-                    checkPulse();
-                    break;
-                case 'm':
-                case 'M':
-                    e.preventDefault();
-                    cycleMode();
-                    break;
-                case 'ArrowUp':
-                    e.preventDefault();
-                    adjustEnergy(1);
-                    break;
-                case 'ArrowDown':
-                    e.preventDefault();
-                    adjustEnergy(-1);
-                    break;
+            if (key === 'c') {
+                e.preventDefault();
+                chargeDefib();
+            } else if (key === 's') {
+                e.preventDefault();
+                deliverShock();
+            } else if (key === 'p') {
+                e.preventDefault();
+                checkPulse();
+            } else if (key === 'm') {
+                e.preventDefault();
+                cycleMode();
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                adjustEnergy(1);
+            } else if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                adjustEnergy(-1);
             }
         });
+
+        function cycleMode() {
+            const order = ['monitor', 'defib', 'pacer', 'off'];
+            let idx = order.indexOf(state.deviceMode);
+            if (idx === -1) idx = 0;
+            const next = order[(idx + 1) % order.length];
+            setMode(next);
+        }
 
         // Clock
         setInterval(() => {
