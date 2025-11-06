@@ -1024,7 +1024,7 @@
                         <p id="instructorSubtitle">Scenario in Progress</p>
                     </div>
                 </div>
-                <button class="minimise-btn" id="minimiseBtn" onclick="toggleInstructorPanel()">▲ Hide</button>
+                <button class="minimise-btn" id="minimiseBtn" onclick="toggleInstructorPanel(event)">▲ Hide</button>
             </div>
 
             <div class="control-grid">
@@ -1308,20 +1308,50 @@
 
         // Canvas
         let canvas, ctx, waveformX = 0, animationId;
+        let canvasSize = { width: 0, height: 0 };
+        let resizeTimeout;
         let lastTimestamp = 0; // For time-based animation
         // 1 big square = 25px. 1 small square = 5px.
         // Standard speed = 25mm/s = 5 big squares/s.
         // Pixel speed = 5 * 25px/s = 125 px/s.
-        const ecgSpeed = 125; 
+        const ecgSpeed = 125;
+
+        const displayElements = {
+            hrDisplay: document.getElementById('hrDisplay'),
+            spo2Display: document.getElementById('spo2Display'),
+            etco2Display: document.getElementById('etco2Display'),
+            bpDisplay: document.getElementById('bpDisplay'),
+            energyDisplay: document.getElementById('energyDisplay'),
+            outputDisplay: document.getElementById('outputDisplay'),
+            rateDisplay: document.getElementById('rateDisplay'),
+            modeInfo: document.getElementById('modeInfo'),
+            syncIndicator: document.getElementById('syncIndicator'),
+            shockCounter: document.getElementById('shockCounter'),
+            syncStatus: document.getElementById('syncStatus'),
+            pacingStatus: document.getElementById('pacingStatus'),
+            messageBar: document.getElementById('messageBar')
+        };
+
+        let audioContextInstance;
 
         function initCanvas() {
             canvas = document.getElementById('ecgCanvas');
             if (!canvas) return;
-            
+
+            const dpr = window.devicePixelRatio || 1;
+            const rect = canvas.getBoundingClientRect();
+            canvasSize = { width: rect.width, height: rect.height };
+
+            canvas.width = rect.width * dpr;
+            canvas.height = rect.height * dpr;
+            canvas.style.width = `${rect.width}px`;
+            canvas.style.height = `${rect.height}px`;
+
             ctx = canvas.getContext('2d');
-            canvas.width = canvas.offsetWidth;
-            canvas.height = canvas.offsetHeight;
-            
+            if (!ctx) return;
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
+            ctx.scale(dpr, dpr);
+
             if (animationId) {
                 cancelAnimationFrame(animationId);
             }
@@ -1329,13 +1359,22 @@
             animationId = requestAnimationFrame(animate);
         }
 
+        window.addEventListener('resize', () => {
+            if (resizeTimeout) {
+                clearTimeout(resizeTimeout);
+            }
+            resizeTimeout = setTimeout(() => {
+                initCanvas();
+            }, 150);
+        });
+
         // ECG Rhythms
         const rhythms = {
             nsr: (x, hr) => {
-                if (hr === 0) return canvas.height / 2;
+                if (hr === 0) return canvasSize.height / 2;
                 const cycle = (60 / hr) * ecgSpeed; // Pixels per beat
                 const pos = x % cycle;
-                const baseline = canvas.height / 2;
+                const baseline = canvasSize.height / 2;
                 
                 if (pos < cycle * 0.10) {
                     return baseline - Math.sin((pos / (cycle * 0.10)) * Math.PI) * 12;
@@ -1356,7 +1395,7 @@
             },
             
             vfib: (x) => {
-                const baseline = canvas.height / 2;
+                const baseline = canvasSize.height / 2;
                 const noise = (Math.random() - 0.5) * 120;
                 const wave1 = Math.sin(x * 0.4) * 40;
                 const wave2 = Math.sin(x * 0.7) * 30;
@@ -1365,10 +1404,10 @@
             },
             
             vtach: (x, hr) => {
-                if (hr === 0) return canvas.height / 2;
+                if (hr === 0) return canvasSize.height / 2;
                 const cycle = (60 / hr) * ecgSpeed;
                 const pos = x % cycle;
-                const baseline = canvas.height / 2;
+                const baseline = canvasSize.height / 2;
                 
                 if (pos < cycle * 0.5) {
                     const qrsPos = pos / (cycle * 0.5);
@@ -1381,10 +1420,10 @@
             },
             
             svt: (x, hr) => {
-                if (hr === 0) return canvas.height / 2;
+                if (hr === 0) return canvasSize.height / 2;
                 const cycle = (60 / hr) * ecgSpeed;
                 const pos = x % cycle;
-                const baseline = canvas.height / 2;
+                const baseline = canvasSize.height / 2;
                 
                 if (pos < cycle * 0.15) {
                     const qrsPos = pos / (cycle * 0.15);
@@ -1400,12 +1439,12 @@
             },
             
             afib: (x, hr) => {
-                if (hr === 0) return canvas.height / 2;
+                if (hr === 0) return canvasSize.height / 2;
                 const avgCycle = (60 / hr) * ecgSpeed;
                 const cycleVar = 1 + (Math.sin(x * 0.01) * 0.3);
                 const cycle = avgCycle * cycleVar;
                 const pos = x % cycle;
-                const baseline = canvas.height / 2;
+                const baseline = canvasSize.height / 2;
                 const fibrillation = (Math.random() - 0.5) * 8;
                 
                 if (pos < cycle * 0.12) {
@@ -1429,7 +1468,7 @@
             chb: (x, hr) => {
                 const pCycle = (60 / 85) * ecgSpeed; // P-wave rate ~85
                 const qrsCycle = (60 / hr) * ecgSpeed; // Ventricular rate
-                const baseline = canvas.height / 2;
+                const baseline = canvasSize.height / 2;
                 
                 let y = baseline;
                 
@@ -1450,10 +1489,10 @@
             },
             
             paced: (x, hr) => {
-                if (hr === 0) return canvas.height / 2;
+                if (hr === 0) return canvasSize.height / 2;
                 const cycle = (60 / hr) * ecgSpeed;
                 const pos = x % cycle;
-                const baseline = canvas.height / 2;
+                const baseline = canvasSize.height / 2;
                 
                 // Pacing spike
                 if (pos < 5) {
@@ -1497,36 +1536,36 @@
             const pixelsToMove = ecgSpeed * deltaTime;
             
             ctx.fillStyle = '#000';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            
+            ctx.fillRect(0, 0, canvasSize.width, canvasSize.height);
+
             // Grid
             ctx.strokeStyle = '#0a2a0a';
             ctx.lineWidth = 0.5;
-            for (let i = 0; i < canvas.width; i += 5) {
+            for (let i = 0; i < canvasSize.width; i += 5) {
                 ctx.beginPath();
                 ctx.moveTo(i, 0);
-                ctx.lineTo(i, canvas.height);
+                ctx.lineTo(i, canvasSize.height);
                 ctx.stroke();
             }
-            for (let i = 0; i < canvas.height; i += 5) {
+            for (let i = 0; i < canvasSize.height; i += 5) {
                 ctx.beginPath();
                 ctx.moveTo(0, i);
-                ctx.lineTo(canvas.width, i);
+                ctx.lineTo(canvasSize.width, i);
                 ctx.stroke();
             }
-            
+
             ctx.strokeStyle = '#1a3a1a';
             ctx.lineWidth = 1;
-            for (let i = 0; i < canvas.width; i += 25) {
+            for (let i = 0; i < canvasSize.width; i += 25) {
                 ctx.beginPath();
                 ctx.moveTo(i, 0);
-                ctx.lineTo(i, canvas.height);
+                ctx.lineTo(i, canvasSize.height);
                 ctx.stroke();
             }
-            for (let i = 0; i < canvas.height; i += 25) {
+            for (let i = 0; i < canvasSize.height; i += 25) {
                 ctx.beginPath();
                 ctx.moveTo(0, i);
-                ctx.lineTo(canvas.width, i);
+                ctx.lineTo(canvasSize.width, i);
                 ctx.stroke();
             }
             
@@ -1540,7 +1579,7 @@
                 ctx.shadowColor = 'rgba(0, 255, 0, 0.5)';
                 ctx.shadowBlur = 3;
                 ctx.beginPath();
-                for (let x = 0; x < canvas.width; x++) {
+                for (let x = 0; x < canvasSize.width; x++) {
                     const displayHR = (state.pacingActive && state.pacerOutput > 0) ? state.pacerRate : state.hr;
                     const y = rhythmFunc(waveformX + x, displayHR);
                     if (x === 0) ctx.moveTo(x, y);
@@ -1571,17 +1610,17 @@
                 }
             }
             
-            document.getElementById('hrDisplay').textContent = displayHR;
-            document.getElementById('spo2Display').textContent = state.spo2;
-            document.getElementById('etco2Display').textContent = state.etco2;
-            document.getElementById('bpDisplay').textContent = `${state.bpSys}/${state.bpDia}`;
-            document.getElementById('energyDisplay').textContent = state.energy;
-            document.getElementById('outputDisplay').textContent = state.pacerOutput;
-            document.getElementById('rateDisplay').textContent = state.pacerRate;
-            document.getElementById('modeInfo').textContent = `MODE: ${state.deviceMode.toUpperCase()}`;
-            
+            displayElements.hrDisplay.textContent = displayHR;
+            displayElements.spo2Display.textContent = state.spo2;
+            displayElements.etco2Display.textContent = state.etco2;
+            displayElements.bpDisplay.textContent = `${state.bpSys}/${state.bpDia}`;
+            displayElements.energyDisplay.textContent = state.energy;
+            displayElements.outputDisplay.textContent = state.pacerOutput;
+            displayElements.rateDisplay.textContent = state.pacerRate;
+            displayElements.modeInfo.textContent = `MODE: ${state.deviceMode.toUpperCase()}`;
+
             // Sync indicator
-            const syncIndicator = document.getElementById('syncIndicator');
+            const syncIndicator = displayElements.syncIndicator;
             if (state.syncMode) {
                 syncIndicator.textContent = 'SYNC';
                 syncIndicator.className = 'screen-info sync-indicator';
@@ -1591,32 +1630,32 @@
             }
             
             // Update vital signs styling
-            const hrEl = document.getElementById('hrDisplay');
+            const hrEl = displayElements.hrDisplay;
             hrEl.className = 'vital-value';
             if (displayHR === 0) {
                 hrEl.classList.add('critical');
             }
-            
-            const spo2El = document.getElementById('spo2Display');
+
+            const spo2El = displayElements.spo2Display;
             spo2El.className = 'vital-value';
             if (state.spo2 === 0) {
                 spo2El.classList.add('critical');
             }
-            
+
             // Update instructor panel if visible
-            if (document.getElementById('shockCounter')) {
-                document.getElementById('shockCounter').textContent = state.shockCount;
+            if (displayElements.shockCounter) {
+                displayElements.shockCounter.textContent = state.shockCount;
             }
-            if (document.getElementById('syncStatus')) {
-                document.getElementById('syncStatus').textContent = state.syncMode ? 'ON' : 'OFF';
+            if (displayElements.syncStatus) {
+                displayElements.syncStatus.textContent = state.syncMode ? 'ON' : 'OFF';
             }
-            if (document.getElementById('pacingStatus')) {
-                document.getElementById('pacingStatus').textContent = state.pacingActive ? 'ACTIVE' : 'OFF';
+            if (displayElements.pacingStatus) {
+                displayElements.pacingStatus.textContent = state.pacingActive ? 'ACTIVE' : 'OFF';
             }
         }
 
         function setMessage(text, type = 'ready') {
-            const msgEl = document.getElementById('messageBar');
+            const msgEl = displayElements.messageBar;
             msgEl.textContent = text;
             msgEl.className = 'message-bar ' + type;
         }
@@ -1723,21 +1762,37 @@
             document.getElementById('summaryScenarioName').textContent = scenario.name;
             document.getElementById('summaryScenarioDesc').textContent = scenario.description;
             
-            // Populate actions
-            let actionsHTML = '';
+            const summaryActionsEl = document.getElementById('summaryActions');
+            summaryActionsEl.textContent = '';
             if (state.actions.length > 0) {
-                actionsHTML = '<div style="display: grid; gap: 8px;">';
+                const list = document.createElement('div');
+                list.style.display = 'grid';
+                list.style.gap = '8px';
+
                 state.actions.forEach(action => {
                     const timestamp = action.time ? `${Math.floor(action.time / 60)}:${String(action.time % 60).padStart(2, '0')}` : '0:00';
-                    actionsHTML += `<div style="padding: 10px; background: #34495e; border-radius: 5px;">
-                        <strong style="color: #3498db;">${timestamp}</strong> - ${action.action}${action.details ? ': ' + action.details : ''}
-                    </div>`;
+                    const item = document.createElement('div');
+                    item.style.padding = '10px';
+                    item.style.background = '#34495e';
+                    item.style.borderRadius = '5px';
+
+                    const timeLabel = document.createElement('strong');
+                    timeLabel.style.color = '#3498db';
+                    timeLabel.textContent = timestamp;
+
+                    item.appendChild(timeLabel);
+                    item.appendChild(document.createTextNode(` - ${action.action}${action.details ? ': ' + action.details : ''}`));
+
+                    list.appendChild(item);
                 });
-                actionsHTML += '</div>';
+
+                summaryActionsEl.appendChild(list);
             } else {
-                actionsHTML = '<div style="color: #e74c3c;">No actions recorded</div>';
+                const empty = document.createElement('div');
+                empty.style.color = '#e74c3c';
+                empty.textContent = 'No actions recorded';
+                summaryActionsEl.appendChild(empty);
             }
-            document.getElementById('summaryActions').innerHTML = actionsHTML;
             
             // Performance feedback
             const feedback = generateFeedback(scenario);
@@ -2144,13 +2199,15 @@
             updateDisplays();
         }
 
-        function toggleInstructorPanel() {
+        function toggleInstructorPanel(evt) {
             const panel = document.getElementById('instructorPanel');
             if (!panel) return;
-            
+
             panel.classList.toggle('minimised');
-            const btn = event.target;
-            btn.textContent = panel.classList.contains('minimised') ? '▼ Show' : '▲ Hide';
+            const btn = evt?.currentTarget || evt?.target || document.getElementById('minimiseBtn');
+            if (btn) {
+                btn.textContent = panel.classList.contains('minimised') ? '▼ Show' : '▲ Hide';
+            }
         }
 
         // Pulse check function
@@ -2270,40 +2327,68 @@
             document.getElementById('summaryScreen').style.display = 'flex';
         }
 
+        function getAudioContext() {
+            if (!audioContextInstance) {
+                const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                if (!AudioContextClass) {
+                    return null;
+                }
+                audioContextInstance = new AudioContextClass();
+            }
+
+            if (audioContextInstance.state === 'suspended') {
+                audioContextInstance.resume().catch(() => {});
+            }
+
+            return audioContextInstance;
+        }
+
         // Audio
         function playSound(type) {
-            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const audioContext = getAudioContext();
+            if (!audioContext) return;
+
             const oscillator = audioContext.createOscillator();
             const gainNode = audioContext.createGain();
-            
+
             oscillator.connect(gainNode);
             gainNode.connect(audioContext.destination);
-            
+
+            const now = audioContext.currentTime;
+            let stopTime = now + 0.3;
+
             switch(type) {
                 case 'charging':
-                    oscillator.frequency.setValueAtTime(400, audioContext.currentTime);
-                    oscillator.frequency.linearRampToValueAtTime(800, audioContext.currentTime + 2);
-                    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-                    oscillator.start(audioContext.currentTime);
-                    oscillator.stop(audioContext.currentTime + 2);
+                    oscillator.frequency.setValueAtTime(400, now);
+                    oscillator.frequency.linearRampToValueAtTime(800, now + 2);
+                    gainNode.gain.setValueAtTime(0.3, now);
+                    stopTime = now + 2;
                     break;
-                    
+
                 case 'charged':
-                    oscillator.frequency.setValueAtTime(1000, audioContext.currentTime);
-                    gainNode.gain.setValueAtTime(0.4, audioContext.currentTime);
-                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
-                    oscillator.start(audioContext.currentTime);
-                    oscillator.stop(audioContext.currentTime + 0.5);
+                    oscillator.frequency.setValueAtTime(1000, now);
+                    gainNode.gain.setValueAtTime(0.4, now);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
+                    stopTime = now + 0.5;
                     break;
-                    
+
                 case 'shock':
-                    oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
-                    gainNode.gain.setValueAtTime(0.5, audioContext.currentTime);
-                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
-                    oscillator.start(audioContext.currentTime);
-                    oscillator.stop(audioContext.currentTime + 0.3);
+                    oscillator.frequency.setValueAtTime(800, now);
+                    gainNode.gain.setValueAtTime(0.5, now);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+                    stopTime = now + 0.3;
+                    break;
+
+                default:
                     break;
             }
+
+            oscillator.start(now);
+            oscillator.stop(stopTime);
+            oscillator.addEventListener('ended', () => {
+                oscillator.disconnect();
+                gainNode.disconnect();
+            });
         }
 
         // Clock
