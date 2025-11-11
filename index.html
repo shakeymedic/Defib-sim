@@ -103,6 +103,71 @@
             font-weight: normal;
         }
 
+        /* Mode Selection Banner at Top */
+        .mode-selection-banner {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .mode-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .mode-info img {
+            height: 35px;
+            background: white;
+            padding: 5px 10px;
+            border-radius: 6px;
+        }
+
+        .mode-info-text h3 {
+            color: #ecf0f1;
+            font-size: 16px;
+            margin-bottom: 3px;
+        }
+
+        .mode-info-text p {
+            color: #bdc3c7;
+            font-size: 12px;
+        }
+
+        .mode-buttons {
+            display: flex;
+            gap: 15px;
+        }
+
+        .mode-toggle-btn {
+            background: linear-gradient(180deg, #3498db 0%, #2874a6 100%);
+            color: white;
+            border: 3px solid #2874a6;
+            padding: 12px 25px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+
+        .mode-toggle-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.4);
+        }
+
+        .mode-toggle-btn.active {
+            background: linear-gradient(180deg, #27ae60 0%, #229954 100%);
+            border-color: #229954;
+            box-shadow: 0 0 20px rgba(39, 174, 96, 0.6);
+        }
+
         /* Simulator Container */
         .simulator-container {
             max-width: 1600px;
@@ -815,92 +880,84 @@
     </style>
 </head>
 <body>
-    <div class="menu-wrapper" id="menuWrapper">
-        <div class="menu-screen" id="modeSelectScreen" style="display: flex;">
-            <div class="menu-logo">
+    <!-- Mode Selection Banner -->
+    <div class="simulator-container" id="simulatorContainer" style="display: block;">
+        <div class="mode-selection-banner">
+            <div class="mode-info">
                 <img src="https://iili.io/KGQOvkl.md.png" alt="WMEBEM Logo">
+                <div class="mode-info-text">
+                    <h3>ZOLL R Series Simulator</h3>
+                    <p>WMEBEM Training | RCUK 2025</p>
+                </div>
             </div>
-            <div class="menu-title">
-                <h1>ZOLL R Series Simulator</h1>
-                <p>Defibrillator Training | RCUK 2025 Guidelines</p>
-            </div>
-            <div class="menu-options">
-                <button class="menu-option" onclick="selectMode('education')">
-                    <div>Education Mode</div>
-                    <div class="subtitle">Instructor controls visible for teaching</div>
+            <div class="mode-buttons">
+                <button class="mode-toggle-btn active" id="educationModeBtn" onclick="setSimulatorMode('education')">
+                    📚 Education Mode
                 </button>
-                <button class="menu-option" onclick="selectMode('testing')">
-                    <div>Testing Mode</div>
-                    <div class="subtitle">Learner assessment with hidden controls</div>
+                <button class="mode-toggle-btn" id="testingModeBtn" onclick="setSimulatorMode('testing')">
+                    📝 Testing Mode
                 </button>
             </div>
         </div>
 
-        <div class="menu-screen" id="scenarioScreen" style="display: none;">
-            <div class="menu-logo">
-                <img src="https://iili.io/KGQOvkl.md.png" alt="WMEBEM Logo">
-            </div>
-            <div class="menu-title">
-                <h1 id="modeTitle">Education Mode</h1>
-                <p>Select a clinical scenario</p>
-            </div>
-            <div style="max-width: 900px; display: grid; gap: 15px; width: 100%;">
-                <div style="background: #2c3e50; padding: 20px; border-radius: 10px;">
+        <!-- Scenario Selection (initially visible) -->
+        <div id="scenarioSelection" style="background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%); border-radius: 10px; padding: 30px; margin-bottom: 20px;">
+            <h2 style="color: #ecf0f1; text-align: center; margin-bottom: 25px; font-size: 24px;">Select a Clinical Scenario</h2>
+            <div style="display: grid; gap: 15px; max-width: 1000px; margin: 0 auto;">
+                <div style="background: #2c3e50; padding: 20px; border-radius: 10px; border: 2px solid #e74c3c;">
                     <h3 style="color: #e74c3c; margin-bottom: 15px; font-size: 18px;">Defibrillation (Cardiac Arrest)</h3>
                     <div style="display: grid; gap: 10px;">
-                        <button class="menu-option" style="padding: 20px; text-align: left;" onclick="selectScenario('vf-arrest')">
-                            <div style="font-size: 16px;">Ventricular Fibrillation</div>
+                        <button class="menu-option" style="padding: 15px; text-align: left;" onclick="selectScenario('vf-arrest')">
+                            <div style="font-size: 15px;">Ventricular Fibrillation</div>
                             <div class="subtitle">Coarse VF requiring immediate defibrillation</div>
                         </button>
-                        <button class="menu-option" style="padding: 20px; text-align: left;" onclick="selectScenario('pulseless-vt')">
-                            <div style="font-size: 16px;">Pulseless VT</div>
+                        <button class="menu-option" style="padding: 15px; text-align: left;" onclick="selectScenario('pulseless-vt')">
+                            <div style="font-size: 15px;">Pulseless VT</div>
                             <div class="subtitle">Broad complex tachycardia with no pulse - treat as VF</div>
                         </button>
                     </div>
                 </div>
 
-                <div style="background: #2c3e50; padding: 20px; border-radius: 10px;">
+                <div style="background: #2c3e50; padding: 20px; border-radius: 10px; border: 2px solid #f39c12;">
                     <h3 style="color: #f39c12; margin-bottom: 15px; font-size: 18px;">Cardioversion (With Pulse)</h3>
                     <div style="display: grid; gap: 10px;">
-                        <button class="menu-option" style="padding: 20px; text-align: left;" onclick="selectScenario('unstable-vt')">
-                            <div style="font-size: 16px;">VT with Pulse (Unstable)</div>
+                        <button class="menu-option" style="padding: 15px; text-align: left;" onclick="selectScenario('unstable-vt')">
+                            <div style="font-size: 15px;">VT with Pulse (Unstable)</div>
                             <div class="subtitle">Conscious patient with adverse features - needs synchronised shock</div>
                         </button>
-                        <button class="menu-option" style="padding: 20px; text-align: left;" onclick="selectScenario('unstable-svt')">
-                            <div style="font-size: 16px;">SVT with Adverse Features</div>
+                        <button class="menu-option" style="padding: 15px; text-align: left;" onclick="selectScenario('unstable-svt')">
+                            <div style="font-size: 15px;">SVT with Adverse Features</div>
                             <div class="subtitle">Narrow complex tachycardia causing haemodynamic compromise</div>
                         </button>
-                        <button class="menu-option" style="padding: 20px; text-align: left;" onclick="selectScenario('fast-af')">
-                            <div style="font-size: 16px;">Fast AF with Adverse Features</div>
+                        <button class="menu-option" style="padding: 15px; text-align: left;" onclick="selectScenario('fast-af')">
+                            <div style="font-size: 15px;">Fast AF with Adverse Features</div>
                             <div class="subtitle">Rapid atrial fibrillation with shock or heart failure</div>
                         </button>
                     </div>
                 </div>
 
-                <div style="background: #2c3e50; padding: 20px; border-radius: 10px;">
+                <div style="background: #2c3e50; padding: 20px; border-radius: 10px; border: 2px solid #3498db;">
                     <h3 style="color: #3498db; margin-bottom: 15px; font-size: 18px;">Transcutaneous Pacing</h3>
                     <div style="display: grid; gap: 10px;">
-                        <button class="menu-option" style="padding: 20px; text-align: left;" onclick="selectScenario('complete-hb')">
-                            <div style="font-size: 16px;">Complete Heart Block</div>
+                        <button class="menu-option" style="padding: 15px; text-align: left;" onclick="selectScenario('complete-hb')">
+                            <div style="font-size: 15px;">Complete Heart Block</div>
                             <div class="subtitle">3rd degree AV block with adverse features requiring pacing</div>
                         </button>
-                        <button class="menu-option" style="padding: 20px; text-align: left;" onclick="selectScenario('symptomatic-brady')">
-                            <div style="font-size: 16px;">Symptomatic Bradycardia</div>
+                        <button class="menu-option" style="padding: 15px; text-align: left;" onclick="selectScenario('symptomatic-brady')">
+                            <div style="font-size: 15px;">Symptomatic Bradycardia</div>
                             <div class="subtitle">Severe bradycardia unresponsive to atropine</div>
                         </button>
                     </div>
                 </div>
             </div>
-            <button class="back-button" onclick="backToModeSelect()" style="margin-top: 20px;">
-                ◀ Back
-            </button>
         </div>
 
-        <div class="menu-screen" id="summaryScreen" style="display: none;">
-            <div class="menu-logo">
+        <div class="menu-screen" id="summaryScreen" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.95); z-index: 1000; overflow-y: auto; padding: 40px 20px;">
+            <div style="max-width: 1000px; margin: 0 auto;">
+            <div class="menu-logo" style="text-align: center; margin-bottom: 30px;">
                 <img src="https://iili.io/KGQOvkl.md.png" alt="WMEBEM Logo">
             </div>
-            <div class="menu-title">
+            <div class="menu-title" style="text-align: center;">
                 <h1>Scenario Complete</h1>
                 <p>Defibrillator Performance Summary</p>
             </div>
@@ -933,13 +990,14 @@
                 <button class="menu-option" onclick="printCertificate()" style="padding: 20px 40px;">
                     📄 Print Certificate
                 </button>
-                <button class="menu-option" onclick="returnToMenu()" style="padding: 20px 40px;">
-                    ↩ Main Menu
+                <button class="menu-option" onclick="returnToScenarioSelect()" style="padding: 20px 40px;">
+                    ↩ Scenario Menu
                 </button>
+            </div>
             </div>
         </div>
 
-        <div class="menu-screen" id="certificateScreen" style="display: none; max-width: 900px;">
+        <div class="menu-screen" id="certificateScreen" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.95); z-index: 1000; overflow-y: auto; padding: 40px 20px;">
             <div id="certificateContent" style="background: white; padding: 60px; border-radius: 15px; color: #2c3e50; position: relative;">
                 <div style="border: 8px solid #3498db; padding: 40px; border-radius: 10px;">
                     <div style="text-align: center; margin-bottom: 30px;">
@@ -1294,7 +1352,7 @@
 
         // State
         const state = {
-            selectedMode: null,
+            selectedMode: 'education',  // Default to education mode
             selectedScenario: null,
             scenarioActive: false,
             scenarioStartTime: null,
@@ -1325,10 +1383,7 @@
 
         // Canvas
         let canvas, ctx, waveformX = 0, animationId;
-        let lastTimestamp = 0; // For time-based animation
-        // 1 big square = 25px. 1 small square = 5px.
-        // Standard speed = 25mm/s = 5 big squares/s.
-        // Pixel speed = 5 * 25px/s = 125 px/s.
+        let lastTimestamp = 0;
         const ecgSpeed = 125; 
 
         function initCanvas() {
@@ -1342,7 +1397,7 @@
             if (animationId) {
                 cancelAnimationFrame(animationId);
             }
-            lastTimestamp = 0; // Reset timestamp
+            lastTimestamp = 0;
             waveformX = 0;
             animationId = requestAnimationFrame(animate);
         }
@@ -1353,35 +1408,35 @@
             if (hr <= 0) return baseline;
             const cycle = (60 / hr) * ecgSpeed;
             const pos = (x % cycle);
-            const s = pos / cycle; // 0..1
+            const s = pos / cycle;
             let y = baseline;
 
-            // P wave: 0.00 - 0.08
-            if (s < 0.08) {
-                const p = s / 0.08;
-                y -= Math.sin(p * Math.PI) * 10;
+            // P wave: 0.00 - 0.10 (slightly longer for visibility)
+            if (s < 0.10) {
+                const p = s / 0.10;
+                y -= Math.sin(p * Math.PI) * 12;
             }
-            // PR segment: 0.08 - 0.18
-            else if (s < 0.18) {
+            // PR segment: 0.10 - 0.20
+            else if (s < 0.20) {
                 y = baseline;
             }
-            // QRS: sharp, tall, consistent: 0.18 - 0.30
-            else if (s < 0.30) {
-                const qrsPos = (s - 0.18) / 0.12; // 0..1
-                if (qrsPos < 0.25) { // Q
-                    y += qrsPos / 0.25 * 15;
-                } else if (qrsPos < 0.5) { // Upstroke to R
-                    y += 15 - ((qrsPos - 0.25) / 0.25) * 85;
-                } else if (qrsPos < 0.75) { // Downstroke to S
-                    y -= 70 - ((qrsPos - 0.5) / 0.25) * 40;
+            // QRS: sharp, tall, consistent: 0.20 - 0.32
+            else if (s < 0.32) {
+                const qrsPos = (s - 0.20) / 0.12;
+                if (qrsPos < 0.15) { // Q wave
+                    y += qrsPos / 0.15 * 12;
+                } else if (qrsPos < 0.45) { // R wave upstroke
+                    y += 12 - ((qrsPos - 0.15) / 0.30) * 92;
+                } else if (qrsPos < 0.70) { // S wave downstroke
+                    y -= 80 - ((qrsPos - 0.45) / 0.25) * 88;
                 } else { // Return to baseline
-                    y -= 30 - ((qrsPos - 0.75) / 0.25) * 30;
+                    y += (qrsPos - 0.70) / 0.30 * 8;
                 }
             }
-            // ST + T wave: 0.30 - 0.46
-            else if (s < 0.46) {
-                const t = (s - 0.30) / 0.16;
-                y = baseline - Math.sin(t * Math.PI) * 20;
+            // ST segment + T wave: 0.32 - 0.50
+            else if (s < 0.50) {
+                const t = (s - 0.32) / 0.18;
+                y = baseline - Math.sin(t * Math.PI) * 22;
             }
             // Rest of cycle
             else {
@@ -1391,7 +1446,7 @@
             return y;
         }
 
-        // ECG Rhythms (deterministic, no frame-to-frame randomness)
+        // ECG Rhythms - IMPROVED VERSIONS
         const rhythms = {
             // Normal sinus rhythm
             nsr: (x, hr) => nsrTemplate(x, hr || 75),
@@ -1402,7 +1457,7 @@
             // Sinus tachycardia
             sinus_tach: (x, hr) => nsrTemplate(x, hr || 120),
 
-            // Ventricular tachycardia - broad, uniform, monomorphic
+            // IMPROVED: Ventricular tachycardia - VERY broad, monomorphic complexes
             vtach: (x, hr) => {
                 const baseline = canvas.height / 2;
                 const effectiveHr = hr && hr > 0 ? hr : 180;
@@ -1411,25 +1466,35 @@
                 const s = pos / cycle;
                 let y = baseline;
 
-                // Broad, tall QRS occupying ~60% of cycle
-                if (s < 0.6) {
-                    const p = s / 0.6; // 0..1
-                    if (p < 0.25) {          // upstroke
-                        y -= p / 0.25 * 70;
-                    } else if (p < 0.5) {   // peak
-                        y -= 70 - (p - 0.25) / 0.25 * 20;
-                    } else if (p < 0.75) {  // downstroke
-                        y -= 50 - (p - 0.5) / 0.25 * 80;
-                    } else {                // terminal portion back to baseline
-                        y += (p - 0.75) / 0.25 * 20;
+                // VERY BROAD QRS occupying 75-80% of cycle (VT duration typically 0.16-0.22s)
+                // This is the key characteristic that differentiates VT from SVT
+                if (s < 0.78) {
+                    const p = s / 0.78;
+                    if (p < 0.12) {
+                        // Small initial deflection
+                        y += p / 0.12 * 10;
+                    } else if (p < 0.28) {
+                        // SLOW upstroke to peak (broad!)
+                        y += 10 - (p - 0.12) / 0.16 * 85;
+                    } else if (p < 0.48) {
+                        // Wide peak plateau (notched appearance)
+                        const plateauPhase = (p - 0.28) / 0.20;
+                        y -= 75 + Math.sin(plateauPhase * Math.PI * 2) * 8;
+                    } else if (p < 0.72) {
+                        // SLOW downstroke (broad!)
+                        y -= 75 - (p - 0.48) / 0.24 * 95;
+                    } else {
+                        // Terminal return to baseline
+                        y += (p - 0.72) / 0.28 * 20;
                     }
                 } else {
+                    // Very short isoelectric period between complexes
                     y = baseline;
                 }
                 return y;
             },
 
-            // Supraventricular tachycardia - narrow, regular, little/no P
+            // IMPROVED: Supraventricular tachycardia - narrow, regular, rapid
             svt: (x, hr) => {
                 const baseline = canvas.height / 2;
                 const effectiveHr = hr && hr > 0 ? hr : 190;
@@ -1438,88 +1503,130 @@
                 const s = pos / cycle;
                 let y = baseline;
 
-                if (s < 0.18) {
-                    // Narrow QRS
-                    const q = s / 0.18;
-                    if (q < 0.3) {
-                        y += q / 0.3 * 15;
-                    } else if (q < 0.6) {
-                        y += 15 - (q - 0.3) / 0.3 * 80;
+                // Very narrow QRS (0.08-0.10s typical)
+                if (s < 0.12) {
+                    const q = s / 0.12;
+                    if (q < 0.20) {
+                        // Small Q
+                        y += q / 0.20 * 10;
+                    } else if (q < 0.55) {
+                        // Sharp R wave
+                        y += 10 - (q - 0.20) / 0.35 * 90;
+                    } else if (q < 0.75) {
+                        // S wave
+                        y -= 80 - (q - 0.55) / 0.20 * 90;
                     } else {
-                        y -= 65 - (q - 0.6) / 0.4 * 65;
+                        // Return
+                        y += (q - 0.75) / 0.25 * 10;
                     }
-                } else if (s < 0.32) {
-                    y = baseline;
-                } else if (s < 0.5) {
-                    const t = (s - 0.32) / 0.18;
-                    y = baseline - Math.sin(t * Math.PI) * 15;
+                }
+                // ST and T wave compressed
+                else if (s < 0.35) {
+                    const t = (s - 0.12) / 0.23;
+                    y = baseline - Math.sin(t * Math.PI) * 18;
                 } else {
                     y = baseline;
                 }
                 return y;
             },
 
-            // Atrial fibrillation - irregular RR, variable QRS amplitude, fibrillatory baseline
+            // COMPLETELY REWORKED: Atrial fibrillation - irregularly irregular with fine f waves
             afib: (x, hr, tSeconds = 0) => {
                 const baseline = canvas.height / 2;
                 const baseHr = hr && hr > 0 ? hr : 140;
 
-                // Slightly varying HR over time to give irregularity
-                const variability = 0.25 * Math.sin(tSeconds * 2.1) + 0.15 * Math.sin(tSeconds * 3.7);
-                const effectiveHr = baseHr * (1 + variability);
+                // CRITICAL: True irregularity using multiple phase-shifted sine waves
+                // This creates genuinely unpredictable RR intervals - the hallmark of AF
+                const irregularity = 
+                    0.40 * Math.sin(tSeconds * 1.7 + x * 0.0041) + 
+                    0.32 * Math.sin(tSeconds * 2.3 + x * 0.0037) +
+                    0.25 * Math.sin(tSeconds * 3.1 + x * 0.0029) +
+                    0.18 * Math.sin(tSeconds * 1.1 + x * 0.0053);
+                
+                const effectiveHr = baseHr * (1 + irregularity);
                 const cycle = (60 / effectiveHr) * ecgSpeed;
                 const pos = (x % cycle);
                 const s = pos / cycle;
                 let y = baseline;
 
-                // Fibrillatory baseline
-                const fibrillatory = Math.sin((x * 0.35) + tSeconds * 5) * 4 +
-                                     Math.sin((x * 0.9) + tSeconds * 3) * 2;
+                // FINE fibrillatory waves (f waves) on baseline
+                // These are the KEY diagnostic feature of AF
+                // Frequency ~350-600/min, amplitude should be subtle (~0.5-1mm = 2.5-5 pixels)
+                const fWaves = 
+                    Math.sin((x * 0.58) + tSeconds * 7.8) * 3.0 +
+                    Math.sin((x * 0.87) + tSeconds * 6.2) * 2.2 +
+                    Math.sin((x * 1.21) + tSeconds * 8.5) * 1.8 +
+                    Math.sin((x * 0.41) + tSeconds * 5.9) * 2.5 +
+                    Math.sin((x * 1.53) + tSeconds * 7.1) * 1.5;
 
-                // QRS complex, slight beat-to-beat amplitude variation using deterministic function
-                if (s < 0.14) {
-                    const qrsPos = s / 0.14;
-                    const ampMod = 0.7 + 0.3 * Math.sin((tSeconds + x * 0.001) * 2.9);
-                    if (qrsPos < 0.3) {
-                        y += ampMod * (qrsPos / 0.3 * 20);
-                    } else if (qrsPos < 0.6) {
-                        y += ampMod * (20 - (qrsPos - 0.3) / 0.3 * 80);
+                // QRS - NARROW complexes (normal ventricular conduction)
+                // NO P waves before them - this is AF!
+                // Variable amplitude between beats
+                if (s < 0.12) {
+                    const qrsPos = s / 0.12;
+                    // More pronounced beat-to-beat amplitude variation
+                    const ampMod = 0.65 + 0.35 * Math.sin((tSeconds * 2.9) + (x * 0.0021));
+                    
+                    if (qrsPos < 0.18) {
+                        // Small Q wave
+                        y += ampMod * (qrsPos / 0.18 * 10);
+                    } else if (qrsPos < 0.52) {
+                        // Sharp R wave (narrow - normal conduction)
+                        y += ampMod * (10 - (qrsPos - 0.18) / 0.34 * 85);
+                    } else if (qrsPos < 0.72) {
+                        // S wave
+                        y -= ampMod * (75 - (qrsPos - 0.52) / 0.20 * 80);
                     } else {
-                        y -= ampMod * (60 - (qrsPos - 0.6) / 0.4 * 60);
+                        // Return
+                        y += ampMod * ((qrsPos - 0.72) / 0.28 * 5);
                     }
-                } else {
+                } 
+                // Very short ST segment and small T wave (compressed at fast rate)
+                else if (s < 0.28) {
+                    const t = (s - 0.12) / 0.16;
+                    // Small T wave
+                    y = baseline - Math.sin(t * Math.PI) * 8;
+                }
+                // Rest is isoelectric with continuous f waves
+                else {
                     y = baseline;
                 }
 
-                return y + fibrillatory;
+                // Add the continuous fine fibrillatory waves throughout
+                // This is what makes it AF - the "bumpy" irregular baseline
+                return y + fWaves;
             },
 
-            // Ventricular fibrillation - coarse -> fine over time
+            // IMPROVED: Ventricular fibrillation - chaotic, coarse to fine
             vfib: (x, hr, tSeconds = 0) => {
                 const baseline = canvas.height / 2;
 
-                // Amplitude decays over time to represent "finer" VF if untreated
-                const timeFactor = Math.min(tSeconds / 120, 1); // up to 2 minutes
-                const coarseAmp = 40;
-                const fineAmp = 12;
+                // Decay from coarse to fine over 2 minutes
+                const timeFactor = Math.min(tSeconds / 120, 1);
+                const coarseAmp = 50;
+                const fineAmp = 15;
                 const amplitude = coarseAmp * (1 - timeFactor) + fineAmp * timeFactor;
 
+                // Multiple chaotic frequency components for realistic VF
                 const y =
-                    Math.sin((x * 0.25) + tSeconds * 3) * amplitude +
-                    Math.sin((x * 0.55) + tSeconds * 4.1) * (amplitude * 0.6);
+                    Math.sin((x * 0.22) + tSeconds * 4.2) * amplitude * 1.0 +
+                    Math.sin((x * 0.58) + tSeconds * 5.1) * amplitude * 0.7 +
+                    Math.sin((x * 0.83) + tSeconds * 3.7) * amplitude * 0.5 +
+                    Math.sin((x * 0.37) + tSeconds * 6.3) * amplitude * 0.4 +
+                    Math.sin((x * 1.12) + tSeconds * 4.9) * amplitude * 0.3;
 
                 return baseline + y;
             },
 
-            // Bradycardia - sinus with low rate
+            // Bradycardia - slow sinus
             brady: (x, hr) => nsrTemplate(x, hr || 38),
 
-            // Complete heart block - independent P and wide QRS at slower rate
+            // IMPROVED: Complete heart block - clear dissociation
             chb: (x, hr) => {
                 const baseline = canvas.height / 2;
 
-                // Atrial rate ~80, ventricular rate from hr or ~30
-                const pRate = 80;
+                // Atrial rate ~75, ventricular rate from hr or ~32
+                const pRate = 75;
                 const vRate = hr && hr > 0 ? hr : 32;
 
                 const pCycle = (60 / pRate) * ecgSpeed;
@@ -1527,23 +1634,33 @@
 
                 let y = baseline;
 
-                // P wave
+                // Clear P waves
                 const pPos = (x % pCycle) / pCycle;
-                if (pPos < 0.08) {
-                    y -= Math.sin((pPos / 0.08) * Math.PI) * 8;
+                if (pPos < 0.10) {
+                    y -= Math.sin((pPos / 0.10) * Math.PI) * 10;
                 }
 
-                // Wide QRS at slow ventricular rate
+                // Wide, slow QRS complexes - escape rhythm
                 const qPos = (x % qrsCycle) / qrsCycle;
-                if (qPos < 0.3) {
-                    const p = qPos / 0.3;
-                    if (p < 0.25) {
-                        y += p / 0.25 * 15;
-                    } else if (p < 0.5) {
-                        y += 15 - (p - 0.25) / 0.25 * 80;
+                if (qPos < 0.40) {
+                    const p = qPos / 0.40;
+                    if (p < 0.15) {
+                        // Initial deflection
+                        y += p / 0.15 * 10;
+                    } else if (p < 0.40) {
+                        // Broad upstroke
+                        y += 10 - (p - 0.15) / 0.25 * 75;
+                    } else if (p < 0.70) {
+                        // Wide peak
+                        y -= 65 + Math.sin((p - 0.40) / 0.30 * Math.PI) * 5;
                     } else {
-                        y -= 65 - (p - 0.5) / 0.5 * 65;
+                        // Downstroke
+                        y -= 65 - (p - 0.70) / 0.30 * 75;
                     }
+                } else if (qPos < 0.60) {
+                    // Broad T wave
+                    const t = (qPos - 0.40) / 0.20;
+                    y = baseline - Math.sin(t * Math.PI) * 15;
                 }
 
                 return y;
@@ -1552,7 +1669,7 @@
             // Asystole - flatline
             asystole: () => canvas.height / 2,
 
-            // Idioventricular rhythm - slow, wide complexes
+            // Idioventricular rhythm - slow, wide
             idioventricular: (x, hr) => {
                 const baseline = canvas.height / 2;
                 const effectiveHr = hr && hr > 0 ? hr : 40;
@@ -1563,20 +1680,23 @@
 
                 if (s < 0.55) {
                     const p = s / 0.55;
-                    if (p < 0.2) {
-                        y -= p / 0.2 * 50;
-                    } else if (p < 0.5) {
-                        y -= 50 - (p - 0.2) / 0.3 * 60;
+                    if (p < 0.20) {
+                        y -= p / 0.20 * 55;
+                    } else if (p < 0.50) {
+                        y -= 55 - (p - 0.20) / 0.30 * 65;
                     } else {
-                        y += (p - 0.5) / 0.5 * 20;
+                        y += (p - 0.50) / 0.50 * 10;
                     }
+                } else if (s < 0.75) {
+                    const t = (s - 0.55) / 0.20;
+                    y = baseline - Math.sin(t * Math.PI) * 18;
                 } else {
                     y = baseline;
                 }
                 return y;
             },
 
-            // Paced rhythm - very sharp spikes + wide QRS
+            // Paced rhythm - sharp spike + wide QRS
             paced: (x, hr) => {
                 const baseline = canvas.height / 2;
                 const effectiveHr = hr && hr > 0 ? hr : 70;
@@ -1584,26 +1704,26 @@
                 const pos = (x % cycle);
                 let y = baseline;
 
-                // Very sharp pacing spike first couple of pixels
-                if (pos < 4) {
-                    return baseline - 110;
+                // Very sharp pacing spike
+                if (pos < 3) {
+                    return baseline - 120;
                 }
 
                 const s = pos / cycle;
 
-                // Immediately followed by wide QRS and T
+                // Wide paced QRS
                 if (s < 0.28) {
                     const qrsPos = (s) / 0.28;
-                    if (qrsPos < 0.3) {
-                        y -= qrsPos / 0.3 * 70;
-                    } else if (qrsPos < 0.6) {
-                        y -= 70 - (qrsPos - 0.3) / 0.3 * 70;
+                    if (qrsPos < 0.30) {
+                        y -= qrsPos / 0.30 * 75;
+                    } else if (qrsPos < 0.60) {
+                        y -= 75 - (qrsPos - 0.30) / 0.30 * 75;
                     } else {
-                        y += (qrsPos - 0.6) / 0.4 * 30;
+                        y += (qrsPos - 0.60) / 0.40 * 30;
                     }
-                } else if (s < 0.5) {
+                } else if (s < 0.50) {
                     const t = (s - 0.28) / 0.22;
-                    y = baseline - Math.sin(t * Math.PI) * 18;
+                    y = baseline - Math.sin(t * Math.PI) * 20;
                 } else {
                     y = baseline;
                 }
@@ -1630,13 +1750,14 @@
             return hrs[rhythm] || 75;
         }
 
+        // IMPROVED: Animation function with SYNC MARKERS
         function animate(timestamp) {
             if (!canvas || !ctx) return;
             
             if (lastTimestamp === 0) {
                 lastTimestamp = timestamp;
             }
-            const deltaTime = (timestamp - lastTimestamp) / 1000; // in seconds
+            const deltaTime = (timestamp - lastTimestamp) / 1000;
             lastTimestamp = timestamp;
             
             const pixelsToMove = ecgSpeed * deltaTime;
@@ -1686,27 +1807,25 @@
             const rhythmFunc = rhythms[displayRhythm];
             
             if (rhythmFunc) {
-                ctx.strokeStyle = '#00ff00';
-                ctx.lineWidth = 2.5;
-                ctx.shadowColor = 'rgba(0, 255, 0, 0.5)';
-                ctx.shadowBlur = 3;
-                ctx.beginPath();
-
                 const baseline = canvas.height / 2;
-                // Use displayHR derived in updateDisplays logic
                 const displayHR = (state.pacingActive && state.pacerOutput > 0)
                     ? state.pacerRate
                     : state.hr;
 
+                // Store waveform data for sync marker detection
+                const waveformData = [];
+                const rWavePositions = [];
+
+                // First pass: generate waveform and store data
                 for (let x = 0; x < canvas.width; x++) {
                     let y = rhythmFunc(waveformX + x, displayHR, simTimeSeconds);
 
-                    // Artefact overlays (deterministic)
+                    // Artefact overlays
                     if (state.noise.movement) {
                         y += Math.sin((waveformX + x) * 0.02 + simTimeSeconds * 3) * 6;
                     }
                     if (state.noise.cpr) {
-                        const cprPeriod = ecgSpeed * 0.5; // ~2 compressions per second
+                        const cprPeriod = ecgSpeed * 0.5;
                         const phase = (waveformX + x) % cprPeriod;
                         if (phase < 12) {
                             y -= 60 * (1 - phase / 12);
@@ -1719,11 +1838,75 @@
                         }
                     }
 
-                    if (x === 0) ctx.moveTo(x, y);
-                    else ctx.lineTo(x, y);
+                    waveformData.push(y);
+                }
+
+                // Draw the ECG waveform
+                ctx.strokeStyle = '#00ff00';
+                ctx.lineWidth = 2.5;
+                ctx.shadowColor = 'rgba(0, 255, 0, 0.5)';
+                ctx.shadowBlur = 3;
+                ctx.beginPath();
+                for (let x = 0; x < canvas.width; x++) {
+                    if (x === 0) ctx.moveTo(x, waveformData[x]);
+                    else ctx.lineTo(x, waveformData[x]);
                 }
                 ctx.stroke();
                 ctx.shadowBlur = 0;
+
+                // SYNC MARKER DETECTION AND DRAWING
+                if (state.syncMode && displayRhythm !== 'vfib' && displayRhythm !== 'asystole') {
+                    // Detect R waves (peaks significantly above baseline)
+                    for (let x = 10; x < canvas.width - 10; x++) {
+                        const current = waveformData[x];
+                        const prev = waveformData[x - 1];
+                        const next = waveformData[x + 1];
+                        const prev5 = waveformData[x - 5];
+                        const next5 = waveformData[x + 5];
+                        
+                        // Detect significant peaks (R waves)
+                        // Looking for point significantly below baseline (above on screen) and is local minimum
+                        if (current < baseline - 35 && 
+                            current <= prev && 
+                            current <= next &&
+                            current < prev5 &&
+                            current < next5) {
+                            
+                            // Check spacing from last R wave to avoid double detection
+                            const lastRWave = rWavePositions[rWavePositions.length - 1];
+                            if (!lastRWave || x - lastRWave > 40) {
+                                rWavePositions.push(x);
+                            }
+                        }
+                    }
+
+                    // Draw sync markers at R wave positions
+                    ctx.fillStyle = '#ffff00';
+                    ctx.strokeStyle = '#ffff00';
+                    ctx.lineWidth = 2.5;
+                    ctx.shadowColor = 'rgba(255, 255, 0, 0.7)';
+                    ctx.shadowBlur = 4;
+                    
+                    rWavePositions.forEach(xPos => {
+                        const yPos = waveformData[xPos];
+                        
+                        // Draw upward-pointing triangle marker
+                        ctx.beginPath();
+                        ctx.moveTo(xPos, yPos - 18);
+                        ctx.lineTo(xPos - 8, yPos - 30);
+                        ctx.lineTo(xPos + 8, yPos - 30);
+                        ctx.closePath();
+                        ctx.fill();
+                        
+                        // Draw vertical line from triangle to waveform
+                        ctx.beginPath();
+                        ctx.moveTo(xPos, yPos - 18);
+                        ctx.lineTo(xPos, yPos + 5);
+                        ctx.stroke();
+                    });
+                    
+                    ctx.shadowBlur = 0;
+                }
             }
             
             waveformX += pixelsToMove;
@@ -1734,12 +1917,10 @@
             const scenario = scenarios[state.selectedScenario];
             let displayHR = state.hr;
             
-            // For pulseless rhythms, show 0 HR unless ROSC
             if (scenario && !scenario.hasPulse && !state.roscAchieved) {
                 displayHR = 0;
             }
             
-            // When pacing with capture, show paced rate
             if (state.pacingActive && state.pacerOutput > 0) {
                 const captureThreshold = scenario?.captureThreshold || 70;
                 if (state.pacerOutput >= captureThreshold) {
@@ -1779,7 +1960,7 @@
                 spo2El.classList.add('critical');
             }
             
-            // Update instructor panel if visible
+            // Update instructor panel
             if (document.getElementById('shockCounter')) {
                 document.getElementById('shockCounter').textContent = state.shockCount;
             }
@@ -1810,17 +1991,34 @@
         }
 
         // Menu functions
-        function selectMode(mode) {
+        function setSimulatorMode(mode) {
             state.selectedMode = mode;
-            document.getElementById('modeSelectScreen').style.display = 'none';
-            document.getElementById('scenarioScreen').style.display = 'flex';
-            document.getElementById('modeTitle').textContent = mode === 'education' ? 'Education Mode' : 'Testing Mode';
+            
+            // Update button states
+            const educationBtn = document.getElementById('educationModeBtn');
+            const testingBtn = document.getElementById('testingModeBtn');
+            
+            if (mode === 'education') {
+                educationBtn.classList.add('active');
+                testingBtn.classList.remove('active');
+            } else {
+                testingBtn.classList.add('active');
+                educationBtn.classList.remove('active');
+            }
+            
+            // Show/hide instructor panel accordingly if in active scenario
+            if (state.scenarioActive) {
+                const instructorPanel = document.getElementById('instructorPanel');
+                if (mode === 'education') {
+                    instructorPanel.style.display = 'block';
+                } else {
+                    instructorPanel.style.display = 'none';
+                }
+            }
         }
 
         function backToModeSelect() {
-            document.getElementById('scenarioScreen').style.display = 'none';
-            document.getElementById('modeSelectScreen').style.display = 'flex';
-            state.selectedMode = null;
+            // No longer needed - kept for compatibility
         }
 
         function selectScenario(scenarioId) {
@@ -1835,7 +2033,6 @@
             state.charged = false;
             state.roscAchieved = false;
             
-            // Load scenario baseline
             state.rhythm = scenario.initialRhythm;
             state.hr = scenario.initialVitals.hr;
             state.spo2 = scenario.initialVitals.spo2;
@@ -1844,13 +2041,13 @@
             state.bpDia = scenario.initialVitals.bpDia;
             state.hasPulse = scenario.hasPulse;
             
-            // Hide menus, show simulator
-            document.getElementById('scenarioScreen').style.display = 'none';
-            document.getElementById('menuWrapper').style.display = 'none';
-            document.getElementById('simulatorContainer').style.display = 'block';
+            // Hide scenario selection
+            document.getElementById('scenarioSelection').style.display = 'none';
+            
+            // Show device
             document.getElementById('zollDevice').style.display = 'grid';
             
-            // Show instructor panel only in education mode (start minimised)
+            // Show instructor panel only in education mode
             if (state.selectedMode === 'education') {
                 const panel = document.getElementById('instructorPanel');
                 const btn = document.getElementById('minimiseBtn');
@@ -1865,7 +2062,6 @@
             initCanvas();
             updateDisplays();
 
-            // 3-second countdown before scenario becomes active
             state.scenarioActive = false;
             let countdown = 3;
             setMessage(`SCENARIO STARTING IN ${countdown}...`, 'ready');
@@ -1892,7 +2088,7 @@
 
         function endScenario() {
             if (!state.selectedScenario) {
-                returnToMenu();
+                returnToScenarioSelect();
                 return;
             }
             if (!confirm('End the current scenario?')) return;
@@ -1917,19 +2113,20 @@
         function showSummary() {
             const scenario = scenarios[state.selectedScenario];
             if (!scenario) {
-                returnToMenu();
+                returnToScenarioSelect();
                 return;
             }
             
-            document.getElementById('simulatorContainer').style.display = 'none';
-            document.getElementById('menuWrapper').style.display = 'flex';
-            document.getElementById('summaryScreen').style.display = 'flex';
+            // Hide device
+            document.getElementById('zollDevice').style.display = 'none';
+            document.getElementById('instructorPanel').style.display = 'none';
             
-            // Populate scenario info
+            // Show summary screen
+            document.getElementById('summaryScreen').style.display = 'block';
+            
             document.getElementById('summaryScenarioName').textContent = scenario.name;
             document.getElementById('summaryScenarioDesc').textContent = scenario.description;
             
-            // Populate actions
             let actionsHTML = '';
             if (state.actions.length > 0) {
                 actionsHTML = '<div style="display: grid; gap: 8px;">';
@@ -1945,11 +2142,9 @@
             }
             document.getElementById('summaryActions').innerHTML = actionsHTML;
             
-            // Performance feedback
             const feedback = generateFeedback(scenario);
             document.getElementById('summaryFeedback').innerHTML = feedback;
             
-            // Outcome
             const outcome = generateOutcome(scenario);
             document.getElementById('summaryOutcome').innerHTML = outcome;
         }
@@ -1965,11 +2160,9 @@
             const pacingActions = state.actions.filter(a => a.action.includes('Pacing'));
             const pulseChecks = state.actions.filter(a => a.action === 'Pulse check performed');
             
-            // Check pulse assessment
             if (pulseChecks.length > 0) {
                 goodPoints.push(`✓ Pulse checked ${pulseChecks.length} time(s)`);
                 
-                // Check timing of pulse check
                 if (pulseChecks[0].time <= 30) {
                     goodPoints.push('✓ Early pulse assessment performed');
                 }
@@ -1978,7 +2171,6 @@
             }
             
             if (scenario.category === 'defibrillation') {
-                // Check correct mode
                 const defibMode = modeChanges.find(m => m.details === 'DEFIB');
                 if (defibMode) {
                     goodPoints.push('✓ Defibrillator mode selected correctly');
@@ -1986,18 +2178,15 @@
                     improvementPoints.push('✗ Should switch to DEFIB mode for cardiac arrest');
                 }
                 
-                // Check sync NOT used
                 if (syncActivated) {
                     improvementPoints.push('✗ Sync mode should NOT be used for cardiac arrest (no pulse)');
                 } else {
                     goodPoints.push('✓ Correctly used unsynchronised shocks (no sync)');
                 }
                 
-                // Check shocks delivered
                 if (shocks.length > 0) {
                     goodPoints.push(`✓ ${shocks.length} shock(s) delivered`);
                     
-                    // Check energy
                     const firstShock = shocks[0];
                     if (firstShock.details.includes(`${scenario.recommendedEnergy}J`) || 
                         firstShock.details.includes('150J') || 
@@ -2007,7 +2196,6 @@
                         improvementPoints.push(`⚠ Recommended energy: ${scenario.recommendedEnergy}J or higher`);
                     }
                     
-                    // Time to first shock - critical quality metric
                     const timeToShock = firstShock.time;
                     if (timeToShock <= 60) {
                         goodPoints.push(`✓ Rapid defibrillation (${timeToShock}s) - excellent`);
@@ -2021,20 +2209,17 @@
                 }
                 
             } else if (scenario.category === 'cardioversion') {
-                // Check sync mode
                 if (syncActivated) {
                     goodPoints.push('✓ Sync mode activated correctly');
                 } else {
                     improvementPoints.push('✗ CRITICAL: Must use SYNC mode for cardioversion (patient has pulse)');
                 }
                 
-                // Check appropriate mode
                 const defibMode = modeChanges.find(m => m.details === 'DEFIB');
                 if (defibMode) {
                     goodPoints.push('✓ Defibrillator mode selected');
                 }
                 
-                // Check shocks
                 if (shocks.length > 0) {
                     goodPoints.push('✓ Cardioversion attempted');
                     
@@ -2046,7 +2231,6 @@
                         improvementPoints.push(`⚠ Recommended energy: ${scenario.recommendedEnergy}J for this rhythm`);
                     }
                     
-                    // Time to first shock
                     const timeToShock = firstShock.time;
                     if (timeToShock <= 60) {
                         goodPoints.push(`✓ Rapid cardioversion (${timeToShock}s)`);
@@ -2058,7 +2242,6 @@
                 }
                 
             } else if (scenario.category === 'pacing') {
-                // Check pacing mode
                 const pacerMode = modeChanges.find(m => m.details === 'PACER');
                 if (pacerMode) {
                     goodPoints.push('✓ Pacing mode selected');
@@ -2066,12 +2249,10 @@
                     improvementPoints.push('✗ Should switch to PACER mode');
                 }
                 
-                // Check pacing actions
                 const outputAdjusted = pacingActions.find(a => a.action.includes('output'));
                 if (outputAdjusted) {
                     goodPoints.push('✓ Pacing output adjusted');
                     
-                    // Check if capture achieved
                     const captureAchieved = pacingActions.find(a => a.action.includes('capture'));
                     if (captureAchieved) {
                         goodPoints.push('✓ Electrical and mechanical capture achieved');
@@ -2086,7 +2267,6 @@
                 }
             }
             
-            // Display feedback
             if (goodPoints.length > 0) {
                 html += '<div style="background: rgba(39, 174, 96, 0.1); border-left: 4px solid #27ae60; padding: 15px; margin: 10px 0; border-radius: 5px;">';
                 html += '<strong style="color: #27ae60;">Good Practice:</strong><ul style="margin: 10px 0; padding-left: 20px; color: #ecf0f1;">';
@@ -2135,13 +2315,18 @@
         }
 
         function returnToMenu() {
-            document.getElementById('simulatorContainer').style.display = 'none';
+            returnToScenarioSelect();
+        }
+
+        function returnToScenarioSelect() {
+            // Hide all overlays
             document.getElementById('summaryScreen').style.display = 'none';
             document.getElementById('certificateScreen').style.display = 'none';
-            document.getElementById('scenarioScreen').style.display = 'none';
+            document.getElementById('zollDevice').style.display = 'none';
+            document.getElementById('instructorPanel').style.display = 'none';
             
-            document.getElementById('menuWrapper').style.display = 'flex';
-            document.getElementById('modeSelectScreen').style.display = 'flex';
+            // Show scenario selection
+            document.getElementById('scenarioSelection').style.display = 'block';
             
             if (animationId) {
                 cancelAnimationFrame(animationId);
@@ -2153,12 +2338,25 @@
             state.pacingActive = false;
             state.charged = false;
             state.shockCount = 0;
-            state.selectedMode = null;
             state.selectedScenario = null;
             state.actions = [];
             state.roscAchieved = false;
             
             updateDisplays();
+        }
+
+        function tryAgain() {
+            const scenarioId = state.selectedScenario;
+            if (!scenarioId) {
+                returnToScenarioSelect();
+                return;
+            }
+            
+            // Hide summary
+            document.getElementById('summaryScreen').style.display = 'none';
+            
+            // Restart scenario
+            selectScenario(scenarioId);
         }
 
         // Device controls
@@ -2178,7 +2376,6 @@
             
             logAction('Mode changed', mode.toUpperCase());
             
-            // Auto-enable pacing if in pacer mode
             if (mode === 'pacer') {
                 state.pacingActive = true;
             } else {
@@ -2251,7 +2448,6 @@
             
             logAction(`Shock ${state.shockCount} delivered`, `${shockEnergy}J ${shockType}`);
             
-            // Flash
             if (canvas) {
                 canvas.style.background = '#fff';
                 setTimeout(() => canvas.style.background = '#000', 100);
@@ -2259,7 +2455,6 @@
             
             setMessage(`SHOCK ${state.shockCount} DELIVERED - ${shockEnergy}J`, 'alert');
             
-            // Check if shock should convert rhythm
             setTimeout(() => {
                 let shouldConvert = false;
                 
@@ -2326,7 +2521,6 @@
                 const dial = document.querySelector('.pacing-controls > div:first-child .pacer-dial');
                 if (dial) dial.style.setProperty('--dial-rotation', `${rotation}deg`);
                 
-                // Check for capture
                 if (scenario && scenario.requiresPacing && 
                     state.pacerOutput >= scenario.captureThreshold &&
                     state.deviceMode === 'pacer') {
@@ -2379,7 +2573,6 @@
             state.noise[type] = isOn;
         }
 
-        // Pulse check function
         function checkPulse() {
             const scenario = scenarios[state.selectedScenario];
             if (!scenario) {
@@ -2401,7 +2594,6 @@
             }, 1500);
         }
 
-        // Try again function
         function tryAgain() {
             const scenarioId = state.selectedScenario;
             if (!scenarioId) {
@@ -2409,23 +2601,17 @@
                 return;
             }
             
-            // Hide summary, return to simulator
             document.getElementById('summaryScreen').style.display = 'none';
-            
-            // Reset and restart same scenario
             selectScenario(scenarioId);
         }
 
-        // Print certificate function
         function printCertificate() {
             const scenario = scenarios[state.selectedScenario];
             if (!scenario) return;
             
-            // Hide summary, show certificate
             document.getElementById('summaryScreen').style.display = 'none';
             document.getElementById('certificateScreen').style.display = 'flex';
             
-            // Populate certificate
             document.getElementById('certScenarioName').textContent = scenario.name;
             
             const now = new Date();
@@ -2435,7 +2621,6 @@
                 year: 'numeric'
             });
             
-            // Performance summary for certificate
             let perfHTML = '<div style="display: grid; gap: 10px;">';
             
             const shocks = state.actions.filter(a => a.action.includes('delivered'));
@@ -2467,7 +2652,6 @@
             
             perfHTML += `<div><strong>Total Actions:</strong> ${state.actions.length}</div>`;
             
-            // Calculate time to first intervention
             let firstIntervention = null;
             if (shocks.length > 0) {
                 firstIntervention = shocks[0];
@@ -2487,7 +2671,6 @@
             document.getElementById('certPerformance').innerHTML = perfHTML;
         }
 
-        // Back to summary function
         function backToSummary() {
             document.getElementById('certificateScreen').style.display = 'none';
             document.getElementById('summaryScreen').style.display = 'flex';
