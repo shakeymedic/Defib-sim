@@ -5,1294 +5,49 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ZOLL R Series Simulator - WMEBEM | RCUK 2025</title>
     <script>
-        /*!
-         * WMEBEM ECG Rhythm Engine v1.0 (Nov 2025)
-         * Drop-in replacement for the inline `const rhythms = { ... }` block.
-         * Exposes:
-         * - window.rhythms                     : { [key: rhythmName]: (x, hr, tSeconds) => y }
-         * - window.drawECGGrid(ctx, w, h)      : draws 1mm/5mm ECG grid (assumes 25 px = 5 mm)
-         * - window.drawCalibrationPulse(ctx)   : draws a 1 mV calibration pulse at left
-         *
-         * Designed to be compatible with the existing simulator animate loop:
-         * y = rhythms[state.rhythm](x, state.hr, tSeconds);
-         *
-         * Physiological assumptions:
-         * - Paper speed = 25 mm/s  ==> 125 px/s (with 25 px = 5 mm)
-         * - 1 mV = 10 mm           ==> 50 px per mV
-         */
-
-        (function () {
-          'use strict';
-
-          // --- Display constants ---
-          const PX_PER_BIG = 25;     // 5 mm big box = 25 px
-          const PX_PER_MM  = PX_PER_BIG / 5;  // 1 mm = 5 px
-          const PX_PER_MV  = PX_PER_MM * 10;  // 10 mm = 1 mV => 50 px
-          let   ECG_SPEED  = PX_PER_BIG * 5;  // 25 mm/s => 5 big boxes/s => 125 px/s
-
-          // Allow host app to override speed if needed
-          function setSpeed(pxPerSec) {
-            ECG_SPEED = pxPerSec;
-          }
-
-          // --- Helpers: small utilities ---
-          const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
-          const lerp  = (a, b, t)   => a + (b - a) * t;
-
-          // Subtle deterministic jitter per X for continuity
-          function perlinLikeNoise(x, freq, amp) {
-            const a = Math.sin(x * freq * 0.71) * 0.5 + 0.5;
-            const b = Math.sin(x * freq * 1.33 + 1.7) * 0.5 + 0.5;
-            return (a * 0.6 + b * 0.4 - 0.5) * 2 * amp;
-          }
-
-          // Baseline drift (respiratory) and selectable artefacts
-          function baselineWander(tSeconds) {
-            return Math.sin(tSeconds * 0.25) * (PX_PER_MM * 0.6); // ~0.6 mm swing
-          }
-          function movementArtefact(x, tSeconds) {
-            // Higher frequency tremor-like
-            return Math.sin((x + tSeconds * 120) * 0.05) * (PX_PER_MM * 1.0);
-          }
-          function leadoffArtefact(tSeconds) {
-            // Slow saw-like baseline shift
-            return Math.sin(tSeconds * 1.2) * (PX_PER_MM * 1.5);
-          }
-          function cprArtefact(x, tSeconds) {
-            // Periodic large oscillations at ~120/min
-            const f = 2.0; // Hz
-            return Math.sin(2 * Math.PI * f * tSeconds) * (PX_PER_MV * 0.6) +
-                   perlinLikeNoise(x + tSeconds * 60, 0.03, PX_PER_MM * 2.0);
-          }
-
-          // --- Wave primitives: P, QRS, T ---
-          // Each returns a vertical displacement (in px) from baseline.
-          function pWave(s, amp = 0.1) {
-            // Duration 80 ms, small symmetric
-            const a = clamp(Math.sin(Math.PI * s), 0, 1);
-            return -a * (PX_PER_MV * amp);
-          }
-
-          function qrsNarrow(s, rAmp = 1.0, qAmp = 0.15, sAmp = 0.25) {
-            // Total 80–100 ms; we model 90 ms: Q up, tall R, then S below baseline
-            if (s < 0.22) {
-              // Q: brief negative deflection
-              const t = s / 0.22;
-              return PX_PER_MV * qAmp * (t * 0.4); // small positive above baseline (we invert later in composition)
-            } else if (s < 0.55) {
-              // R upstroke and peak
-              const t = (s - 0.22) / 0.33;
-              return -PX_PER_MV * rAmp * (Math.sin(t * Math.PI)); // sharp tall spike
-            } else {
-              // S downstroke returning to baseline
-              const t = (s - 0.55) / 0.45;
-              return PX_PER_MV * sAmp * (Math.sin(t * Math.PI));
-            }
-          }
-
-          function qrsWide(s, rAmp = 0.9) {
-            // Broad monophasic/biphasic ~140 ms
-            // Upstroke 0–0.4, broad peak 0.4–0.7, down 0.7–1.0
-            if (s < 0.35) {
-              const t = s / 0.35;
-              return -PX_PER_MV * rAmp * (t * 0.9);
-            } else if (s < 0.7) {
-              const t = (s - 0.35) / 0.35;
-              return -PX_PER_MV * rAmp * (0.9 - 0.2 * t);
-            } else {
-              const t = (s - 0.7) / 0.3;
-              return -PX_PER_MV * rAmp * (0.7 - 0.7 * t);
-            }
-          }
-
-          function tWave(s, amp = 0.3) {
-            // Asymmetric T: slow rise, faster fall over ~160 ms
-            if (s < 0.45) {
-              const t = s / 0.45;
-              return -PX_PER_MV * amp * Math.sin(t * Math.PI * 0.6);
-            } else {
-              const t = (s - 0.45) / 0.55;
-              return -PX_PER_MV * amp * (Math.cos(t * Math.PI) * 0.8);
-            }
-          }
-
-          // Pacing spike: very narrow, high positive
-          function pacingSpike(pxPosInCycle) {
-            return pxPosInCycle < 3 ? -PX_PER_MV * 2.0 : 0; // ~2 mV thin spike
-          }
-
-          // --- Generic sinus beat template (returns y from baseline) ---
-          function sinusTemplate(x, hr, canvasHeight, tSeconds, opts = {}) {
-            const baseline = canvasHeight / 2;
-            const bpm = hr > 0 ? hr : 75;
-
-            // small random R-R variability for sinus arrhythmia
-            const rrJitter = 1 + perlinLikeNoise(x, 0.0008, 0.02); // ±2%
-            const cyclePx = (60 / bpm) * ECG_SPEED * rrJitter;
-            const pos = x % cyclePx;
-            const s = pos / cyclePx; // 0..1
-
-            let y = 0;
-
-            // Timings as fractions of cycle (rate-independent morphology)
-            const pDur = 0.08 * ECG_SPEED / cyclePx;                // ~80 ms
-            const prEnd = pDur + 0.10 * ECG_SPEED / cyclePx;        // PR segment
-            const qrsDur = 0.09 * ECG_SPEED / cyclePx;              // 90 ms
-            const qrsStart = prEnd;
-            const qrsEnd = qrsStart + qrsDur;
-            const tEnd = qrsEnd + 0.16 * ECG_SPEED / cyclePx;       // 160 ms for T
-
-            if (s < pDur) {
-              y += pWave(s / pDur, opts.pAmp ?? 0.1);
-            } else if (s < prEnd) {
-              // flat isoelectric
-            } else if (s < qrsEnd) {
-              const qrsPhase = (s - qrsStart) / (qrsDur);
-              y += qrsNarrow(qrsPhase, opts.rAmp ?? 1.0, opts.qAmp ?? 0.15, opts.sAmp ?? 0.25);
-            } else if (s < tEnd) {
-              const tPhase = (s - qrsEnd) / (tEnd - qrsEnd);
-              y += tWave(tPhase, opts.tAmp ?? 0.3);
-            }
-
-            // Add slight amplitude modulation to avoid perfectly identical beats
-            y *= 1 + perlinLikeNoise(x, 0.002, 0.05);
-
-            return baseline + y;
-          }
-
-          // --- Rhythm models ---
-          function nsr(x, hr, tSeconds, canvas) {
-            return sinusTemplate(x, hr || 75, canvas.height, tSeconds, {});
-          }
-
-          function sinusBrady(x, hr, tSeconds, canvas) {
-            return sinusTemplate(x, hr || 45, canvas.height, tSeconds, { rAmp: 0.9, tAmp: 0.25 });
-          }
-
-          function sinusTach(x, hr, tSeconds, canvas) {
-            return sinusTemplate(x, hr || 120, canvas.height, tSeconds, { rAmp: 1.1, tAmp: 0.35 });
-          }
-
-          function svt(x, hr, tSeconds, canvas) {
-            // Short PR, narrow QRS, minimal baseline between beats
-            const baseline = canvas.height / 2;
-            const bpm = hr > 0 ? hr : 190;
-            const cyclePx = (60 / bpm) * ECG_SPEED;
-            const pos = x % cyclePx;
-            const s = pos / cyclePx;
-            let y = 0;
-
-            const prShort = 0.06 * ECG_SPEED / cyclePx;
-            const qrsDur = 0.08 * ECG_SPEED / cyclePx;
-            const qrsStart = prShort;
-            const qrsEnd = qrsStart + qrsDur;
-            const tEnd = qrsEnd + 0.14 * ECG_SPEED / cyclePx;
-
-            if (s < prShort) {
-              // tiny or absent P (often hidden)
-              y += pWave(s / prShort, 0.05);
-            } else if (s < qrsEnd) {
-              y += qrsNarrow((s - qrsStart) / qrsDur, 0.95, 0.1, 0.2);
-            } else if (s < tEnd) {
-              y += tWave((s - qrsEnd) / (tEnd - qrsEnd), 0.25);
-            }
-
-            y *= 1 + perlinLikeNoise(x, 0.0025, 0.05);
-            return baseline + y;
-          }
-
-          function afib(x, hr, tSeconds, canvas) {
-            // Irregularly irregular R-R; no discrete P; fibrillatory baseline
-            const baseline = canvas.height / 2;
-            const baseHr = hr > 0 ? hr : 140;
-
-            // Vary HR beat-to-beat via low-frequency noise
-            const rrVar = 1 + perlinLikeNoise(x + tSeconds * 30, 0.0007, 0.25); // up to ±25%
-            const bpm = clamp(baseHr * rrVar, 90, 180);
-            const cyclePx = (60 / bpm) * ECG_SPEED;
-            const pos = x % cyclePx;
-            const s = pos / cyclePx;
-            let y = 0;
-
-            const qrsDur = 0.10 * ECG_SPEED / cyclePx;
-            const qrsEnd = qrsDur;
-            if (s < qrsEnd) {
-              y += qrsNarrow(s / qrsDur, lerp(0.8, 1.0, Math.random()), 0.05, 0.15);
-            }
-
-            // fibrillatory waves 350–600/min -> we simulate as chaotic HF baseline
-            const fBase =
-              Math.sin((x * 0.45) + tSeconds * 8.0) * (PX_PER_MM * 1.4) +
-              Math.sin((x * 0.95) + tSeconds * 12.0) * (PX_PER_MM * 0.9) +
-              Math.sin((x * 1.60) + tSeconds * 15.0) * (PX_PER_MM * 0.6);
-
-            return baseline + y + fBase * 0.9;
-          }
-
-          function vtach(x, hr, tSeconds, canvas) {
-            // Wide-complex tachycardia, 150–220 bpm, broad QRS
-            const baseline = canvas.height / 2;
-            const bpm = hr > 0 ? hr : 180;
-            const ampMod = 1 + perlinLikeNoise(x + tSeconds * 40, 0.0012, 0.15); // slow amplitude modulation
-            const cyclePx = (60 / bpm) * ECG_SPEED;
-            const pos = x % cyclePx;
-            const s = pos / cyclePx;
-            let y = 0;
-
-            const qrsDur = 0.14 * ECG_SPEED / cyclePx; // wide
-            const qrsEnd = qrsDur;
-
-            if (s < qrsEnd) {
-              y += qrsWide(s / qrsDur, 0.9 * ampMod);
-            } else {
-              // small post-complex drift
-              y += perlinLikeNoise(x, 0.01, PX_PER_MM * 0.6);
-            }
-
-            return baseline + y;
-          }
-
-          function idioventricular(x, hr, tSeconds, canvas) {
-            // Slow wide-complex rhythm 30–40 bpm
-            const baseline = canvas.height / 2;
-            const bpm = hr > 0 ? hr : 38;
-            const cyclePx = (60 / bpm) * ECG_SPEED;
-            const pos = x % cyclePx;
-            const s = pos / cyclePx;
-            let y = 0;
-
-            const qrsDur = 0.16 * ECG_SPEED / cyclePx;
-            if (s < qrsDur) {
-              y += qrsWide(s / qrsDur, 0.8);
-            }
-
-            // low amplitude wandering
-            y += perlinLikeNoise(x, 0.006, PX_PER_MM * 0.5);
-            return baseline + y;
-          }
-
-          function vfib(x, _hr, tSeconds, canvas) {
-            // Sum of random oscillators, with amplitude decay over time representing coarse -> fine
-            const baseline = canvas.height / 2;
-            const coarse = PX_PER_MV * 0.9;
-            const fine   = PX_PER_MV * 0.25;
-            const k = clamp(tSeconds / 120, 0, 1); // over 2 minutes
-            const amp = lerp(coarse, fine, k);
-
-            const y =
-              Math.sin(x * 0.22 + tSeconds * 1.1) * (amp * 0.6) +
-              Math.sin(x * 0.33 + tSeconds * 1.5) * (amp * 0.45) +
-              Math.sin(x * 0.55 + tSeconds * 0.9) * (amp * 0.35) +
-              Math.sin(x * 0.88 + tSeconds * 1.7) * (amp * 0.25) +
-              Math.sin(x * 1.40 + tSeconds * 2.2) * (amp * 0.15) +
-              perlinLikeNoise(x + tSeconds * 30, 0.02, amp * 0.15);
-
-            return baseline + y;
-          }
-
-          function chb(x, hr, tSeconds, canvas) {
-            // 3rd-degree AV block: independent atrial (P ~ 70–90 bpm) and ventricular (30–40 bpm) activity
-            const baseline = canvas.height / 2;
-            const vBpm = hr > 0 ? hr : 32;
-            const pBpm = 80;
-
-            const vCycle = (60 / vBpm) * ECG_SPEED;
-            const pCycle = (60 / pBpm) * ECG_SPEED;
-
-            const vPos = x % vCycle;
-            const pPos = x % pCycle;
-
-            let y = 0;
-
-            // P-waves at own rate
-            const pDurPx = 0.08 * ECG_SPEED;
-            if (pPos < pDurPx) {
-              y += pWave(pPos / pDurPx, 0.12);
-            }
-
-            // Wide QRS escape beats at ventricular rate
-            const qrsDurPx = 0.16 * ECG_SPEED;
-            if (vPos < qrsDurPx) {
-              y += qrsWide(vPos / qrsDurPx, 0.85);
-            }
-
-            // small variability
-            y *= 1 + perlinLikeNoise(x, 0.001, 0.03);
-            return baseline + y;
-          }
-
-          function paced(x, hr, tSeconds, canvas) {
-            // Ventricular pacing: spike then wide QRS & secondary ST/T changes
-            const baseline = canvas.height / 2;
-            const bpm = hr > 0 ? hr : 70;
-            const cyclePx = (60 / bpm) * ECG_SPEED;
-            const pos = x % cyclePx;
-            let y = 0;
-
-            // pacing spike
-            y += pacingSpike(pos);
-
-            // wide QRS immediately after spike
-            const qrsStart = 3;
-            const qrsDurPx = 0.14 * ECG_SPEED;
-            if (pos >= qrsStart && pos < (qrsStart + qrsDurPx)) {
-              const s = (pos - qrsStart) / qrsDurPx;
-              y += qrsWide(s, 0.9);
-            } else if (pos >= (qrsStart + qrsDurPx) && pos < (qrsStart + qrsDurPx + 0.16 * ECG_SPEED)) {
-              const t = (pos - (qrsStart + qrsDurPx)) / (0.16 * ECG_SPEED);
-              y += tWave(t, 0.25);
-            }
-
-            return baseline + y;
-          }
-
-          function brady(x, hr, tSeconds, canvas) {
-            return sinusTemplate(x, hr || 38, canvas.height, tSeconds, { rAmp: 0.9, tAmp: 0.25 });
-          }
-
-          function asystole(x, _hr, tSeconds, canvas) {
-            const baseline = canvas.height / 2;
-            // Never perfectly flat: tiny wander
-            const wander = Math.sin(tSeconds * 0.2) * (PX_PER_MM * 0.2);
-            return baseline + wander;
-          }
-
-          // --- Public rhythms map (signature compatible with existing code) ---
-          const rhythms = {
-            nsr: function (x, hr, tSeconds)            { return nsr(x, hr, tSeconds, window.__ecgCanvas || document.getElementById('ecgCanvas')); },
-            sinus_brady: function (x, hr, tSeconds)    { return sinusBrady(x, hr, tSeconds, window.__ecgCanvas || document.getElementById('ecgCanvas')); },
-            sinus_tach: function (x, hr, tSeconds)     { return sinusTach(x, hr, tSeconds, window.__ecgCanvas || document.getElementById('ecgCanvas')); },
-            svt: function (x, hr, tSeconds)            { return svt(x, hr, tSeconds, window.__ecgCanvas || document.getElementById('ecgCanvas')); },
-            afib: function (x, hr, tSeconds)           { return afib(x, hr, tSeconds, window.__ecgCanvas || document.getElementById('ecgCanvas')); },
-            vtach: function (x, hr, tSeconds)          { return vtach(x, hr, tSeconds, window.__ecgCanvas || document.getElementById('ecgCanvas')); },
-            vt_pulseless: function (x, hr, tSeconds)   { return vtach(x, 180, tSeconds, window.__ecgCanvas || document.getElementById('ecgCanvas')); }, // NEW
-            vfib: function (x, hr, tSeconds)           { return vfib(x, hr, tSeconds, window.__ecgCanvas || document.getElementById('ecgCanvas')); },
-            brady: function (x, hr, tSeconds)          { return brady(x, hr, tSeconds, window.__ecgCanvas || document.getElementById('ecgCanvas')); },
-            chb: function (x, hr, tSeconds)            { return chb(x, hr, tSeconds, window.__ecgCanvas || document.getElementById('ecgCanvas')); },
-            paced: function (x, hr, tSeconds)          { return paced(x, hr, tSeconds, window.__ecgCanvas || document.getElementById('ecgCanvas')); },
-            idioventricular: function (x, hr, tSeconds){ return idioventricular(x, hr, tSeconds, window.__ecgCanvas || document.getElementById('ecgCanvas')); },
-            asystole: function (x, hr, tSeconds)       { return asystole(x, hr, tSeconds, window.__ecgCanvas || document.getElementById('ecgCanvas')); },
-            // alias for compatibility
-            sinus: function (x, hr, tSeconds)          { return nsr(x, hr, tSeconds, window.__ecgCanvas || document.getElementById('ecgCanvas')); },
-          };
-
-          // --- Grid + calibration helpers ---
-          function drawECGGrid(ctx, w, h) {
-            ctx.save();
-            ctx.clearRect(0, 0, w, h);
-
-            // fine grid (1 mm)
-            ctx.strokeStyle = 'rgba(255,255,255,0.06)';
-            ctx.lineWidth = 1;
-            ctx.beginPath();
-            for (let x = 0; x <= w; x += PX_PER_MM) {
-              ctx.moveTo(x + 0.5, 0);
-              ctx.lineTo(x + 0.5, h);
-            }
-            for (let y = 0; y <= h; y += PX_PER_MM) {
-              ctx.moveTo(0, y + 0.5);
-              ctx.lineTo(w, y + 0.5);
-            }
-            ctx.stroke();
-
-            // big grid (5 mm)
-            ctx.strokeStyle = 'rgba(255,255,255,0.12)';
-            ctx.lineWidth = 1.2;
-            ctx.beginPath();
-            for (let x = 0; x <= w; x += PX_PER_BIG) {
-              ctx.moveTo(x + 0.5, 0);
-              ctx.lineTo(x + 0.5, h);
-            }
-            for (let y = 0; y <= h; y += PX_PER_BIG) {
-              ctx.moveTo(0, y + 0.5);
-              ctx.lineTo(w, y + 0.5);
-            }
-            ctx.stroke();
-
-            ctx.restore();
-          }
-
-          function drawCalibrationPulse(ctx) {
-            // 1 mV = 10 mm => 50 px. 200 ms width (5 mm at 25mm/s)
-            const startX = 12; // px from left
-            const startY = Math.floor(ctx.canvas.height * 0.75);
-            const height = PX_PER_MV;              // 1 mV
-            const width = PX_PER_BIG;              // 200 ms at 25 mm/s
-            ctx.save();
-            ctx.strokeStyle = '#0f0';
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.moveTo(startX, startY);
-            ctx.lineTo(startX, startY - height);
-            ctx.lineTo(startX + width, startY - height);
-            ctx.lineTo(startX + width, startY);
-            ctx.stroke();
-            ctx.restore();
-          }
-
-          // --- Artefact wrapper ---
-          // Given a base signal function, wrap with noise depending on global state flags (if present)
-          function withArtefacts(fn) {
-            return function (x, hr, tSeconds) {
-              const canvas = window.__ecgCanvas || document.getElementById('ecgCanvas');
-              let y = fn(x, hr, tSeconds);
-              const st = window.state || {};
-              const flags = (st.noise || {});
-              if (flags.movement) y += movementArtefact(x, tSeconds);
-              if (flags.leadoff)  y += leadoffArtefact(tSeconds);
-              if (flags.cpr)      y += cprArtefact(x, tSeconds);
-              return y;
-            };
-          }
-
-          // Wrap all rhythms
-          const wrapped = {};
-          Object.keys(rhythms).forEach(k => wrapped[k] = withArtefacts(rhythms[k]));
-
-          // Expose to window
-          window.rhythms = wrapped;
-          window.drawECGGrid = drawECGGrid;
-          window.drawCalibrationPulse = drawCalibrationPulse;
-          window.__setECGSpeed = setSpeed;
-
-        })();
+(function(){'use strict';const PX_PER_BIG=25;const PX_PER_MM=PX_PER_BIG/5;const PX_PER_MV=PX_PER_MM*10;let ECG_SPEED=PX_PER_BIG*5;function setSpeed(pxPerSec){ECG_SPEED=pxPerSec}
+const clamp=(v,lo,hi)=>Math.max(lo,Math.min(hi,v));const lerp=(a,b,t)=>a+(b-a)*t;function perlinLikeNoise(x,freq,amp){const a=Math.sin(x*freq*0.71)*0.5+0.5;const b=Math.sin(x*freq*1.33+1.7)*0.5+0.5;return(a*0.6+b*0.4-0.5)*2*amp}
+function baselineWander(tSeconds){return Math.sin(tSeconds*0.25)*(PX_PER_MM*0.6)}
+function movementArtefact(x,tSeconds){return Math.sin((x+tSeconds*120)*0.05)*(PX_PER_MM*1.0)}
+function leadoffArtefact(tSeconds){return Math.sin(tSeconds*1.2)*(PX_PER_MM*1.5)}
+function cprArtefact(x,tSeconds){const f=2.0;return Math.sin(2*Math.PI*f*tSeconds)*(PX_PER_MV*0.6)+perlinLikeNoise(x+tSeconds*60,0.03,PX_PER_MM*2.0)}
+function pWave(s,amp=0.1){const a=clamp(Math.sin(Math.PI*s),0,1);return-a*(PX_PER_MV*amp)}
+function qrsNarrow(s,rAmp=1.0,qAmp=0.15,sAmp=0.25){if(s<0.22){const t=s/0.22;return PX_PER_MV*qAmp*(t*0.4)}else if(s<0.55){const t=(s-0.22)/0.33;return-PX_PER_MV*rAmp*(Math.sin(t*Math.PI))}else{const t=(s-0.55)/0.45;return PX_PER_MV*sAmp*(Math.sin(t*Math.PI))}}
+function qrsWide(s,rAmp=0.9){return-PX_PER_MV*rAmp*Math.sin(s*Math.PI)}
+function tWave(s,amp=0.3){if(s<0.45){const t=s/0.45;return-PX_PER_MV*amp*Math.sin(t*Math.PI*0.6)}else{const t=(s-0.45)/0.55;return-PX_PER_MV*amp*(Math.cos(t*Math.PI)*0.8)}}
+function pacingSpike(pxPosInCycle){return pxPosInCycle<3?-PX_PER_MV*2.0:0}
+function sinusTemplate(x,hr,canvasHeight,tSeconds,opts={}){const baseline=canvasHeight/2;const bpm=hr>0?hr:75;const rrJitter=1+perlinLikeNoise(x,0.0008,0.02);const cyclePx=(60/bpm)*ECG_SPEED*rrJitter;const pos=x%cyclePx;const s=pos/cyclePx;let y=0;const pDur=0.08*ECG_SPEED/cyclePx;const prEnd=pDur+0.10*ECG_SPEED/cyclePx;const qrsDur=0.09*ECG_SPEED/cyclePx;const qrsStart=prEnd;const qrsEnd=qrsStart+qrsDur;const tEnd=qrsEnd+0.16*ECG_SPEED/cyclePx;if(s<pDur){y+=pWave(s/pDur,opts.pAmp??0.1)}else if(s<prEnd){}else if(s<qrsEnd){const qrsPhase=(s-qrsStart)/(qrsDur);y+=qrsNarrow(qrsPhase,opts.rAmp??1.0,opts.qAmp??0.15,opts.sAmp??0.25)}else if(s<tEnd){const tPhase=(s-qrsEnd)/(tEnd-qrsEnd);y+=tWave(tPhase,opts.tAmp??0.3)}
+y*=1+perlinLikeNoise(x,0.002,0.05);return baseline+y}
+function nsr(x,hr,tSeconds,canvas){return sinusTemplate(x,hr||75,canvas.height,tSeconds,{})}
+function sinusBrady(x,hr,tSeconds,canvas){return sinusTemplate(x,hr||45,canvas.height,tSeconds,{rAmp:0.9,tAmp:0.25})}
+function sinusTach(x,hr,tSeconds,canvas){return sinusTemplate(x,hr||120,canvas.height,tSeconds,{rAmp:1.1,tAmp:0.35})}
+function svt(x,hr,tSeconds,canvas){const baseline=canvas.height/2;const bpm=hr>0?hr:190;const cyclePx=(60/bpm)*ECG_SPEED;const pos=x%cyclePx;const s=pos/cyclePx;let y=0;const prShort=0.06*ECG_SPEED/cyclePx;const qrsDur=0.08*ECG_SPEED/cyclePx;const qrsStart=prShort;const qrsEnd=qrsStart+qrsDur;const tEnd=qrsEnd+0.14*ECG_SPEED/cyclePx;if(s<prShort){y+=pWave(s/prShort,0.05)}else if(s<qrsEnd){y+=qrsNarrow((s-qrsStart)/qrsDur,0.95,0.1,0.2)}else if(s<tEnd){y+=tWave((s-qrsEnd)/(tEnd-qrsEnd),0.25)}
+y*=1+perlinLikeNoise(x,0.0025,0.05);return baseline+y}
+function afib(x,hr,tSeconds,canvas){const baseline=canvas.height/2;const baseHr=hr>0?hr:140;const rrVar=1+perlinLikeNoise(x+tSeconds*30,0.0007,0.35);const bpm=clamp(baseHr*rrVar,80,190);const cyclePx=(60/bpm)*ECG_SPEED;const pos=x%cyclePx;const s=pos/cyclePx;let y=0;const qrsDur=0.09*ECG_SPEED/cyclePx;const qrsEnd=qrsDur;if(s<qrsEnd){const beatAmp=0.9+perlinLikeNoise(x,0.0005,0.15);y+=qrsNarrow(s/qrsDur,beatAmp,0.05,0.15)}
+const fBase=Math.sin((x*0.31)+tSeconds*7.1)*(PX_PER_MM*1.0)+Math.sin((x*0.52)+tSeconds*9.3)*(PX_PER_MM*0.8)+Math.sin((x*0.73)+tSeconds*11.7)*(PX_PER_MM*0.7)+Math.sin((x*1.14)+tSeconds*14.2)*(PX_PER_MM*0.5)+perlinLikeNoise(x+tSeconds*40,0.03,PX_PER_MM*0.8);return baseline+y+fBase*1.0}
+function vtach(x,hr,tSeconds,canvas){const baseline=canvas.height/2;const bpm=hr>0?hr:180;const ampMod=1+perlinLikeNoise(x+tSeconds*40,0.0012,0.15);const cyclePx=(60/bpm)*ECG_SPEED;const pos=x%cyclePx;const s=pos/cyclePx;let y=0;const qrsDur=0.14*ECG_SPEED/cyclePx;if(s<qrsDur){y+=qrsWide(s/qrsDur,0.9*ampMod)}else{y+=perlinLikeNoise(x,0.01,PX_PER_MM*0.6)}
+return baseline+y}
+function idioventricular(x,hr,tSeconds,canvas){const baseline=canvas.height/2;const bpm=hr>0?hr:38;const cyclePx=(60/bpm)*ECG_SPEED;const pos=x%cyclePx;const s=pos/cyclePx;let y=0;const qrsDur=0.16*ECG_SPEED/cyclePx;if(s<qrsDur){y+=qrsWide(s/qrsDur,0.8)}
+y+=perlinLikeNoise(x,0.006,PX_PER_MM*0.5);return baseline+y}
+function vfib(x,_hr,tSeconds,canvas){const baseline=canvas.height/2;const coarse=PX_PER_MV*0.9;const fine=PX_PER_MV*0.25;const k=clamp(tSeconds/120,0,1);const amp=lerp(coarse,fine,k);const y=Math.sin(x*0.22+tSeconds*1.1)*(amp*0.6)+Math.sin(x*0.33+tSeconds*1.5)*(amp*0.45)+Math.sin(x*0.55+tSeconds*0.9)*(amp*0.35)+Math.sin(x*0.88+tSeconds*1.7)*(amp*0.25)+Math.sin(x*1.40+tSeconds*2.2)*(amp*0.15)+perlinLikeNoise(x+tSeconds*30,0.02,amp*0.15);return baseline+y}
+function chb(x,hr,tSeconds,canvas){const baseline=canvas.height/2;const vBpm=hr>0?hr:32;const pBpm=80;const vCycle=(60/vBpm)*ECG_SPEED;const pCycle=(60/pBpm)*ECG_SPEED;const vPos=x%vCycle;const pPos=x%pCycle;let y=0;const pDurPx=0.08*ECG_SPEED;if(pPos<pDurPx){y+=pWave(pPos/pDurPx,0.12)}
+const qrsDurPx=0.16*ECG_SPEED;if(vPos<qrsDurPx){y+=qrsWide(vPos/qrsDurPx,0.85)}
+y*=1+perlinLikeNoise(x,0.001,0.03);return baseline+y}
+function paced(x,hr,tSeconds,canvas){const baseline=canvas.height/2;const bpm=hr>0?hr:70;const cyclePx=(60/bpm)*ECG_SPEED;const pos=x%cyclePx;let y=0;y+=pacingSpike(pos);const qrsStart=3;const qrsDurPx=0.14*ECG_SPEED;if(pos>=qrsStart&&pos<(qrsStart+qrsDurPx)){const s=(pos-qrsStart)/qrsDurPx;y+=qrsWide(s,0.9)}else if(pos>=(qrsStart+qrsDurPx)&&pos<(qrsStart+qrsDurPx+0.16*ECG_SPEED)){const t=(pos-(qrsStart+qrsDurPx))/(0.16*ECG_SPEED);y+=tWave(t,0.25)}
+return baseline+y}
+function brady(x,hr,tSeconds,canvas){return sinusTemplate(x,hr||38,canvas.height,tSeconds,{rAmp:0.9,tAmp:0.25})}
+function asystole(x,_hr,tSeconds,canvas){const baseline=canvas.height/2;const wander=Math.sin(tSeconds*0.2)*(PX_PER_MM*0.2);return baseline+wander}
+const rhythms={nsr:function(x,hr,tSeconds){return nsr(x,hr,tSeconds,window.__ecgCanvas||document.getElementById('ecgCanvas'))},sinus_brady:function(x,hr,tSeconds){return sinusBrady(x,hr,tSeconds,window.__ecgCanvas||document.getElementById('ecgCanvas'))},sinus_tach:function(x,hr,tSeconds){return sinusTach(x,hr,tSeconds,window.__ecgCanvas||document.getElementById('ecgCanvas'))},svt:function(x,hr,tSeconds){return svt(x,hr,tSeconds,window.__ecgCanvas||document.getElementById('ecgCanvas'))},afib:function(x,hr,tSeconds){return afib(x,hr,tSeconds,window.__ecgCanvas||document.getElementById('ecgCanvas'))},vtach:function(x,hr,tSeconds){return vtach(x,hr,tSeconds,window.__ecgCanvas||document.getElementById('ecgCanvas'))},vt_pulseless:function(x,hr,tSeconds){return vtach(x,180,tSeconds,window.__ecgCanvas||document.getElementById('ecgCanvas'))},vfib:function(x,hr,tSeconds){return vfib(x,hr,tSeconds,window.__ecgCanvas||document.getElementById('ecgCanvas'))},brady:function(x,hr,tSeconds){return brady(x,hr,tSeconds,window.__ecgCanvas||document.getElementById('ecgCanvas'))},chb:function(x,hr,tSeconds){return chb(x,hr,tSeconds,window.__ecgCanvas||document.getElementById('ecgCanvas'))},paced:function(x,hr,tSeconds){return paced(x,hr,tSeconds,window.__ecgCanvas||document.getElementById('ecgCanvas'))},idioventricular:function(x,hr,tSeconds){return idioventricular(x,hr,tSeconds,window.__ecgCanvas||document.getElementById('ecgCanvas'))},asystole:function(x,hr,tSeconds){return asystole(x,hr,tSeconds,window.__ecgCanvas||document.getElementById('ecgCanvas'))},sinus:function(x,hr,tSeconds){return nsr(x,hr,tSeconds,window.__ecgCanvas||document.getElementById('ecgCanvas'))},};function drawECGGrid(ctx,w,h){ctx.save();ctx.clearRect(0,0,w,h);ctx.strokeStyle='rgba(255,255,255,0.06)';ctx.lineWidth=1;ctx.beginPath();for(let x=0;x<=w;x+=PX_PER_MM){ctx.moveTo(x+0.5,0);ctx.lineTo(x+0.5,h)}
+for(let y=0;y<=h;y+=PX_PER_MM){ctx.moveTo(0,y+0.5);ctx.lineTo(w,y+0.5)}
+ctx.stroke();ctx.strokeStyle='rgba(255,255,255,0.12)';ctx.lineWidth=1.2;ctx.beginPath();for(let x=0;x<=w;x+=PX_PER_BIG){ctx.moveTo(x+0.5,0);ctx.lineTo(x+0.5,h)}
+for(let y=0;y<=h;y+=PX_PER_BIG){ctx.moveTo(0,y+0.5);ctx.lineTo(w,y+0.5)}
+ctx.stroke();ctx.restore()}
+function drawCalibrationPulse(ctx){const startX=12;const startY=Math.floor(ctx.canvas.height*0.75);const height=PX_PER_MV;const width=PX_PER_BIG;ctx.save();ctx.strokeStyle='#0f0';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(startX,startY);ctx.lineTo(startX,startY-height);ctx.lineTo(startX+width,startY-height);ctx.lineTo(startX+width,startY);ctx.stroke();ctx.restore()}
+function withArtefacts(fn){return function(x,hr,tSeconds){const canvas=window.__ecgCanvas||document.getElementById('ecgCanvas');let y=fn(x,hr,tSeconds);const st=window.state||{};const flags=(st.noise||{});if(flags.movement)y+=movementArtefact(x,tSeconds);if(flags.leadoff)y+=leadoffArtefact(tSeconds);if(flags.cpr)y+=cprArtefact(x,tSeconds);return y}}
+const wrapped={};Object.keys(rhythms).forEach(k=>wrapped[k]=withArtefacts(rhythms[k]));window.rhythms=wrapped;window.drawECGGrid=drawECGGrid;window.drawCalibrationPulse=drawCalibrationPulse;window.__setECGSpeed=setSpeed;})();
     </script>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: Arial, sans-serif;
-            background: #2a2a2a;
-            padding: 20px;
-            min-height: 100vh;
-        }
-
-        .quick-rhythm-panel {
-            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
-            border-radius: 10px;
-            padding: 20px;
-            margin: 0 auto 20px auto;
-            max-width: 1600px;
-            border: 3px solid #1a252f;
-        }
-
-        .quick-rhythm-panel h4 {
-            color: #3498db;
-            font-size: 14px;
-            margin-bottom: 15px;
-            text-transform: uppercase;
-            text-align: center;
-        }
-
-        .menu-wrapper {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-
-        .menu-screen {
-            display: none;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
-            border-radius: 15px;
-            padding: 60px;
-            max-width: 800px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
-        }
-
-        #modeSelectScreen {
-            padding: 30px;
-            max-width: 1600px;
-            margin: 0 auto 20px auto;
-            border-radius: 10px;
-        }
-
-        #modeSelectScreen .menu-title {
-            margin-bottom: 30px;
-        }
-
-        #modeSelectScreen .menu-option {
-            padding: 25px 20px;
-            font-size: 20px;
-        }
-
-        .menu-logo {
-            margin-bottom: 30px;
-        }
-
-        .menu-logo img {
-            height: 80px;
-            background: white;
-            padding: 15px 25px;
-            border-radius: 10px;
-        }
-
-        .menu-title {
-            text-align: center;
-            margin-bottom: 50px;
-        }
-
-        .menu-title h1 {
-            color: #ecf0f1;
-            font-size: 36px;
-            margin-bottom: 15px;
-        }
-
-        .menu-title p {
-            color: #bdc3c7;
-            font-size: 18px;
-        }
-
-        .menu-options {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 30px;
-            width: 100%;
-        }
-
-        .menu-option {
-            background: linear-gradient(180deg, #3498db 0%, #2874a6 100%);
-            color: white;
-            border: none;
-            padding: 50px 40px;
-            border-radius: 15px;
-            font-size: 24px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.3s;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
-            text-align: center;
-        }
-
-        .menu-option:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 15px 35px rgba(0,0,0,0.4);
-        }
-
-        .menu-option.single-column {
-            grid-column: 1 / -1;
-        }
-
-        .menu-option .subtitle {
-            font-size: 14px;
-            margin-top: 10px;
-            opacity: 0.9;
-            font-weight: normal;
-        }
-
-        .simulator-container {
-            max-width: 1600px;
-            width: 100%;
-            margin: 0 auto;
-        }
-
-        .back-button {
-            background: #e74c3c;
-            color: white;
-            border: none;
-            padding: 15px 30px;
-            border-radius: 8px;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-            margin-bottom: 20px;
-            display: inline-flex;
-            align-items: center;
-            gap: 10px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-        }
-
-        .back-button:hover {
-            background: #c0392b;
-        }
-
-        .reset-button {
-            background: #3498db;
-            margin-left: 10px;
-        }
-
-        .reset-button:hover {
-            background: #2980b9;
-        }
-
-        .instructor-panel {
-            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
-            border-radius: 10px;
-            padding: 25px;
-            margin-bottom: 20px;
-            border: 3px solid #1a252f;
-            transition: all 0.3s ease;
-        }
-
-        .instructor-panel.minimised {
-            padding: 12px 18px;
-        }
-
-        .instructor-panel.minimised .control-grid {
-            display: none !important;
-        }
-
-        .minimise-btn {
-            background: #34495e;
-            color: #ecf0f1;
-            border: 2px solid #2c3e50;
-            padding: 8px 16px;
-            border-radius: 6px;
-            font-size: 12px;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-
-        .minimise-btn:hover {
-            background: #3a4f5e;
-        }
-
-        .instructor-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
-        }
-
-        .instructor-logo {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-        }
-
-        .instructor-logo img {
-            height: 40px;
-            background: white;
-            padding: 6px;
-            border-radius: 8px;
-        }
-
-        .instructor-title h2 {
-            color: #ecf0f1;
-            font-size: 18px;
-        }
-
-        .instructor-title p {
-            color: #bdc3c7;
-            font-size: 12px;
-            margin-top: 4px;
-        }
-
-        .control-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-            gap: 15px;
-            margin-top: 10px;
-        }
-
-        .control-section {
-            background: #2c3e50;
-            padding: 15px;
-            border-radius: 8px;
-        }
-
-        .control-section h4 {
-            color: #3498db;
-            font-size: 13px;
-            margin-bottom: 10px;
-            text-transform: uppercase;
-        }
-
-        .control-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 8px;
-            padding: 8px;
-            background: #34495e;
-            border-radius: 6px;
-        }
-
-        .control-row label {
-            color: #ecf0f1;
-            font-size: 12px;
-            font-weight: bold;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .control-row input,
-        .control-row select {
-            width: 100px;
-            padding: 6px;
-            border-radius: 4px;
-            border: 1px solid #2c3e50;
-            background: #2c3e50;
-            color: #00ff00;
-            font-weight: bold;
-        }
-
-        .rhythm-buttons {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
-            gap: 6px;
-        }
-
-        .rhythm-btn {
-            background: #34495e;
-            color: #ecf0f1;
-            border: 2px solid #2c3e50;
-            padding: 8px;
-            border-radius: 6px;
-            font-size: 11px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .rhythm-btn.active {
-            background: #2980b9;
-            border-color: #1f5f8b;
-        }
-
-        .zoll-device {
-            background: #c8d0d8;
-            border: 20px solid #2b7bbf;
-            border-radius: 25px;
-            padding: 30px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
-            position: relative;
-            display: grid;
-            grid-template-columns: 1.2fr 0.8fr;
-            gap: 20px;
-            max-width: 1400px;
-            margin: 0 auto;
-        }
-
-        .zoll-top-logo {
-            position: absolute;
-            top: 25px;
-            right: 30px;
-            height: 40px;
-            background: white;
-            padding: 6px;
-            border-radius: 8px;
-            z-index: 10;
-        }
-
-        .device-screen-section {
-            background: #a8b0b8;
-            padding: 25px;
-            border-radius: 15px;
-            box-shadow: inset 0 4px 10px rgba(0,0,0,0.2);
-        }
-
-        .screen {
-            background: #000;
-            border-radius: 10px;
-            padding: 15px;
-            margin-bottom: 15px;
-            box-shadow: inset 0 0 20px rgba(0,0,0,0.8);
-            position: relative;
-        }
-
-        .screen-header {
-            display: flex;
-            justify-content: space-between;
-            padding: 8px;
-            background: rgba(0,0,0,0.6);
-            border-radius: 5px;
-            margin-bottom: 10px;
-        }
-
-        .screen-info {
-            color: #00ffff;
-            font-size: 13px;
-            font-family: 'Courier New', monospace;
-            text-shadow: 0 0 5px rgba(0,255,255,0.5);
-        }
-
-        .screen-info.sync-indicator {
-            color: #ffff00;
-            font-weight: bold;
-            animation: blink 1s infinite;
-        }
-
-        .ecg-canvas-container {
-            background: #000;
-            height: 300px;
-            border-radius: 8px;
-            position: relative;
-            overflow: hidden;
-            margin-bottom: 15px;
-        }
-
-        canvas {
-            width: 100%;
-            height: 100%;
-        }
-
-        .vitals-display {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 10px;
-            padding: 15px;
-            background: rgba(0,0,0,0.6);
-            border-radius: 8px;
-        }
-
-        .vital-item {
-            text-align: center;
-        }
-
-        .vital-label {
-            color: #888;
-            font-size: 10px;
-            margin-bottom: 5px;
-        }
-
-        .vital-value {
-            color: #00ff00;
-            font-size: 36px;
-            font-weight: bold;
-            font-family: 'Courier New', monospace;
-            text-shadow: 0 0 10px rgba(0,255,0,0.6);
-        }
-
-        .vital-value.critical {
-            color: #ff0000;
-            animation: blink 1s infinite;
-        }
-
-        .vital-unit {
-            color: #888;
-            font-size: 11px;
-            margin-top: 3px;
-        }
-
-        @keyframes blink {
-            0%, 50% { opacity: 1; }
-            51%, 100% { opacity: 0.3; }
-        }
-
-        .message-bar {
-            background: rgba(0,0,0,0.8);
-            color: #ffff00;
-            padding: 12px;
-            text-align: center;
-            border-radius: 6px;
-            font-family: 'Courier New', monospace;
-            font-size: 14px;
-            font-weight: bold;
-            margin-top: 10px;
-            text-shadow: 0 0 5px rgba(255,255,0,0.5);
-        }
-
-        .message-bar.ready {
-            color: #00ff00;
-            text-shadow: 0 0 5px rgba(0,255,0,0.5);
-        }
-
-        .message-bar.alert {
-            color: #ff0000;
-            animation: blink 1s infinite;
-            text-shadow: 0 0 5px rgba(255,0,0,0.5);
-        }
-
-        .softkeys {
-            display: flex;
-            gap: 10px;
-            margin-top: 15px;
-        }
-
-        .softkey {
-            flex: 1;
-            background: #7a8288;
-            color: #fff;
-            border: 2px solid #6a7278;
-            padding: 12px;
-            border-radius: 6px;
-            font-size: 11px;
-            cursor: pointer;
-            text-align: center;
-            font-weight: bold;
-        }
-
-        .softkey:hover {
-            background: #8a9298;
-        }
-
-        .softkey.active {
-            background: #27ae60;
-        }
-
-        .device-controls-section {
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-        }
-
-        .top-buttons {
-            display: grid;
-            grid-template-columns: auto 1fr;
-            gap: 12px;
-            align-items: start;
-        }
-
-        .btn-teal {
-            background: #17a2b8;
-            color: white;
-            border: 3px solid #138496;
-            padding: 15px 20px;
-            border-radius: 8px;
-            font-size: 13px;
-            font-weight: bold;
-            cursor: pointer;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
-        }
-
-        .btn-sync {
-            background: #f39c12;
-            color: white;
-            border: 3px solid #d68910;
-            padding: 15px 20px;
-            border-radius: 8px;
-            font-size: 13px;
-            font-weight: bold;
-            cursor: pointer;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
-            transition: all 0.3s;
-        }
-
-        .btn-sync.active {
-            background: #e67e22;
-            box-shadow: 0 0 15px rgba(230, 126, 34, 0.7);
-        }
-
-        .btn-shock {
-            background: linear-gradient(135deg, #ff6347 0%, #ff4520 100%);
-            color: white;
-            border: 5px solid #cc4f39;
-            width: 120px;
-            height: 120px;
-            border-radius: 50%;
-            font-size: 20px;
-            font-weight: bold;
-            cursor: pointer;
-            box-shadow: 0 6px 12px rgba(0,0,0,0.4);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .btn-shock::before {
-            content: '⚡';
-            position: absolute;
-            font-size: 80px;
-            opacity: 0.15;
-            color: #fff;
-            z-index: 0;
-        }
-
-        .btn-shock span {
-            position: relative;
-            z-index: 1;
-        }
-
-        .btn-shock:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-
-        .btn-shock .number {
-            position: absolute;
-            bottom: 10px;
-            left: 50%;
-            transform: translateX(-50%);
-            font-size: 18px;
-            color: #fff;
-        }
-
-        .side-buttons {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-        }
-
-        .side-btn {
-            background: #7a8288;
-            color: #fff;
-            border: 3px solid #6a7278;
-            padding: 12px;
-            border-radius: 8px;
-            font-size: 12px;
-            font-weight: bold;
-            cursor: pointer;
-            box-shadow: 0 3px 6px rgba(0,0,0,0.3);
-        }
-
-        .side-btn:hover {
-            background: #8a9298;
-        }
-
-        .action-buttons-group {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-
-        .btn-analyze,
-        .btn-charge {
-            background: linear-gradient(180deg, #ff9933 0%, #ff7700 100%);
-            color: #000;
-            border: 4px solid #cc6600;
-            padding: 16px;
-            border-radius: 10px;
-            font-size: 15px;
-            font-weight: bold;
-            cursor: pointer;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        .btn-number {
-            background: #fff;
-            color: #ff7700;
-            width: 30px;
-            height: 30px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 18px;
-            font-weight: bold;
-        }
-
-        .energy-selector {
-            background: linear-gradient(180deg, #dc3545 0%, #c82333 100%);
-            color: #fff;
-            border: 4px solid #a71d2a;
-            padding: 16px;
-            border-radius: 10px;
-            cursor: pointer;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .energy-display {
-            font-size: 32px;
-            font-weight: bold;
-            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
-        }
-
-        .energy-arrows {
-            display: flex;
-            gap: 15px;
-        }
-
-        .energy-arrow {
-            background: #fff;
-            color: #dc3545;
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            border: none;
-            font-size: 20px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .mode-dial-container {
-            text-align: center;
-            padding: 15px;
-            background: #a8b0b8;
-            border-radius: 12px;
-        }
-
-        .mode-dial {
-            width: 150px;
-            height: 150px;
-            background: radial-gradient(circle, #2a2a2a 0%, #1a1a1a 100%);
-            border: 6px solid #0a0a0a;
-            border-radius: 50%;
-            margin: 0 auto 15px;
-            position: relative;
-            cursor: pointer;
-            box-shadow: 0 6px 12px rgba(0,0,0,0.5);
-        }
-
-        .mode-dial::before {
-            content: '';
-            position: absolute;
-            width: 8px;
-            height: 60px;
-            background: #fff;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%) rotate(var(--dial-rotation, 0deg));
-            transform-origin: center bottom;
-            border-radius: 4px;
-        }
-
-        .mode-labels {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 8px;
-            font-size: 11px;
-            font-weight: bold;
-            color: #2a2a2a;
-        }
-
-        .mode-label {
-            padding: 12px 16px;
-            border-radius: 8px;
-            cursor: pointer;
-            background: #34495e;
-            color: #ecf0f1;
-            border: 3px solid #2c3e50;
-            font-weight: bold;
-            transition: all 0.3s;
-            text-transform: uppercase;
-            font-size: 13px;
-        }
-
-        .mode-label:hover {
-            background: #3a4f5e;
-            transform: translateY(-2px);
-        }
-
-        .mode-label.active {
-            background: linear-gradient(180deg, #3498db 0%, #2874a6 100%);
-            color: white;
-            border-color: #1f5f8b;
-            box-shadow: 0 0 15px rgba(52, 152, 219, 0.5);
-        }
-
-        .pacing-controls {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 12px;
-        }
-
-        .pacer-dial {
-            background: #2a2a2a;
-            border: 5px solid #0a0a0a;
-            border-radius: 50%;
-            width: 100px;
-            height: 100px;
-            margin: 0 auto;
-            position: relative;
-            cursor: pointer;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.5);
-        }
-
-        .pacer-dial::before {
-            content: '';
-            position: absolute;
-            width: 4px;
-            height: 35px;
-            background: #17a2b8;
-            top: 15px;
-            left: 50%;
-            transform: translateX(-50%) rotate(var(--dial-rotation, 0deg));
-            transform-origin: center 35px;
-            border-radius: 2px;
-            transition: transform 0.3s ease;
-        }
-
-        .pacer-label {
-            text-align: center;
-            color: #2a2a2a;
-            font-size: 11px;
-            font-weight: bold;
-            margin-top: 8px;
-        }
-
-        .pacer-value {
-            text-align: center;
-            color: #17a2b8;
-            font-size: 20px;
-            font-weight: bold;
-            margin-top: 4px;
-        }
-
-        .pacer-controls-btn {
-            display: flex;
-            gap: 5px;
-            justify-content: center;
-            margin-top: 8px;
-        }
-
-        .pacer-btn {
-            background: #7a8288;
-            color: #fff;
-            border: 2px solid #6a7278;
-            width: 35px;
-            height: 35px;
-            border-radius: 5px;
-            font-size: 18px;
-            cursor: pointer;
-        }
-
-        .zoll-branding {
-            background: linear-gradient(180deg, #e8eef3 0%, #d8dee3 100%);
-            padding: 20px;
-            border-radius: 0 0 15px 15px;
-            margin: -30px -30px 0 -30px;
-            text-align: center;
-            box-shadow: 0 -4px 10px rgba(0,0,0,0.1);
-        }
-
-        .zoll-logo-text {
-            font-size: 48px;
-            font-weight: bold;
-            color: #9a9a9a;
-            letter-spacing: 8px;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
-        }
-
-        @media (max-width: 1200px) {
-            .zoll-device {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        @media print {
-            body {
-                background: white;
-                padding: 0;
-            }
-            
-            .menu-wrapper {
-                min-height: 0;
-            }
-            
-            .menu-screen {
-                display: block !important;
-                box-shadow: none;
-                padding: 0;
-                background: white;
-            }
-            
-            .menu-option {
-                display: none !important;
-            }
-            
-            #certificateContent {
-                box-shadow: none;
-            }
-        }
+*{margin:0;padding:0;box-sizing:border-box}body{font-family:Arial,sans-serif;background:#2a2a2a;padding:20px;min-height:100vh}.quick-rhythm-panel{background:linear-gradient(135deg,#2c3e50 0%,#34495e 100%);border-radius:10px;padding:20px;margin:0 auto 20px auto;max-width:1600px;border:3px solid #1a252f}.quick-rhythm-panel h4{color:#3498db;font-size:14px;margin-bottom:15px;text-transform:uppercase;text-align:center}.menu-wrapper{display:flex;justify-content:center;align-items:center}.menu-screen{display:none;flex-direction:column;align-items:center;justify-content:center;background:linear-gradient(135deg,#2c3e50 0%,#34495e 100%);border-radius:15px;padding:60px;max-width:800px;box-shadow:0 20px 60px rgba(0,0,0,0.5)}#modeSelectScreen{padding:30px;max-width:1600px;margin:0 auto 20px auto;border-radius:10px}#modeSelectScreen .menu-title{margin-bottom:30px}#modeSelectScreen .menu-option{padding:25px 20px;font-size:20px}.menu-logo{margin-bottom:30px}.menu-logo img{height:80px;background:white;padding:15px 25px;border-radius:10px}.menu-title{text-align:center;margin-bottom:50px}.menu-title h1{color:#ecf0f1;font-size:36px;margin-bottom:15px}.menu-title p{color:#bdc3c7;font-size:18px}.menu-options{display:grid;grid-template-columns:1fr 1fr;gap:30px;width:100%}.menu-option{background:linear-gradient(180deg,#3498db 0%,#2874a6 100%);color:white;border:none;padding:50px 40px;border-radius:15px;font-size:24px;font-weight:bold;cursor:pointer;transition:all 0.3s;box-shadow:0 10px 25px rgba(0,0,0,0.3);text-align:center}.menu-option:hover{transform:translateY(-5px);box-shadow:0 15px 35px rgba(0,0,0,0.4)}.menu-option.single-column{grid-column:1 / -1}.menu-option .subtitle{font-size:14px;margin-top:10px;opacity:0.9;font-weight:normal}.simulator-container{max-width:1600px;width:100%;margin:0 auto}.back-button{background:#e74c3c;color:white;border:none;padding:15px 30px;border-radius:8px;font-size:16px;font-weight:bold;cursor:pointer;margin-bottom:20px;display:inline-flex;align-items:center;gap:10px;box-shadow:0 4px 10px rgba(0,0,0,0.3)}.back-button:hover{background:#c0392b}.reset-button{background:#3498db;margin-left:10px}.reset-button:hover{background:#2980b9}.instructor-panel{background:linear-gradient(135deg,#2c3e50 0%,#34495e 100%);border-radius:10px;padding:25px;margin-bottom:20px;border:3px solid #1a252f;transition:all 0.3s ease}.instructor-panel.minimised{padding:12px 18px}.instructor-panel.minimised .control-grid{display:none !important}.minimise-btn{background:#34495e;color:#ecf0f1;border:2px solid #2c3e50;padding:8px 16px;border-radius:6px;font-size:12px;cursor:pointer;transition:all 0.3s}.minimise-btn:hover{background:#3a4f5e}.instructor-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:15px}.instructor-logo{display:flex;align-items:center;gap:15px}.instructor-logo img{height:40px;background:white;padding:6px;border-radius:8px}.instructor-title h2{color:#ecf0f1;font-size:18px}.instructor-title p{color:#bdc3c7;font-size:12px;margin-top:4px}.control-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:15px;margin-top:10px}.control-section{background:#2c3e50;padding:15px;border-radius:8px}.control-section h4{color:#3498db;font-size:13px;margin-bottom:10px;text-transform:uppercase}.control-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;padding:8px;background:#34495e;border-radius:6px}.control-row label{color:#ecf0f1;font-size:12px;font-weight:bold;display:flex;align-items:center;gap:6px}.control-row input,.control-row select{width:100px;padding:6px;border-radius:4px;border:1px solid #2c3e50;background:#2c3e50;color:#00ff00;font-weight:bold}.rhythm-buttons{display:grid;grid-template-columns:repeat(auto-fit,minmax(80px,1fr));gap:6px}.rhythm-btn{background:#34495e;color:#ecf0f1;border:2px solid #2c3e50;padding:8px;border-radius:6px;font-size:11px;cursor:pointer;transition:all 0.2s}.rhythm-btn.active{background:#2980b9;border-color:#1f5f8b}.zoll-device{background:#c8d0d8;border:20px solid #2b7bbf;border-radius:25px;padding:30px;box-shadow:0 20px 60px rgba(0,0,0,0.5);position:relative;display:grid;grid-template-columns:1.2fr 0.8fr;gap:20px;max-width:1400px;margin:0 auto}.zoll-top-logo{position:absolute;top:25px;right:30px;height:40px;background:white;padding:6px;border-radius:8px;z-index:10}.device-screen-section{background:#a8b0b8;padding:25px;border-radius:15px;box-shadow:inset 0 4px 10px rgba(0,0,0,0.2)}.screen{background:#000;border-radius:10px;padding:15px;margin-bottom:15px;box-shadow:inset 0 0 20px rgba(0,0,0,0.8);position:relative}.screen-header{display:flex;justify-content:space-between;padding:8px;background:rgba(0,0,0,0.6);border-radius:5px;margin-bottom:10px}.screen-info{color:#00ffff;font-size:13px;font-family:'Courier New',monospace;text-shadow:0 0 5px rgba(0,255,255,0.5)}.screen-info.sync-indicator{color:#ffff00;font-weight:bold;animation:blink 1s infinite}.ecg-canvas-container{background:#000;height:300px;border-radius:8px;position:relative;overflow:hidden;margin-bottom:15px}canvas{width:100%;height:100%}.vitals-display{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:15px;background:rgba(0,0,0,0.6);border-radius:8px}.vital-item{text-align:center}.vital-label{color:#888;font-size:10px;margin-bottom:5px}.vital-value{color:#00ff00;font-size:36px;font-weight:bold;font-family:'Courier New',monospace;text-shadow:0 0 10px rgba(0,255,0,0.6)}.vital-value.critical{color:#ff0000;animation:blink 1s infinite}.vital-unit{color:#888;font-size:11px;margin-top:3px}@keyframes blink{0%,50%{opacity:1}51%,100%{opacity:0.3}}.message-bar{background:rgba(0,0,0,0.8);color:#ffff00;padding:12px;text-align:center;border-radius:6px;font-family:'Courier New',monospace;font-size:14px;font-weight:bold;margin-top:10px;text-shadow:0 0 5px rgba(255,255,0,0.5)}.message-bar.ready{color:#00ff00;text-shadow:0 0 5px rgba(0,255,0,0.5)}.message-bar.alert{color:#ff0000;animation:blink 1s infinite;text-shadow:0 0 5px rgba(255,0,0,0.5)}.softkeys{display:flex;gap:10px;margin-top:15px}.softkey{flex:1;background:#7a8288;color:#fff;border:2px solid #6a7278;padding:12px;border-radius:6px;font-size:11px;cursor:pointer;text-align:center;font-weight:bold}.softkey:hover{background:#8a9298}.softkey.active{background:#27ae60}.device-controls-section{display:flex;flex-direction:column;gap:15px}.top-buttons{display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:start}.btn-teal{background:#17a2b8;color:white;border:3px solid #138496;padding:15px 20px;border-radius:8px;font-size:13px;font-weight:bold;cursor:pointer;box-shadow:0 4px 8px rgba(0,0,0,0.3)}.btn-sync{background:#f39c12;color:white;border:3px solid #d68910;padding:15px 20px;border-radius:8px;font-size:13px;font-weight:bold;cursor:pointer;box-shadow:0 4px 8px rgba(0,0,0,0.3);transition:all 0.3s}.btn-sync.active{background:#e67e22;box-shadow:0 0 15px rgba(230,126,34,0.7)}.btn-shock{background:linear-gradient(135deg,#ff6347 0%,#ff4520 100%);color:white;border:5px solid #cc4f39;width:120px;height:120px;border-radius:50%;font-size:20px;font-weight:bold;cursor:pointer;box-shadow:0 6px 12px rgba(0,0,0,0.4);display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;overflow:hidden}.btn-shock::before{content:'⚡';position:absolute;font-size:80px;opacity:0.15;color:#fff;z-index:0}.btn-shock span{position:relative;z-index:1}.btn-shock:disabled{opacity:0.5;cursor:not-allowed}.btn-shock .number{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);font-size:18px;color:#fff}.side-buttons{display:grid;grid-template-columns:1fr 1fr;gap:10px}.side-btn{background:#7a8288;color:#fff;border:3px solid #6a7278;padding:12px;border-radius:8px;font-size:12px;font-weight:bold;cursor:pointer;box-shadow:0 3px 6px rgba(0,0,0,0.3)}.side-btn:hover{background:#8a9298}.action-buttons-group{display:flex;flex-direction:column;gap:10px}.btn-analyze,.btn-charge{background:linear-gradient(180deg,#ff9933 0%,#ff7700 100%);color:#000;border:4px solid #cc6600;padding:16px;border-radius:10px;font-size:15px;font-weight:bold;cursor:pointer;box-shadow:0 4px 8px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:space-between}.btn-number{background:#fff;color:#ff7700;width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:bold}.energy-selector{background:linear-gradient(180deg,#dc3545 0%,#c82333 100%);color:#fff;border:4px solid #a71d2a;padding:16px;border-radius:10px;cursor:pointer;box-shadow:0 4px 8px rgba(0,0,0,0.3);display:flex;flex-direction:column;align-items:center;gap:8px}.energy-display{font-size:32px;font-weight:bold;text-shadow:0 2px 4px rgba(0,0,0,0.3)}.energy-arrows{display:flex;gap:15px}.energy-arrow{background:#fff;color:#dc3545;width:40px;height:40px;border-radius:50%;border:none;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center}.mode-dial-container{text-align:center;padding:15px;background:#a8b0b8;border-radius:12px}.mode-dial{width:150px;height:150px;background:radial-gradient(circle,#2a2a2a 0%,#1a1a1a 100%);border:6px solid #0a0a0a;border-radius:50%;margin:0 auto 15px;position:relative;cursor:pointer;box-shadow:0 6px 12px rgba(0,0,0,0.5)}.mode-dial::before{content:'';position:absolute;width:8px;height:60px;background:#fff;top:20px;left:50%;transform:translateX(-50%) rotate(var(--dial-rotation,0deg));transform-origin:center bottom;border-radius:4px}.mode-labels{display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:11px;font-weight:bold;color:#2a2a2a}.mode-label{padding:12px 16px;border-radius:8px;cursor:pointer;background:#34495e;color:#ecf0f1;border:3px solid #2c3e50;font-weight:bold;transition:all 0.3s;text-transform:uppercase;font-size:13px}.mode-label:hover{background:#3a4f5e;transform:translateY(-2px)}.mode-label.active{background:linear-gradient(180deg,#3498db 0%,#2874a6 100%);color:white;border-color:#1f5f8b;box-shadow:0 0 15px rgba(52,152,219,0.5)}.pacing-controls{display:grid;grid-template-columns:1fr 1fr;gap:12px}.pacer-dial{background:#2a2a2a;border:5px solid #0a0a0a;border-radius:50%;width:100px;height:100px;margin:0 auto;position:relative;cursor:pointer;box-shadow:0 4px 8px rgba(0,0,0,0.5)}.pacer-dial::before{content:'';position:absolute;width:4px;height:35px;background:#17a2b8;top:15px;left:50%;transform:translateX(-50%) rotate(var(--dial-rotation,0deg));transform-origin:center 35px;border-radius:2px;transition:transform 0.3s ease}.pacer-label{text-align:center;color:#2a2a2a;font-size:11px;font-weight:bold;margin-top:8px}.pacer-value{text-align:center;color:#17a2b8;font-size:20px;font-weight:bold;margin-top:4px}.pacer-controls-btn{display:flex;gap:5px;justify-content:center;margin-top:8px}.pacer-btn{background:#7a8288;color:#fff;border:2px solid #6a7278;width:35px;height:35px;border-radius:5px;font-size:18px;cursor:pointer}.zoll-branding{background:linear-gradient(180deg,#e8eef3 0%,#d8dee3 100%);padding:20px;border-radius:0 0 15px 15px;margin:-30px -30px 0 -30px;text-align:center;box-shadow:0 -4px 10px rgba(0,0,0,0.1)}.zoll-logo-text{font-size:48px;font-weight:bold;color:#9a9a9a;letter-spacing:8px;text-shadow:2px 2px 4px rgba(0,0,0,0.1)}@media (max-width:1200px){.zoll-device{grid-template-columns:1fr}}@media print{body{background:white;padding:0}.menu-wrapper{min-height:0}.menu-screen{display:block !important;box-shadow:none;padding:0;background:white}.menu-option{display:none !important}#certificateContent{box-shadow:none}}
     </style>
 </head>
 <body>
@@ -1828,7 +583,7 @@
         // Canvas
         let canvas, ctx, waveformX = 0, animationId;
         let lastTimestamp = 0;
-        const ecgSpeed = 125;
+        const ecgSpeed = 125; // 25 mm/s @ 5 px/mm
 
         function initCanvas() {
             canvas = document.getElementById('ecgCanvas');
@@ -1836,11 +591,9 @@
             
             window.__ecgCanvas = canvas;
             ctx = canvas.getContext('2d');
-
-            // IMPROVED: Settings for crisp rendering
             ctx.lineJoin = 'round';
             ctx.lineCap = 'round';
-            ctx.imageSmoothingEnabled = false; // Disable anti-aliasing for crisp lines
+            ctx.imageSmoothingEnabled = false;
 
             canvas.width = canvas.offsetWidth;
             canvas.height = canvas.offsetHeight;
@@ -1879,7 +632,7 @@
             state.hasPulse = vitals.hasPulse;
         }
 
-        // IMPROVED: Animate function with crisp pixel rendering
+        // *** NEW ANIMATE FUNCTION ***
         function animate(timestamp) {
             if (!canvas || !ctx) return;
             
@@ -1890,12 +643,10 @@
             lastTimestamp = timestamp;
             
             const pixelsToMove = ecgSpeed * deltaTime;
-
             const simTimeSeconds = state.scenarioStartTime
                 ? (Date.now() - state.scenarioStartTime) / 1000
                 : 0;
             
-            // Draw grid using the external function
             if (window.drawECGGrid) {
                 window.drawECGGrid(ctx, canvas.width, canvas.height);
             } else {
@@ -1903,52 +654,116 @@
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
             }
             
-            // Draw rhythm
-            const displayRhythm =
-                (state.pacingActive && state.pacerOutput > 0) ? 'paced' : state.rhythm;
+            // --- NEW PACING & RHYTHM LOGIC ---
             
-            const rhythmFunc = window.rhythms[displayRhythm];
-            
-            if (rhythmFunc) {
-                // IMPROVED: Crisp rendering settings
-                ctx.strokeStyle = '#00ff00';
-                ctx.lineWidth = 2;  // Changed from 2.5 to 2 for cleaner rendering
-                ctx.lineJoin = 'round';
-                ctx.lineCap = 'round';
-                // Remove all shadow effects to prevent blur
-                ctx.shadowBlur = 0;
-                ctx.shadowColor = 'transparent';
+            const underlyingRhythmFunc = window.rhythms[state.rhythm];
+            const scenario = scenarios[state.selectedScenario];
+            const captureThreshold = (scenario && scenario.requiresPacing) ? scenario.captureThreshold : 60;
+            const isCaptured = state.pacerOutput >= captureThreshold;
+            const displayHR = state.hr; // Underlying HR
+            const baselineY = canvas.height / 2;
+
+            // Get component functions from rhythm engine
+            const pacerSpikeFn = window.pacingSpike;
+            const wideQrsFn = window.qrsWide;
+            const tWaveFn = window.tWave;
+
+            ctx.strokeStyle = '#00ff00';
+            ctx.lineWidth = 2;
+            ctx.shadowBlur = 0;
+            ctx.shadowColor = 'transparent';
+            ctx.beginPath();
+
+            let yValues = []; // Store Y values for sync marker pass
+
+            for (let x = 0; x < canvas.width; x++) {
+                const currentX = waveformX + x;
                 
-                ctx.beginPath();
+                // 1. Get underlying rhythm Y value (relative to baseline)
+                let y_underlying_raw = underlyingRhythmFunc(currentX, displayHR, simTimeSeconds) - baselineY;
+                let y_final_raw = y_underlying_raw; // Start with underlying rhythm
 
-                const displayHR = (state.pacingActive && state.pacerOutput > 0)
-                    ? state.pacerRate
-                    : state.hr;
-
-                // Sample every pixel across the canvas width
-                for (let x = 0; x < canvas.width; x++) {
-                    const currentX = waveformX + x;
-
-                    // Get the Y value from the rhythm function
-                    let y = rhythmFunc(currentX, displayHR, simTimeSeconds);
+                // 2. Check if pacing is active
+                if (state.pacingActive && state.pacerOutput > 0) {
+                    const pacerBpm = state.pacerRate;
+                    const pacerCyclePx = (60 / pacerBpm) * ecgSpeed;
+                    const pacerPos = currentX % pacerCyclePx;
                     
-                    // IMPROVED: Round to nearest pixel to prevent anti-aliasing blur
-                    const pixelX = Math.round(x);
-                    const pixelY = Math.round(y);
-
-                    if (x === 0) {
-                        ctx.moveTo(pixelX, pixelY);
-                    } else {
-                        ctx.lineTo(pixelX, pixelY);
+                    // 3. Add pacing spike (overwrites everything)
+                    const spike = pacerSpikeFn(pacerPos); // This is a negative value
+                    if (spike !== 0) {
+                        y_final_raw = spike;
                     }
+                    
+                    // 4. If captured, add the paced QRS and T wave
+                    else if (isCaptured) {
+                        const qrsStart = 3;
+                        const qrsDurPx = 0.14 * ecgSpeed;
+                        const tDurPx = 0.16 * ecgSpeed;
+                        const tEndPx = qrsStart + qrsDurPx + tDurPx;
+                        
+                        if (pacerPos >= qrsStart && pacerPos < tEndPx) {
+                            // We are inside the paced beat, overwrite underlying rhythm
+                            if (pacerPos < (qrsStart + qrsDurPx)) {
+                                const s = (pacerPos - qrsStart) / qrsDurPx;
+                                y_final_raw = wideQrsFn(s, 0.9);
+                            } else {
+                                const t = (pacerPos - (qrsStart + qrsDurPx)) / tDurPx;
+                                y_final_raw = tWaveFn(t, 0.25);
+                            }
+                        } else if (pacerPos >= tEndPx || pacerPos < qrsStart) {
+                             // Before spike (but not spike) or after T-wave, flatline
+                             if (spike === 0) { // Don't overwrite spike
+                                y_final_raw = 0;
+                             }
+                        }
+                    }
+                    // 5. If not captured, and not a spike, y_final_raw remains y_underlying_raw
                 }
                 
-                ctx.stroke();
+                const pixelX = Math.round(x);
+                const pixelY = Math.round(baselineY + y_final_raw);
+                yValues[x] = pixelY; // Store for sync pass
+
+                if (x === 0) {
+                    ctx.moveTo(pixelX, pixelY);
+                } else {
+                    ctx.lineTo(pixelX, pixelY);
+                }
             }
+            ctx.stroke(); // Draw the ECG trace
             
+            // --- NEW SYNC MARKER LOGIC ---
+            if (state.syncMode && (state.rhythm === 'vtach' || state.rhythm === 'svt' || state.rhythm === 'afib')) {
+                ctx.save();
+                ctx.fillStyle = '#FFFF00'; // Yellow
+                for (let x = 1; x < canvas.width - 1; x++) {
+                    let y = yValues[x];
+                    let prevY = yValues[x-1];
+                    let nextY = yValues[x+1];
+                    
+                    // R-wave peak is a local minimum (negative peak)
+                    if (y < prevY && y < nextY && y < (baselineY - 30)) { // 30px = 0.6mV
+                        const pixelX = Math.round(x);
+                        ctx.beginPath();
+                        ctx.moveTo(pixelX, 35);
+                        ctx.lineTo(pixelX - 4, 30);
+                        ctx.lineTo(pixelX + 4, 30);
+                        ctx.closePath();
+                        ctx.fill();
+                        x += 10; // Skip pixels to avoid multiple markers
+                    }
+                }
+                ctx.restore();
+            }
+
+            // --- END NEW LOGIC ---
+
             waveformX += pixelsToMove;
             animationId = requestAnimationFrame(animate);
         }
+        // *** END NEW ANIMATE FUNCTION ***
+
 
         function updateDisplays() {
             const scenario = scenarios[state.selectedScenario];
@@ -1958,9 +773,16 @@
                 displayHR = 0;
             }
             
+            // This logic correctly determines the *displayed* HR number
             if (state.pacingActive && state.pacerOutput > 0) {
-                const captureThreshold = scenario?.captureThreshold || 60; // Defaulting to 60
+                const captureThreshold = (scenario && scenario.requiresPacing) ? scenario.captureThreshold : 60;
                 if (state.pacerOutput >= captureThreshold) {
+                    displayHR = state.pacerRate;
+                } else if (state.rhythm === 'chb' || state.rhythm === 'brady' || state.rhythm === 'sinus_brady') {
+                    // Show underlying HR if not capturing
+                    displayHR = state.hr;
+                } else {
+                    // If pacing a non-brady rhythm (e.g. NSR), show pacer rate
                     displayHR = state.pacerRate;
                 }
             }
@@ -1985,7 +807,7 @@
             
             const hrEl = document.getElementById('hrDisplay');
             hrEl.className = 'vital-value';
-            if (displayHR === 0) {
+            if (displayHR === 0 || (state.hasPulse === false && !state.roscAchieved)) {
                 hrEl.classList.add('critical');
             }
             
@@ -2501,12 +1323,15 @@
             logAction('Rhythm analysed');
             
             setTimeout(() => {
-                if (!state.selectedScenario) {
-                    setMessage('ANALYSIS COMPLETE', 'ready');
-                    return;
-                }
+                let currentRhythm = state.rhythm;
+                let currentPulse = state.hasPulse;
 
-                if (state.rhythm === 'vfib' || (state.rhythm === 'vtach' && !state.hasPulse) || state.rhythm === 'vt_pulseless') {
+                if (state.selectedScenario) {
+                    const scenario = scenarios[state.selectedScenario];
+                    currentPulse = scenario.hasPulse || state.roscAchieved;
+                }
+                
+                if (currentRhythm === 'vfib' || (currentRhythm === 'vtach' && !currentPulse) || currentRhythm === 'vt_pulseless') {
                     setMessage('SHOCKABLE RHYTHM DETECTED', 'alert');
                     logAction('Analysis result', 'Shockable rhythm');
                 } else {
@@ -2527,20 +1352,25 @@
                 const dial = document.querySelector('.pacing-controls > div:first-child .pacer-dial');
                 if (dial) dial.style.setProperty('--dial-rotation', `${rotation}deg`);
                 
+                const captureThreshold = (scenario && scenario.requiresPacing) ? scenario.captureThreshold : 60;
+
                 if (scenario && state.scenarioActive && scenario.requiresPacing && 
-                    state.pacerOutput >= scenario.captureThreshold &&
+                    state.pacerOutput >= captureThreshold &&
                     state.deviceMode === 'pacer') {
                     
-                    setVitals(scenario.successRhythm);
-                    state.hr = scenario.successVitals.hr;
-                    state.spo2 = scenario.successVitals.spo2;
-                    state.etco2 = scenario.successVitals.etco2;
-                    state.bpSys = scenario.successVitals.bpSys;
-                    state.bpDia = scenario.successVitals.bpDia;
-                    state.pacingActive = true;
-                    
-                    setMessage(`CAPTURE ACHIEVED AT ${state.pacerOutput}mA`, 'ready');
-                    logAction('Pacing capture achieved', `Electrical and mechanical capture at ${state.pacerOutput}mA`);
+                    // Only log capture once
+                    const alreadyCaptured = state.actions.some(a => a.action.includes('capture'));
+                    if (!alreadyCaptured) {
+                        setVitals(scenario.successRhythm); // This will set vitals
+                        state.hr = scenario.successVitals.hr; // Ensure HR is set for display logic
+                        state.spo2 = scenario.successVitals.spo2;
+                        state.etco2 = scenario.successVitals.etco2;
+                        state.bpSys = scenario.successVitals.bpSys;
+                        state.bpDia = scenario.successVitals.bpDia;
+                        
+                        setMessage(`CAPTURE ACHIEVED AT ${state.pacerOutput}mA`, 'ready');
+                        logAction('Pacing capture achieved', `Electrical and mechanical capture at ${state.pacerOutput}mA`);
+                    }
                 }
                 
             } else if (param === 'rate') {
@@ -2599,6 +1429,8 @@
 
             if (scenario && state.scenarioActive) {
                 currentPulseState = scenario.hasPulse || state.roscAchieved;
+            } else {
+                currentPulseState = state.hasPulse;
             }
             
             logAction('Pulse check performed');
@@ -2775,6 +1607,30 @@
                 timeEl.textContent = now.toTimeString().split(' ')[0];
             }
         }, 1000);
+
+        // Make functions globally accessible
+        window.selectMode = selectMode;
+        window.backToModeSelect = backToModeSelect;
+        window.selectScenario = selectScenario;
+        window.endScenario = endScenario;
+        window.resetScenario = resetScenario;
+        window.tryAgain = tryAgain;
+        window.printCertificate = printCertificate;
+        window.backToSummary = backToSummary;
+        window.returnToMenu = returnToMenu;
+        window.setMode = setMode;
+        window.toggleSync = toggleSync;
+        window.adjustEnergy = adjustEnergy;
+        window.chargeDefib = chargeDefib;
+        window.deliverShock = deliverShock;
+        window.analyseRhythm = analyseRhythm;
+        window.adjustPacer = adjustPacer;
+        window.quickSetRhythm = quickSetRhythm;
+        window.toggleInstructorPanel = toggleInstructorPanel;
+        window.toggleArtefact = toggleArtefact;
+        window.checkPulse = checkPulse;
+        window.cycleMode = cycleMode;
+
 
         window.onload = function() {
             initCanvas();
