@@ -16,23 +16,23 @@ function qrsNarrow(s,rAmp=1.0,qAmp=0.15,sAmp=0.25){if(s<0.22){const t=s/0.22;ret
 function qrsWide(s,rAmp=0.9){return-PX_PER_MV*rAmp*Math.sin(s*Math.PI)}
 function tWave(s,amp=0.3){if(s<0.45){const t=s/0.45;return-PX_PER_MV*amp*Math.sin(t*Math.PI*0.6)}else{const t=(s-0.45)/0.55;return-PX_PER_MV*amp*(Math.cos(t*Math.PI)*0.8)}}
 function pacingSpike(pxPosInCycle){return pxPosInCycle<3?-PX_PER_MV*2.0:0}
-function sinusTemplate(x,hr,canvasHeight,tSeconds,opts={}){const baseline=canvasHeight/2;const bpm=hr>0?hr:75;const rrJitter=1+perlinLikeNoise(x,0.0008,0.02);const cyclePx=(60/bpm)*ECG_SPEED*rrJitter;const pos=x%cyclePx;const s=pos/cyclePx;let y=0;const pDur=0.08*ECG_SPEED/cyclePx;const prEnd=pDur+0.10*ECG_SPEED/cyclePx;const qrsDur=0.09*ECG_SPEED/cyclePx;const qrsStart=prEnd;const qrsEnd=qrsStart+qrsDur;const tEnd=qrsEnd+0.16*ECG_SPEED/cyclePx;if(s<pDur){y+=pWave(s/pDur,opts.pAmp??0.1)}else if(s<prEnd){}else if(s<qrsEnd){const qrsPhase=(s-qrsStart)/(qrsDur);y+=qrsNarrow(qrsPhase,opts.rAmp??1.0,opts.qAmp??0.15,opts.sAmp??0.25)}else if(s<tEnd){const tPhase=(s-qrsEnd)/(tEnd-qrsEnd);y+=tWave(tPhase,opts.tAmp??0.3)}
-y*=1+perlinLikeNoise(x,0.002,0.05);return baseline+y}
+function sinusTemplate(x,hr,canvasHeight,tSeconds,opts={}){const baseline=canvasHeight/2;const bpm=hr>0?hr:75;const cyclePx=(60/bpm)*ECG_SPEED;const pos=x%cyclePx;const s=pos/cyclePx;let y=0;const pDur=0.08*ECG_SPEED/cyclePx;const prEnd=pDur+0.10*ECG_SPEED/cyclePx;const qrsDur=0.09*ECG_SPEED/cyclePx;const qrsStart=prEnd;const qrsEnd=qrsStart+qrsDur;const tEnd=qrsEnd+0.16*ECG_SPEED/cyclePx;if(s<pDur){y+=pWave(s/pDur,opts.pAmp??0.1)}else if(s<prEnd){}else if(s<qrsEnd){const qrsPhase=(s-qrsStart)/(qrsDur);y+=qrsNarrow(qrsPhase,opts.rAmp??1.0,opts.qAmp??0.15,opts.sAmp??0.25)}else if(s<tEnd){const tPhase=(s-qrsEnd)/(tEnd-qrsEnd);y+=tWave(tPhase,opts.tAmp??0.3)}
+return baseline+y}
 function nsr(x,hr,tSeconds,canvas){return sinusTemplate(x,hr||75,canvas.height,tSeconds,{})}
 function sinusBrady(x,hr,tSeconds,canvas){return sinusTemplate(x,hr||45,canvas.height,tSeconds,{rAmp:0.9,tAmp:0.25})}
 function sinusTach(x,hr,tSeconds,canvas){return sinusTemplate(x,hr||120,canvas.height,tSeconds,{rAmp:1.1,tAmp:0.35})}
 function svt(x,hr,tSeconds,canvas){const baseline=canvas.height/2;const bpm=hr>0?hr:190;const cyclePx=(60/bpm)*ECG_SPEED;const pos=x%cyclePx;const s=pos/cyclePx;let y=0;const prShort=0.06*ECG_SPEED/cyclePx;const qrsDur=0.08*ECG_SPEED/cyclePx;const qrsStart=prShort;const qrsEnd=qrsStart+qrsDur;const tEnd=qrsEnd+0.14*ECG_SPEED/cyclePx;if(s<prShort){y+=pWave(s/prShort,0.05)}else if(s<qrsEnd){y+=qrsNarrow((s-qrsStart)/qrsDur,0.95,0.1,0.2)}else if(s<tEnd){y+=tWave((s-qrsEnd)/(tEnd-qrsEnd),0.25)}
-y*=1+perlinLikeNoise(x,0.0025,0.05);return baseline+y}
-function afib(x,hr,tSeconds,canvas){const baseline=canvas.height/2;const baseHr=hr>0?hr:140;const rrVar=1+perlinLikeNoise(x+tSeconds*30,0.0007,0.35);const bpm=clamp(baseHr*rrVar,80,190);const cyclePx=(60/bpm)*ECG_SPEED;const pos=x%cyclePx;const s=pos/cyclePx;let y=0;const qrsDur=0.09*ECG_SPEED/cyclePx;const qrsEnd=qrsDur;if(s<qrsEnd){const beatAmp=0.9+perlinLikeNoise(x,0.0005,0.15);y+=qrsNarrow(s/qrsDur,beatAmp,0.05,0.15)}
-const fBase=Math.sin((x*0.31)+tSeconds*7.1)*(PX_PER_MM*1.0)+Math.sin((x*0.52)+tSeconds*9.3)*(PX_PER_MM*0.8)+Math.sin((x*0.73)+tSeconds*11.7)*(PX_PER_MM*0.7)+Math.sin((x*1.14)+tSeconds*14.2)*(PX_PER_MM*0.5)+perlinLikeNoise(x+tSeconds*40,0.03,PX_PER_MM*0.8);return baseline+y+fBase*1.0}
-function vtach(x,hr,tSeconds,canvas){const baseline=canvas.height/2;const bpm=hr>0?hr:180;const ampMod=1+perlinLikeNoise(x+tSeconds*40,0.0012,0.15);const cyclePx=(60/bpm)*ECG_SPEED;const pos=x%cyclePx;const s=pos/cyclePx;let y=0;const qrsDur=0.14*ECG_SPEED/cyclePx;if(s<qrsDur){y+=qrsWide(s/qrsDur,0.9*ampMod)}else{y+=perlinLikeNoise(x,0.01,PX_PER_MM*0.6)}
+return baseline+y}
+function afib(x,hr,tSeconds,canvas){const baseline=canvas.height/2;const baseHr=hr>0?hr:140;const rrVar=1+perlinLikeNoise(x+tSeconds*30,0.0007,0.35);const bpm=clamp(baseHr*rrVar,80,190);const cyclePx=(60/bpm)*ECG_SPEED;const pos=x%cyclePx;const s=pos/cyclePx;let y=0;const qrsDur=0.09*ECG_SPEED/cyclePx;const qrsEnd=qrsDur;if(s<qrsEnd){const beatAmp=0.9;y+=qrsNarrow(s/qrsDur,beatAmp,0.05,0.15)}
+const fBase=Math.sin((x*0.31)+tSeconds*7.1)*(PX_PER_MM*1.0)+Math.sin((x*0.52)+tSeconds*9.3)*(PX_PER_MM*0.8)+Math.sin((x*0.73)+tSeconds*11.7)*(PX_PER_MM*0.7)+Math.sin((x*1.14)+tSeconds*14.2)*(PX_PER_MM*0.5);return baseline+y+fBase*1.0}
+function vtach(x,hr,tSeconds,canvas){const baseline=canvas.height/2;const bpm=hr>0?hr:180;const cyclePx=(60/bpm)*ECG_SPEED;const pos=x%cyclePx;const s=pos/cyclePx;let y=0;const qrsDur=0.14*ECG_SPEED/cyclePx;if(s<qrsDur){y+=qrsWide(s/qrsDur,0.9)}
 return baseline+y}
 function idioventricular(x,hr,tSeconds,canvas){const baseline=canvas.height/2;const bpm=hr>0?hr:38;const cyclePx=(60/bpm)*ECG_SPEED;const pos=x%cyclePx;const s=pos/cyclePx;let y=0;const qrsDur=0.16*ECG_SPEED/cyclePx;if(s<qrsDur){y+=qrsWide(s/qrsDur,0.8)}
-y+=perlinLikeNoise(x,0.006,PX_PER_MM*0.5);return baseline+y}
+return baseline+y}
 function vfib(x,_hr,tSeconds,canvas){const baseline=canvas.height/2;const coarse=PX_PER_MV*0.9;const fine=PX_PER_MV*0.25;const k=clamp(tSeconds/120,0,1);const amp=lerp(coarse,fine,k);const y=Math.sin(x*0.22+tSeconds*1.1)*(amp*0.6)+Math.sin(x*0.33+tSeconds*1.5)*(amp*0.45)+Math.sin(x*0.55+tSeconds*0.9)*(amp*0.35)+Math.sin(x*0.88+tSeconds*1.7)*(amp*0.25)+Math.sin(x*1.40+tSeconds*2.2)*(amp*0.15)+perlinLikeNoise(x+tSeconds*30,0.02,amp*0.15);return baseline+y}
 function chb(x,hr,tSeconds,canvas){const baseline=canvas.height/2;const vBpm=hr>0?hr:32;const pBpm=80;const vCycle=(60/vBpm)*ECG_SPEED;const pCycle=(60/pBpm)*ECG_SPEED;const vPos=x%vCycle;const pPos=x%pCycle;let y=0;const pDurPx=0.08*ECG_SPEED;if(pPos<pDurPx){y+=pWave(pPos/pDurPx,0.12)}
 const qrsDurPx=0.16*ECG_SPEED;if(vPos<qrsDurPx){y+=qrsWide(vPos/qrsDurPx,0.85)}
-y*=1+perlinLikeNoise(x,0.001,0.03);return baseline+y}
+return baseline+y}
 function paced(x,hr,tSeconds,canvas){const baseline=canvas.height/2;const bpm=hr>0?hr:70;const cyclePx=(60/bpm)*ECG_SPEED;const pos=x%cyclePx;let y=0;y+=pacingSpike(pos);const qrsStart=3;const qrsDurPx=0.14*ECG_SPEED;if(pos>=qrsStart&&pos<(qrsStart+qrsDurPx)){const s=(pos-qrsStart)/qrsDurPx;y+=qrsWide(s,0.9)}else if(pos>=(qrsStart+qrsDurPx)&&pos<(qrsStart+qrsDurPx+0.16*ECG_SPEED)){const t=(pos-(qrsStart+qrsDurPx))/(0.16*ECG_SPEED);y+=tWave(t,0.25)}
 return baseline+y}
 function brady(x,hr,tSeconds,canvas){return sinusTemplate(x,hr||38,canvas.height,tSeconds,{rAmp:0.9,tAmp:0.25})}
@@ -44,7 +44,7 @@ for(let y=0;y<=h;y+=PX_PER_BIG){ctx.moveTo(0,y+0.5);ctx.lineTo(w,y+0.5)}
 ctx.stroke();ctx.restore()}
 function drawCalibrationPulse(ctx){const startX=12;const startY=Math.floor(ctx.canvas.height*0.75);const height=PX_PER_MV;const width=PX_PER_BIG;ctx.save();ctx.strokeStyle='#0f0';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(startX,startY);ctx.lineTo(startX,startY-height);ctx.lineTo(startX+width,startY-height);ctx.lineTo(startX+width,startY);ctx.stroke();ctx.restore()}
 function withArtefacts(fn){return function(x,hr,tSeconds){const canvas=window.__ecgCanvas||document.getElementById('ecgCanvas');let y=fn(x,hr,tSeconds);const st=window.state||{};const flags=(st.noise||{});if(flags.movement)y+=movementArtefact(x,tSeconds);if(flags.leadoff)y+=leadoffArtefact(tSeconds);if(flags.cpr)y+=cprArtefact(x,tSeconds);return y}}
-const wrapped={};Object.keys(rhythms).forEach(k=>wrapped[k]=withArtefacts(rhythms[k]));window.rhythms=wrapped;window.drawECGGrid=drawECGGrid;window.drawCalibrationPulse=drawCalibrationPulse;window.__setECGSpeed=setSpeed;})();
+const wrapped={};Object.keys(rhythms).forEach(k=>wrapped[k]=withArtefacts(rhythms[k]));window.rhythms=wrapped;window.drawECGGrid=drawECGGrid;window.drawCalibrationPulse=drawCalibrationPulse;window.__setECGSpeed=setSpeed;window.pacingSpike=pacingSpike;window.qrsWide=qrsWide;window.tWave=tWave;})();
     </script>
     <style>
 *{margin:0;padding:0;box-sizing:border-box}body{font-family:Arial,sans-serif;background:#2a2a2a;padding:20px;min-height:100vh}.quick-rhythm-panel{background:linear-gradient(135deg,#2c3e50 0%,#34495e 100%);border-radius:10px;padding:20px;margin:0 auto 20px auto;max-width:1600px;border:3px solid #1a252f}.quick-rhythm-panel h4{color:#3498db;font-size:14px;margin-bottom:15px;text-transform:uppercase;text-align:center}.menu-wrapper{display:flex;justify-content:center;align-items:center}.menu-screen{display:none;flex-direction:column;align-items:center;justify-content:center;background:linear-gradient(135deg,#2c3e50 0%,#34495e 100%);border-radius:15px;padding:60px;max-width:800px;box-shadow:0 20px 60px rgba(0,0,0,0.5)}#modeSelectScreen{padding:30px;max-width:1600px;margin:0 auto 20px auto;border-radius:10px}#modeSelectScreen .menu-title{margin-bottom:30px}#modeSelectScreen .menu-option{padding:25px 20px;font-size:20px}.menu-logo{margin-bottom:30px}.menu-logo img{height:80px;background:white;padding:15px 25px;border-radius:10px}.menu-title{text-align:center;margin-bottom:50px}.menu-title h1{color:#ecf0f1;font-size:36px;margin-bottom:15px}.menu-title p{color:#bdc3c7;font-size:18px}.menu-options{display:grid;grid-template-columns:1fr 1fr;gap:30px;width:100%}.menu-option{background:linear-gradient(180deg,#3498db 0%,#2874a6 100%);color:white;border:none;padding:50px 40px;border-radius:15px;font-size:24px;font-weight:bold;cursor:pointer;transition:all 0.3s;box-shadow:0 10px 25px rgba(0,0,0,0.3);text-align:center}.menu-option:hover{transform:translateY(-5px);box-shadow:0 15px 35px rgba(0,0,0,0.4)}.menu-option.single-column{grid-column:1 / -1}.menu-option .subtitle{font-size:14px;margin-top:10px;opacity:0.9;font-weight:normal}.simulator-container{max-width:1600px;width:100%;margin:0 auto}.back-button{background:#e74c3c;color:white;border:none;padding:15px 30px;border-radius:8px;font-size:16px;font-weight:bold;cursor:pointer;margin-bottom:20px;display:inline-flex;align-items:center;gap:10px;box-shadow:0 4px 10px rgba(0,0,0,0.3)}.back-button:hover{background:#c0392b}.reset-button{background:#3498db;margin-left:10px}.reset-button:hover{background:#2980b9}.instructor-panel{background:linear-gradient(135deg,#2c3e50 0%,#34495e 100%);border-radius:10px;padding:25px;margin-bottom:20px;border:3px solid #1a252f;transition:all 0.3s ease}.instructor-panel.minimised{padding:12px 18px}.instructor-panel.minimised .control-grid{display:none !important}.minimise-btn{background:#34495e;color:#ecf0f1;border:2px solid #2c3e50;padding:8px 16px;border-radius:6px;font-size:12px;cursor:pointer;transition:all 0.3s}.minimise-btn:hover{background:#3a4f5e}.instructor-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:15px}.instructor-logo{display:flex;align-items:center;gap:15px}.instructor-logo img{height:40px;background:white;padding:6px;border-radius:8px}.instructor-title h2{color:#ecf0f1;font-size:18px}.instructor-title p{color:#bdc3c7;font-size:12px;margin-top:4px}.control-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:15px;margin-top:10px}.control-section{background:#2c3e50;padding:15px;border-radius:8px}.control-section h4{color:#3498db;font-size:13px;margin-bottom:10px;text-transform:uppercase}.control-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;padding:8px;background:#34495e;border-radius:6px}.control-row label{color:#ecf0f1;font-size:12px;font-weight:bold;display:flex;align-items:center;gap:6px}.control-row input,.control-row select{width:100px;padding:6px;border-radius:4px;border:1px solid #2c3e50;background:#2c3e50;color:#00ff00;font-weight:bold}.rhythm-buttons{display:grid;grid-template-columns:repeat(auto-fit,minmax(80px,1fr));gap:6px}.rhythm-btn{background:#34495e;color:#ecf0f1;border:2px solid #2c3e50;padding:8px;border-radius:6px;font-size:11px;cursor:pointer;transition:all 0.2s}.rhythm-btn.active{background:#2980b9;border-color:#1f5f8b}.zoll-device{background:#c8d0d8;border:20px solid #2b7bbf;border-radius:25px;padding:30px;box-shadow:0 20px 60px rgba(0,0,0,0.5);position:relative;display:grid;grid-template-columns:1.2fr 0.8fr;gap:20px;max-width:1400px;margin:0 auto}.zoll-top-logo{position:absolute;top:25px;right:30px;height:40px;background:white;padding:6px;border-radius:8px;z-index:10}.device-screen-section{background:#a8b0b8;padding:25px;border-radius:15px;box-shadow:inset 0 4px 10px rgba(0,0,0,0.2)}.screen{background:#000;border-radius:10px;padding:15px;margin-bottom:15px;box-shadow:inset 0 0 20px rgba(0,0,0,0.8);position:relative}.screen-header{display:flex;justify-content:space-between;padding:8px;background:rgba(0,0,0,0.6);border-radius:5px;margin-bottom:10px}.screen-info{color:#00ffff;font-size:13px;font-family:'Courier New',monospace;text-shadow:0 0 5px rgba(0,255,255,0.5)}.screen-info.sync-indicator{color:#ffff00;font-weight:bold;animation:blink 1s infinite}.ecg-canvas-container{background:#000;height:300px;border-radius:8px;position:relative;overflow:hidden;margin-bottom:15px}canvas{width:100%;height:100%}.vitals-display{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:15px;background:rgba(0,0,0,0.6);border-radius:8px}.vital-item{text-align:center}.vital-label{color:#888;font-size:10px;margin-bottom:5px}.vital-value{color:#00ff00;font-size:36px;font-weight:bold;font-family:'Courier New',monospace;text-shadow:0 0 10px rgba(0,255,0,0.6)}.vital-value.critical{color:#ff0000;animation:blink 1s infinite}.vital-unit{color:#888;font-size:11px;margin-top:3px}@keyframes blink{0%,50%{opacity:1}51%,100%{opacity:0.3}}.message-bar{background:rgba(0,0,0,0.8);color:#ffff00;padding:12px;text-align:center;border-radius:6px;font-family:'Courier New',monospace;font-size:14px;font-weight:bold;margin-top:10px;text-shadow:0 0 5px rgba(255,255,0,0.5)}.message-bar.ready{color:#00ff00;text-shadow:0 0 5px rgba(0,255,0,0.5)}.message-bar.alert{color:#ff0000;animation:blink 1s infinite;text-shadow:0 0 5px rgba(255,0,0,0.5)}.softkeys{display:flex;gap:10px;margin-top:15px}.softkey{flex:1;background:#7a8288;color:#fff;border:2px solid #6a7278;padding:12px;border-radius:6px;font-size:11px;cursor:pointer;text-align:center;font-weight:bold}.softkey:hover{background:#8a9298}.softkey.active{background:#27ae60}.device-controls-section{display:flex;flex-direction:column;gap:15px}.top-buttons{display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:start}.btn-teal{background:#17a2b8;color:white;border:3px solid #138496;padding:15px 20px;border-radius:8px;font-size:13px;font-weight:bold;cursor:pointer;box-shadow:0 4px 8px rgba(0,0,0,0.3)}.btn-sync{background:#f39c12;color:white;border:3px solid #d68910;padding:15px 20px;border-radius:8px;font-size:13px;font-weight:bold;cursor:pointer;box-shadow:0 4px 8px rgba(0,0,0,0.3);transition:all 0.3s}.btn-sync.active{background:#e67e22;box-shadow:0 0 15px rgba(230,126,34,0.7)}.btn-shock{background:linear-gradient(135deg,#ff6347 0%,#ff4520 100%);color:white;border:5px solid #cc4f39;width:120px;height:120px;border-radius:50%;font-size:20px;font-weight:bold;cursor:pointer;box-shadow:0 6px 12px rgba(0,0,0,0.4);display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;overflow:hidden}.btn-shock::before{content:'⚡';position:absolute;font-size:80px;opacity:0.15;color:#fff;z-index:0}.btn-shock span{position:relative;z-index:1}.btn-shock:disabled{opacity:0.5;cursor:not-allowed}.btn-shock .number{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);font-size:18px;color:#fff}.side-buttons{display:grid;grid-template-columns:1fr 1fr;gap:10px}.side-btn{background:#7a8288;color:#fff;border:3px solid #6a7278;padding:12px;border-radius:8px;font-size:12px;font-weight:bold;cursor:pointer;box-shadow:0 3px 6px rgba(0,0,0,0.3)}.side-btn:hover{background:#8a9298}.action-buttons-group{display:flex;flex-direction:column;gap:10px}.btn-analyze,.btn-charge{background:linear-gradient(180deg,#ff9933 0%,#ff7700 100%);color:#000;border:4px solid #cc6600;padding:16px;border-radius:10px;font-size:15px;font-weight:bold;cursor:pointer;box-shadow:0 4px 8px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:space-between}.btn-number{background:#fff;color:#ff7700;width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:bold}.energy-selector{background:linear-gradient(180deg,#dc3545 0%,#c82333 100%);color:#fff;border:4px solid #a71d2a;padding:16px;border-radius:10px;cursor:pointer;box-shadow:0 4px 8px rgba(0,0,0,0.3);display:flex;flex-direction:column;align-items:center;gap:8px}.energy-display{font-size:32px;font-weight:bold;text-shadow:0 2px 4px rgba(0,0,0,0.3)}.energy-arrows{display:flex;gap:15px}.energy-arrow{background:#fff;color:#dc3545;width:40px;height:40px;border-radius:50%;border:none;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center}.mode-dial-container{text-align:center;padding:15px;background:#a8b0b8;border-radius:12px}.mode-dial{width:150px;height:150px;background:radial-gradient(circle,#2a2a2a 0%,#1a1a1a 100%);border:6px solid #0a0a0a;border-radius:50%;margin:0 auto 15px;position:relative;cursor:pointer;box-shadow:0 6px 12px rgba(0,0,0,0.5)}.mode-dial::before{content:'';position:absolute;width:8px;height:60px;background:#fff;top:20px;left:50%;transform:translateX(-50%) rotate(var(--dial-rotation,0deg));transform-origin:center bottom;border-radius:4px}.mode-labels{display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:11px;font-weight:bold;color:#2a2a2a}.mode-label{padding:12px 16px;border-radius:8px;cursor:pointer;background:#34495e;color:#ecf0f1;border:3px solid #2c3e50;font-weight:bold;transition:all 0.3s;text-transform:uppercase;font-size:13px}.mode-label:hover{background:#3a4f5e;transform:translateY(-2px)}.mode-label.active{background:linear-gradient(180deg,#3498db 0%,#2874a6 100%);color:white;border-color:#1f5f8b;box-shadow:0 0 15px rgba(52,152,219,0.5)}.pacing-controls{display:grid;grid-template-columns:1fr 1fr;gap:12px}.pacer-dial{background:#2a2a2a;border:5px solid #0a0a0a;border-radius:50%;width:100px;height:100px;margin:0 auto;position:relative;cursor:pointer;box-shadow:0 4px 8px rgba(0,0,0,0.5)}.pacer-dial::before{content:'';position:absolute;width:4px;height:35px;background:#17a2b8;top:15px;left:50%;transform:translateX(-50%) rotate(var(--dial-rotation,0deg));transform-origin:center 35px;border-radius:2px;transition:transform 0.3s ease}.pacer-label{text-align:center;color:#2a2a2a;font-size:11px;font-weight:bold;margin-top:8px}.pacer-value{text-align:center;color:#17a2b8;font-size:20px;font-weight:bold;margin-top:4px}.pacer-controls-btn{display:flex;gap:5px;justify-content:center;margin-top:8px}.pacer-btn{background:#7a8288;color:#fff;border:2px solid #6a7278;width:35px;height:35px;border-radius:5px;font-size:18px;cursor:pointer}.zoll-branding{background:linear-gradient(180deg,#e8eef3 0%,#d8dee3 100%);padding:20px;border-radius:0 0 15px 15px;margin:-30px -30px 0 -30px;text-align:center;box-shadow:0 -4px 10px rgba(0,0,0,0.1)}.zoll-logo-text{font-size:48px;font-weight:bold;color:#9a9a9a;letter-spacing:8px;text-shadow:2px 2px 4px rgba(0,0,0,0.1)}@media (max-width:1200px){.zoll-device{grid-template-columns:1fr}}@media print{body{background:white;padding:0}.menu-wrapper{min-height:0}.menu-screen{display:block !important;box-shadow:none;padding:0;background:white}.menu-option{display:none !important}#certificateContent{box-shadow:none}}
@@ -52,12 +52,12 @@ const wrapped={};Object.keys(rhythms).forEach(k=>wrapped[k]=withArtefacts(rhythm
 </head>
 <body>
     <div class="menu-screen" id="modeSelectScreen" style="display: block;">
-        <div class="menu-logo">
-            <img src="https://iili.io/KGQOvkl.md.png" alt="WMEBEM Logo">
-        </div>
-        <div class="menu-title">
-            <h1>ZOLL R Series Simulator</h1>
-            <p>Select a Scenario Mode</p>
+        <div style="display: flex; align-items: center; justify-content: center; gap: 20px; margin-bottom: 30px;">
+            <img src="https://iili.io/KGQOvkl.md.png" alt="WMEBEM Logo" style="height: 60px; background: white; padding: 10px; border-radius: 10px;">
+            <div class="menu-title" style="margin-bottom: 0; text-align: left;">
+                <h1 style="margin-bottom: 5px; font-size: 32px;">ZOLL R Series Simulator</h1>
+                <p>Select a Scenario Mode</p>
+            </div>
         </div>
         <div class="menu-options">
             <button class="menu-option" onclick="selectMode('education')">
@@ -92,12 +92,12 @@ const wrapped={};Object.keys(rhythms).forEach(k=>wrapped[k]=withArtefacts(rhythm
     <div class="menu-wrapper" id="menuWrapper" style="display: none;">
         
         <div class="menu-screen" id="scenarioScreen" style="display: none;">
-            <div class="menu-logo">
-                <img src="https://iili.io/KGQOvkl.md.png" alt="WMEBEM Logo">
-            </div>
-            <div class="menu-title">
-                <h1 id="modeTitle">Education Mode</h1>
-                <p>Select a clinical scenario</p>
+            <div style="display: flex; align-items: center; justify-content: center; gap: 20px; margin-bottom: 30px;">
+                <img src="https://iili.io/KGQOvkl.md.png" alt="WMEBEM Logo" style="height: 60px; background: white; padding: 10px; border-radius: 10px;">
+                <div class="menu-title" style="margin-bottom: 0; text-align: left;">
+                    <h1 id="modeTitle" style="margin-bottom: 5px; font-size: 32px;">Education Mode</h1>
+                    <p>Select a clinical scenario</p>
+                </div>
             </div>
             <div style="max-width: 900px; display: grid; gap: 15px; width: 100%;">
                 <div style="background: #2c3e50; padding: 20px; border-radius: 10px;">
@@ -151,12 +151,12 @@ const wrapped={};Object.keys(rhythms).forEach(k=>wrapped[k]=withArtefacts(rhythm
             </button>
         </div>
         <div class="menu-screen" id="summaryScreen" style="display: none;">
-            <div class="menu-logo">
-                <img src="https://iili.io/KGQOvkl.md.png" alt="WMEBEM Logo">
-            </div>
-            <div class="menu-title">
-                <h1>Scenario Complete</h1>
-                <p>Defibrillator Performance Summary</p>
+            <div style="display: flex; align-items: center; justify-content: center; gap: 20px; margin-bottom: 30px;">
+                <img src="https://iili.io/KGQOvkl.md.png" alt="WMEBEM Logo" style="height: 60px; background: white; padding: 10px; border-radius: 10px;">
+                <div class="menu-title" style="margin-bottom: 0; text-align: left;">
+                    <h1 style="margin-bottom: 5px; font-size: 32px;">Scenario Complete</h1>
+                    <p>Defibrillator Performance Summary</p>
+                </div>
             </div>
             <div style="max-width: 1000px; width: 100%; display: grid; gap: 20px;">
                 <div style="background: #2c3e50; padding: 25px; border-radius: 10px;">
@@ -618,7 +618,8 @@ const wrapped={};Object.keys(rhythms).forEach(k=>wrapped[k]=withArtefacts(rhythm
             asystole:        { hr: 0,   spo2: 0,  etco2: 0,   bpSys: 0,   bpDia: 0,  hasPulse: false },
             chb:             { hr: 32,  spo2: 92, etco2: 4.0, bpSys: 86,  bpDia: 50, hasPulse: true },
             paced:           { hr: 70,  spo2: 97, etco2: 4.8, bpSys: 115, bpDia: 72, hasPulse: true },
-            idioventricular: { hr: 40,  spo2: 93, etco2: 4.3, bpSys: 88,  bpDia: 50, hasPulse: true }
+            idioventricular: { hr: 40,  spo2: 93, etco2: 4.3, bpSys: 88,  bpDia: 50, hasPulse: true },
+            brady:           { hr: 38,  spo2: 93, etco2: 4.1, bpSys: 84,  bpDia: 52, hasPulse: true }
         };
 
         function setVitals(rhythm) {
@@ -632,7 +633,7 @@ const wrapped={};Object.keys(rhythms).forEach(k=>wrapped[k]=withArtefacts(rhythm
             state.hasPulse = vitals.hasPulse;
         }
 
-        // *** NEW ANIMATE FUNCTION ***
+        // *** MODIFIED ANIMATE FUNCTION ***
         function animate(timestamp) {
             if (!canvas || !ctx) return;
             
@@ -654,16 +655,18 @@ const wrapped={};Object.keys(rhythms).forEach(k=>wrapped[k]=withArtefacts(rhythm
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
             }
             
-            // --- NEW PACING & RHYTHM LOGIC ---
-            
             const underlyingRhythmFunc = window.rhythms[state.rhythm];
             const scenario = scenarios[state.selectedScenario];
-            const captureThreshold = (scenario && scenario.requiresPacing) ? scenario.captureThreshold : 60;
+            
+            let captureThreshold = 60; // Default for quick mode
+            if (scenario && state.scenarioActive && scenario.requiresPacing) {
+                captureThreshold = scenario.captureThreshold;
+            }
+
             const isCaptured = state.pacerOutput >= captureThreshold;
             const displayHR = state.hr; // Underlying HR
             const baselineY = canvas.height / 2;
 
-            // Get component functions from rhythm engine
             const pacerSpikeFn = window.pacingSpike;
             const wideQrsFn = window.qrsWide;
             const tWaveFn = window.tWave;
@@ -674,28 +677,24 @@ const wrapped={};Object.keys(rhythms).forEach(k=>wrapped[k]=withArtefacts(rhythm
             ctx.shadowColor = 'transparent';
             ctx.beginPath();
 
-            let yValues = []; // Store Y values for sync marker pass
+            let yValues = [];
+            let lastMarkerX = -100; // Cooldown for sync markers
 
             for (let x = 0; x < canvas.width; x++) {
                 const currentX = waveformX + x;
                 
-                // 1. Get underlying rhythm Y value (relative to baseline)
                 let y_underlying_raw = underlyingRhythmFunc(currentX, displayHR, simTimeSeconds) - baselineY;
-                let y_final_raw = y_underlying_raw; // Start with underlying rhythm
+                let y_final_raw = y_underlying_raw;
 
-                // 2. Check if pacing is active
                 if (state.pacingActive && state.pacerOutput > 0) {
                     const pacerBpm = state.pacerRate;
                     const pacerCyclePx = (60 / pacerBpm) * ecgSpeed;
                     const pacerPos = currentX % pacerCyclePx;
                     
-                    // 3. Add pacing spike (overwrites everything)
-                    const spike = pacerSpikeFn(pacerPos); // This is a negative value
+                    const spike = pacerSpikeFn(pacerPos);
                     if (spike !== 0) {
                         y_final_raw = spike;
                     }
-                    
-                    // 4. If captured, add the paced QRS and T wave
                     else if (isCaptured) {
                         const qrsStart = 3;
                         const qrsDurPx = 0.14 * ecgSpeed;
@@ -703,7 +702,6 @@ const wrapped={};Object.keys(rhythms).forEach(k=>wrapped[k]=withArtefacts(rhythm
                         const tEndPx = qrsStart + qrsDurPx + tDurPx;
                         
                         if (pacerPos >= qrsStart && pacerPos < tEndPx) {
-                            // We are inside the paced beat, overwrite underlying rhythm
                             if (pacerPos < (qrsStart + qrsDurPx)) {
                                 const s = (pacerPos - qrsStart) / qrsDurPx;
                                 y_final_raw = wideQrsFn(s, 0.9);
@@ -712,18 +710,16 @@ const wrapped={};Object.keys(rhythms).forEach(k=>wrapped[k]=withArtefacts(rhythm
                                 y_final_raw = tWaveFn(t, 0.25);
                             }
                         } else if (pacerPos >= tEndPx || pacerPos < qrsStart) {
-                             // Before spike (but not spike) or after T-wave, flatline
-                             if (spike === 0) { // Don't overwrite spike
+                             if (spike === 0) {
                                 y_final_raw = 0;
                              }
                         }
                     }
-                    // 5. If not captured, and not a spike, y_final_raw remains y_underlying_raw
                 }
                 
                 const pixelX = Math.round(x);
                 const pixelY = Math.round(baselineY + y_final_raw);
-                yValues[x] = pixelY; // Store for sync pass
+                yValues[x] = pixelY; 
 
                 if (x === 0) {
                     ctx.moveTo(pixelX, pixelY);
@@ -731,9 +727,9 @@ const wrapped={};Object.keys(rhythms).forEach(k=>wrapped[k]=withArtefacts(rhythm
                     ctx.lineTo(pixelX, pixelY);
                 }
             }
-            ctx.stroke(); // Draw the ECG trace
+            ctx.stroke(); 
             
-            // --- NEW SYNC MARKER LOGIC ---
+            // --- MODIFIED SYNC MARKER LOGIC ---
             if (state.syncMode && (state.rhythm === 'vtach' || state.rhythm === 'svt' || state.rhythm === 'afib')) {
                 ctx.save();
                 ctx.fillStyle = '#FFFF00'; // Yellow
@@ -742,27 +738,27 @@ const wrapped={};Object.keys(rhythms).forEach(k=>wrapped[k]=withArtefacts(rhythm
                     let prevY = yValues[x-1];
                     let nextY = yValues[x+1];
                     
-                    // R-wave peak is a local minimum (negative peak)
-                    if (y < prevY && y < nextY && y < (baselineY - 30)) { // 30px = 0.6mV
+                    if (y < prevY && y < nextY && y < (baselineY - 20)) { // Less strict threshold
                         const pixelX = Math.round(x);
-                        ctx.beginPath();
-                        ctx.moveTo(pixelX, 35);
-                        ctx.lineTo(pixelX - 4, 30);
-                        ctx.lineTo(pixelX + 4, 30);
-                        ctx.closePath();
-                        ctx.fill();
-                        x += 10; // Skip pixels to avoid multiple markers
+                        if (pixelX - lastMarkerX > 50) { // Cooldown of 50px (200ms)
+                            ctx.beginPath();
+                            ctx.moveTo(pixelX, 35);
+                            ctx.lineTo(pixelX - 4, 30);
+                            ctx.lineTo(pixelX + 4, 30);
+                            ctx.closePath();
+                            ctx.fill();
+                            lastMarkerX = pixelX;
+                        }
                     }
                 }
                 ctx.restore();
             }
-
-            // --- END NEW LOGIC ---
+            // --- END MODIFIED LOGIC ---
 
             waveformX += pixelsToMove;
             animationId = requestAnimationFrame(animate);
         }
-        // *** END NEW ANIMATE FUNCTION ***
+        // *** END MODIFIED ANIMATE FUNCTION ***
 
 
         function updateDisplays() {
@@ -771,21 +767,21 @@ const wrapped={};Object.keys(rhythms).forEach(k=>wrapped[k]=withArtefacts(rhythm
             
             if (scenario && state.scenarioActive && !scenario.hasPulse && !state.roscAchieved) {
                 displayHR = 0;
+            } else if (!state.hasPulse && !state.roscAchieved) {
+                displayHR = 0;
             }
             
-            // This logic correctly determines the *displayed* HR number
-            if (state.pacingActive && state.pacerOutput > 0) {
-                const captureThreshold = (scenario && scenario.requiresPacing) ? scenario.captureThreshold : 60;
-                if (state.pacerOutput >= captureThreshold) {
-                    displayHR = state.pacerRate;
-                } else if (state.rhythm === 'chb' || state.rhythm === 'brady' || state.rhythm === 'sinus_brady') {
-                    // Show underlying HR if not capturing
-                    displayHR = state.hr;
-                } else {
-                    // If pacing a non-brady rhythm (e.g. NSR), show pacer rate
-                    displayHR = state.pacerRate;
-                }
+            let captureThreshold = 60; // Default for quick mode
+            if (scenario && state.scenarioActive && scenario.requiresPacing) {
+                captureThreshold = scenario.captureThreshold;
             }
+
+            if (state.pacingActive && state.pacerOutput >= captureThreshold && (state.rhythm === 'chb' || state.rhythm === 'brady' || state.rhythm === 'sinus_brady')) {
+                 displayHR = state.pacerRate;
+            } else if (state.pacingActive && state.pacerOutput >= captureThreshold && scenario && scenario.requiresPacing) {
+                 displayHR = state.pacerRate;
+            }
+            
             
             document.getElementById('hrDisplay').textContent = displayHR;
             document.getElementById('spo2Display').textContent = state.spo2;
@@ -1256,6 +1252,7 @@ const wrapped={};Object.keys(rhythms).forEach(k=>wrapped[k]=withArtefacts(rhythm
             }, 2000);
         }
 
+        // *** MODIFIED DELIVER SHOCK FUNCTION ***
         function deliverShock() {
             if (!state.charged) return;
             
@@ -1291,24 +1288,43 @@ const wrapped={};Object.keys(rhythms).forEach(k=>wrapped[k]=withArtefacts(rhythm
                             shouldConvert = true;
                         }
                     }
+                } else if (!state.scenarioActive) {
+                    // Logic for non-scenario mode (quick rhythms)
+                    const currentRhythm = state.rhythm;
+                    
+                    // Defibrillation (pulseless)
+                    if (currentRhythm === 'vfib' || currentRhythm === 'vt_pulseless') {
+                        if (state.shockCount >= 3 && shockEnergy >= 150) { // Convert on 3rd shock
+                            shouldConvert = true;
+                        }
+                    }
+                    // Cardioversion (pulsed)
+                    else if (currentRhythm === 'vtach' || currentRhythm === 'svt' || currentRhythm === 'afib') {
+                        if (state.syncMode && shockEnergy >= 100) { // Convert on 1st sync shock
+                            shouldConvert = true;
+                        }
+                    }
                 }
                 
                 if (shouldConvert) {
-                    setVitals(scenario.successRhythm);
-                    state.hr = scenario.successVitals.hr;
-                    state.spo2 = scenario.successVitals.spo2;
-                    state.etco2 = scenario.successVitals.etco2;
-                    state.bpSys = scenario.successVitals.bpSys;
-                    state.bpDia = scenario.successVitals.bpDia;
+                    const successVitals = (scenario && state.scenarioActive) ? scenario.successVitals : rhythmVitals['nsr'];
+                    const successRhythm = (scenario && state.scenarioActive) ? scenario.successRhythm : 'nsr';
+
+                    setVitals(successRhythm);
+                    state.hr = successVitals.hr;
+                    state.spo2 = successVitals.spo2;
+                    state.etco2 = successVitals.etco2;
+                    state.bpSys = successVitals.bpSys;
+                    state.bpDia = successVitals.bpDia;
                     state.hasPulse = true;
                     state.roscAchieved = true;
                     
-                    if (scenario.category === 'defibrillation') {
+                    if ((scenario && scenario.category === 'defibrillation') || state.rhythm === 'vfib' || state.rhythm === 'vt_pulseless') {
                         setMessage('RHYTHM CONVERTED - CHECK PULSE', 'ready');
                         logAction('ROSC achieved', 'Return of spontaneous circulation');
                     } else {
                         setMessage('RHYTHM CONVERTED TO SINUS', 'ready');
-                        logAction('Cardioversion successful', 'Converted to sinus rhythm');
+                        logAction('Rhythm converted', 'Converted to sinus rhythm');
                     }
                     
                     updateDisplays();
@@ -1317,6 +1333,7 @@ const wrapped={};Object.keys(rhythms).forEach(k=>wrapped[k]=withArtefacts(rhythm
                 }
             }, 2000);
         }
+        // *** END MODIFIED DELIVER SHOCK FUNCTION ***
 
         function analyseRhythm() {
             setMessage('ANALYSING...', '');
@@ -1326,7 +1343,7 @@ const wrapped={};Object.keys(rhythms).forEach(k=>wrapped[k]=withArtefacts(rhythm
                 let currentRhythm = state.rhythm;
                 let currentPulse = state.hasPulse;
 
-                if (state.selectedScenario) {
+                if (state.selectedScenario && state.scenarioActive) {
                     const scenario = scenarios[state.selectedScenario];
                     currentPulse = scenario.hasPulse || state.roscAchieved;
                 }
@@ -1341,6 +1358,7 @@ const wrapped={};Object.keys(rhythms).forEach(k=>wrapped[k]=withArtefacts(rhythm
             }, 2500);
         }
 
+        // *** MODIFIED ADJUST PACER FUNCTION ***
         function adjustPacer(param, change) {
             const scenario = scenarios[state.selectedScenario];
             
@@ -1352,25 +1370,33 @@ const wrapped={};Object.keys(rhythms).forEach(k=>wrapped[k]=withArtefacts(rhythm
                 const dial = document.querySelector('.pacing-controls > div:first-child .pacer-dial');
                 if (dial) dial.style.setProperty('--dial-rotation', `${rotation}deg`);
                 
-                const captureThreshold = (scenario && scenario.requiresPacing) ? scenario.captureThreshold : 60;
+                let captureThreshold = 60; // Default for quick mode
+                let isPacingScenario = false;
+                let canPaceRhythm = (state.rhythm === 'chb' || state.rhythm === 'brady' || state.rhythm === 'sinus_brady');
 
-                if (scenario && state.scenarioActive && scenario.requiresPacing && 
-                    state.pacerOutput >= captureThreshold &&
-                    state.deviceMode === 'pacer') {
+                if (scenario && state.scenarioActive && scenario.requiresPacing) {
+                    captureThreshold = scenario.captureThreshold;
+                    isPacingScenario = true;
+                }
+                
+                if (state.pacerOutput >= captureThreshold && state.deviceMode === 'pacer' && (isPacingScenario || canPaceRhythm)) {
                     
-                    // Only log capture once
                     const alreadyCaptured = state.actions.some(a => a.action.includes('capture'));
                     if (!alreadyCaptured) {
-                        setVitals(scenario.successRhythm); // This will set vitals
-                        state.hr = scenario.successVitals.hr; // Ensure HR is set for display logic
-                        state.spo2 = scenario.successVitals.spo2;
-                        state.etco2 = scenario.successVitals.etco2;
-                        state.bpSys = scenario.successVitals.bpSys;
-                        state.bpDia = scenario.successVitals.bpDia;
+                        const successVitals = (isPacingScenario) ? scenario.successVitals : rhythmVitals['paced'];
+                        
+                        setVitals('paced'); // Set rhythm to paced
+                        state.hr = state.pacerRate; // Use pacer rate
+                        state.spo2 = successVitals.spo2;
+                        state.etco2 = successVitals.etco2;
+                        state.bpSys = successVitals.bpSys;
+                        state.bpDia = successVitals.bpDia;
                         
                         setMessage(`CAPTURE ACHIEVED AT ${state.pacerOutput}mA`, 'ready');
                         logAction('Pacing capture achieved', `Electrical and mechanical capture at ${state.pacerOutput}mA`);
                     }
+                    
+                    state.hr = state.pacerRate; // Ensure HR display updates
                 }
                 
             } else if (param === 'rate') {
@@ -1380,10 +1406,17 @@ const wrapped={};Object.keys(rhythms).forEach(k=>wrapped[k]=withArtefacts(rhythm
                 const rotation = ((state.pacerRate - 30) / 150) * 270;
                 const dial = document.querySelector('.pacing-controls > div:last-child .pacer-dial');
                 if (dial) dial.style.setProperty('--dial-rotation', `${rotation}deg`);
+
+                // If already capturing, update HR to new pacer rate
+                let captureThreshold = (scenario && scenario.requiresPacing) ? scenario.captureThreshold : 60;
+                if (state.pacingActive && state.pacerOutput >= captureThreshold) {
+                    state.hr = state.pacerRate;
+                }
             }
             
             updateDisplays();
         }
+        // *** END MODIFIED ADJUST PACER FUNCTION ***
 
         function quickSetRhythm(rhythm) {
             if (state.scenarioActive) {
@@ -1393,6 +1426,7 @@ const wrapped={};Object.keys(rhythms).forEach(k=>wrapped[k]=withArtefacts(rhythm
 
             setVitals(rhythm);
             state.roscAchieved = false;
+            state.shockCount = 0;
             
             updateDisplays();
 
