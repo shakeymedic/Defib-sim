@@ -799,11 +799,10 @@ window.drawECGGrid=drawECGGrid;window.drawCalibrationPulse=drawCalibrationPulse;
                             } else {
                                 y_final_raw = 0; 
                             }
-                        } else {
-                            if (posInPacedCycle >= qrsStart) {
-                                y_final_raw = 0;
-                            }
                         }
+                        // **********************************
+                        //  BUG FIX: DELETED 5 LINES HERE
+                        // **********************************
                     }
                 }
                 
