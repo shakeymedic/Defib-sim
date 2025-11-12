@@ -23,7 +23,7 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            min-height: calc(100vh - 40px);
+            /* min-height: calc(100vh - 40px); <-- REMOVED for new layout */
         }
 
         /* Initial Menu Screen */
@@ -38,6 +38,25 @@
             max-width: 800px;
             box-shadow: 0 20px 60px rgba(0,0,0,0.5);
         }
+
+        /* --- ADDED FOR REQUEST 2: Override mode select screen --- */
+        #modeSelectScreen {
+            padding: 30px;
+            max-width: 1600px; /* Match simulator container */
+            margin: 0 auto 20px auto;
+            border-radius: 10px;
+        }
+
+        #modeSelectScreen .menu-title {
+            margin-bottom: 30px;
+        }
+
+        #modeSelectScreen .menu-option {
+            padding: 25px 20px;
+            font-size: 20px;
+        }
+        /* --- END ADDED FOR REQUEST 2 --- */
+
 
         .menu-logo {
             margin-bottom: 30px;
@@ -290,6 +309,20 @@
             max-width: 1400px;
             margin: 0 auto;
         }
+
+        /* --- ADDED FOR REQUEST 1: Logo on Defib --- */
+        .zoll-top-logo {
+            position: absolute;
+            top: 25px;
+            right: 30px;
+            height: 40px;
+            background: white;
+            padding: 6px;
+            border-radius: 8px;
+            z-index: 10;
+        }
+        /* --- END ADDED FOR REQUEST 1 --- */
+
 
         /* Left Side - Screen */
         .device-screen-section {
@@ -815,27 +848,28 @@
     </style>
 </head>
 <body>
-    <div class="menu-wrapper" id="menuWrapper">
-        <div class="menu-screen" id="modeSelectScreen" style="display: flex;">
-            <div class="menu-logo">
-                <img src="https://iili.io/KGQOvkl.md.png" alt="WMEBEM Logo">
-            </div>
-            <div class="menu-title">
-                <h1>ZOLL R Series Simulator</h1>
-                <p>Defibrillator Training | RCUK 2025 Guidelines</p>
-            </div>
-            <div class="menu-options">
-                <button class="menu-option" onclick="selectMode('education')">
-                    <div>Education Mode</div>
-                    <div class="subtitle">Instructor controls visible for teaching</div>
-                </button>
-                <button class="menu-option" onclick="selectMode('testing')">
-                    <div>Testing Mode</div>
-                    <div class="subtitle">Learner assessment with hidden controls</div>
-                </button>
-            </div>
+    <div class="menu-screen" id="modeSelectScreen" style="display: block;">
+        <div class="menu-logo">
+            <img src="https://iili.io/KGQOvkl.md.png" alt="WMEBEM Logo">
         </div>
+        <div class="menu-title">
+            <h1>ZOLL R Series Simulator</h1>
+            <p>Defibrillator Training | RCUK 2025 Guidelines</p>
+        </div>
+        <div class="menu-options">
+            <button class="menu-option" onclick="selectMode('education')">
+                <div>Education Mode</div>
+                <div class="subtitle">Instructor controls visible for teaching</div>
+            </button>
+            <button class="menu-option" onclick="selectMode('testing')">
+                <div>Testing Mode</div>
+                <div class="subtitle">Learner assessment with hidden controls</div>
+            </button>
+        </div>
+    </div>
 
+    <div class="menu-wrapper" id="menuWrapper" style="display: none;">
+        
         <div class="menu-screen" id="scenarioScreen" style="display: none;">
             <div class="menu-logo">
                 <img src="https://iili.io/KGQOvkl.md.png" alt="WMEBEM Logo">
@@ -990,7 +1024,7 @@
         </div>
     </div>
 
-    <div class="simulator-container" id="simulatorContainer" style="display: none;">
+    <div class="simulator-container" id="simulatorContainer" style="display: block;">
         <button class="back-button" onclick="endScenario()">
             ◀ End Scenario
         </button>
@@ -1061,7 +1095,9 @@
             </div>
         </div>
 
-        <div class="zoll-device" id="zollDevice" style="display: none;">
+        <div class="zoll-device" id="zollDevice" style="display: grid;">
+            <img src="https://iili.io/KGQOvkl.md.png" alt="WMEBEM Logo" class="zoll-top-logo">
+            
             <div class="device-screen-section">
                 <div class="screen">
                     <div class="screen-header">
@@ -1813,13 +1849,15 @@
         function selectMode(mode) {
             state.selectedMode = mode;
             document.getElementById('modeSelectScreen').style.display = 'none';
+            document.getElementById('menuWrapper').style.display = 'flex'; // CHANGED
             document.getElementById('scenarioScreen').style.display = 'flex';
             document.getElementById('modeTitle').textContent = mode === 'education' ? 'Education Mode' : 'Testing Mode';
         }
 
         function backToModeSelect() {
             document.getElementById('scenarioScreen').style.display = 'none';
-            document.getElementById('modeSelectScreen').style.display = 'flex';
+            document.getElementById('menuWrapper').style.display = 'none'; // CHANGED
+            document.getElementById('modeSelectScreen').style.display = 'block'; // CHANGED
             state.selectedMode = null;
         }
 
@@ -1846,7 +1884,7 @@
             
             // Hide menus, show simulator
             document.getElementById('scenarioScreen').style.display = 'none';
-            document.getElementById('menuWrapper').style.display = 'none';
+            document.getElementById('menuWrapper').style.display = 'none'; // CHANGED
             document.getElementById('simulatorContainer').style.display = 'block';
             document.getElementById('zollDevice').style.display = 'grid';
             
@@ -2135,19 +2173,24 @@
         }
 
         function returnToMenu() {
-            document.getElementById('simulatorContainer').style.display = 'none';
+            // CHANGED FOR REQUEST 2: Return to main simulator view, not menu
+            
+            // Hide all full-screen menus
             document.getElementById('summaryScreen').style.display = 'none';
             document.getElementById('certificateScreen').style.display = 'none';
             document.getElementById('scenarioScreen').style.display = 'none';
+            document.getElementById('menuWrapper').style.display = 'none'; // Hide the wrapper
             
-            document.getElementById('menuWrapper').style.display = 'flex';
-            document.getElementById('modeSelectScreen').style.display = 'flex';
+            // Show the main simulator view
+            document.getElementById('simulatorContainer').style.display = 'block';
+            document.getElementById('modeSelectScreen').style.display = 'block'; // Show the top panel
             
             if (animationId) {
                 cancelAnimationFrame(animationId);
                 animationId = null;
             }
             
+            // Reset state
             state.scenarioActive = false;
             state.syncMode = false;
             state.pacingActive = false;
@@ -2158,7 +2201,22 @@
             state.actions = [];
             state.roscAchieved = false;
             
+            // Reset defib state to default
+            setMode('monitor');
+            quickSetRhythm('nsr');
+            state.hr = 75;
+            state.spo2 = 98;
+            state.etco2 = 38;
+            state.bpSys = 120;
+            state.bpDia = 80;
+            state.hasPulse = true;
+
             updateDisplays();
+
+            // Re-init canvas
+            if (!animationId) {
+                initCanvas();
+            }
         }
 
         // Device controls
@@ -2217,7 +2275,11 @@
         }
 
         function chargeDefib() {
-            if (!state.scenarioActive) return;
+            if (!state.scenarioActive) {
+                // Allow charging even if scenario not active
+                // setMessage('Select a scenario to begin', '');
+                // return;
+            }
             if (state.deviceMode !== 'defib') {
                 setMessage('SWITCH TO DEFIB MODE TO CHARGE', '');
                 return;
@@ -2237,8 +2299,9 @@
         }
 
         function deliverShock() {
-            if (!state.scenarioActive) return;
             if (!state.charged) return;
+            // Allow shock even if scenario not active for testing
+            // if (!state.scenarioActive) return;
             
             const scenario = scenarios[state.selectedScenario];
             state.shockCount++;
@@ -2263,14 +2326,16 @@
             setTimeout(() => {
                 let shouldConvert = false;
                 
-                if (scenario.category === 'defibrillation') {
-                    if (state.shockCount >= scenario.shockToConvert && 
-                        shockEnergy >= scenario.successEnergy) {
-                        shouldConvert = true;
-                    }
-                } else if (scenario.category === 'cardioversion') {
-                    if (state.syncMode && shockEnergy >= scenario.successEnergy - 30) {
-                        shouldConvert = true;
+                if (scenario && state.scenarioActive) {
+                    if (scenario.category === 'defibrillation') {
+                        if (state.shockCount >= scenario.shockToConvert && 
+                            shockEnergy >= scenario.successEnergy) {
+                            shouldConvert = true;
+                        }
+                    } else if (scenario.category === 'cardioversion') {
+                        if (state.syncMode && shockEnergy >= scenario.successEnergy - 30) {
+                            shouldConvert = true;
+                        }
                     }
                 }
                 
@@ -2300,7 +2365,11 @@
         }
 
         function analyseRhythm() {
-            if (!state.scenarioActive) return;
+            if (!state.scenarioActive) {
+                // Allow analysis even if scenario not active
+                // setMessage('Select a scenario to begin', '');
+                // return;
+            }
             setMessage('ANALYSING...', '');
             logAction('Rhythm analysed');
             
@@ -2327,7 +2396,7 @@
                 if (dial) dial.style.setProperty('--dial-rotation', `${rotation}deg`);
                 
                 // Check for capture
-                if (scenario && scenario.requiresPacing && 
+                if (scenario && state.scenarioActive && scenario.requiresPacing && 
                     state.pacerOutput >= scenario.captureThreshold &&
                     state.deviceMode === 'pacer') {
                     
@@ -2382,8 +2451,14 @@
         // Pulse check function
         function checkPulse() {
             const scenario = scenarios[state.selectedScenario];
-            if (!scenario) {
-                setMessage('CHECK PULSE - SIMULATOR NOT IN SCENARIO MODE', '');
+            if (!scenario || !state.scenarioActive) {
+                // Check pulse based on current state even if not in scenario
+                if (state.hasPulse || state.roscAchieved) {
+                    setMessage('PULSE PRESENT - CAROTID PULSE PALPABLE', 'ready');
+                } else {
+                    setMessage('NO PULSE DETECTED', 'alert');
+                }
+                logAction('Pulse check performed');
                 return;
             }
             
@@ -2411,6 +2486,7 @@
             
             // Hide summary, return to simulator
             document.getElementById('summaryScreen').style.display = 'none';
+            document.getElementById('menuWrapper').style.display = 'none';
             
             // Reset and restart same scenario
             selectScenario(scenarioId);
@@ -2533,7 +2609,8 @@
 
         // Keyboard shortcuts
         document.addEventListener('keydown', (e) => {
-            if (!state.scenarioActive) return;
+            // Allow shortcuts even if scenario not active
+            // if (!state.scenarioActive) return; 
             const key = e.key.toLowerCase();
 
             if (key === 'c') {
@@ -2573,6 +2650,12 @@
                 timeEl.textContent = now.toTimeString().split(' ')[0];
             }
         }, 1000);
+
+        // --- ADDED FOR REQUEST 2: Initialise canvas on load ---
+        window.onload = function() {
+            initCanvas();
+        };
+        // --- END ADDED ---
     </script>
 </body>
 </html>
