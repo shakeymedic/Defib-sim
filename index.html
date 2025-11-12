@@ -18,6 +18,26 @@
             min-height: 100vh;
         }
 
+        /* --- ADDED FOR REQUEST 3: Quick Rhythm Panel --- */
+        .quick-rhythm-panel {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            border-radius: 10px;
+            padding: 20px;
+            margin: 0 auto 20px auto;
+            max-width: 1600px;
+            border: 3px solid #1a252f;
+        }
+
+        .quick-rhythm-panel h4 {
+            color: #3498db;
+            font-size: 14px;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            text-align: center;
+        }
+        /* --- END ADDED --- */
+
+
         /* Menu screens container */
         .menu-wrapper {
             display: flex;
@@ -275,7 +295,8 @@
 
         .rhythm-buttons {
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
+            /* MODIFIED FOR REQUEST 3: More columns for top panel */
+            grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
             gap: 6px;
         }
 
@@ -848,13 +869,30 @@
     </style>
 </head>
 <body>
+    <div class="quick-rhythm-panel">
+        <h4>Quick Rhythm Select (Default Testing Mode)</h4>
+        <div class="rhythm-buttons">
+            <button class="rhythm-btn active" data-rhythm="nsr" onclick="quickSetRhythm('nsr')">NSR</button>
+            <button class="rhythm-btn" data-rhythm="vfib" onclick="quickSetRhythm('vfib')">VF</button>
+            <button class="rhythm-btn" data-rhythm="vtach" onclick="quickSetRhythm('vtach')">VT</button>
+            <button class="rhythm-btn" data-rhythm="svt" onclick="quickSetRhythm('svt')">SVT</button>
+            <button class="rhythm-btn" data-rhythm="afib" onclick="quickSetRhythm('afib')">AF</button>
+            <button class="rhythm-btn" data-rhythm="sinus_brady" onclick="quickSetRhythm('sinus_brady')">SB</button>
+            <button class="rhythm-btn" data-rhythm="sinus_tach" onclick="quickSetRhythm('sinus_tach')">ST</button>
+            <button class="rhythm-btn" data-rhythm="asystole" onclick="quickSetRhythm('asystole')">ASY</button>
+            <button class="rhythm-btn" data-rhythm="chb" onclick="quickSetRhythm('chb')">CHB</button>
+            <button class="rhythm-btn" data-rhythm="paced" onclick="quickSetRhythm('paced')">PACED</button>
+            <button class="rhythm-btn" data-rhythm="idioventricular" onclick="quickSetRhythm('idioventricular')">IVR</button>
+        </div>
+    </div>
+
     <div class="menu-screen" id="modeSelectScreen" style="display: block;">
         <div class="menu-logo">
             <img src="https://iili.io/KGQOvkl.md.png" alt="WMEBEM Logo">
         </div>
         <div class="menu-title">
             <h1>ZOLL R Series Simulator</h1>
-            <p>Defibrillator Training | RCUK 2025 Guidelines</p>
+            <p>Select a Scenario Mode</p>
         </div>
         <div class="menu-options">
             <button class="menu-option" onclick="selectMode('education')">
@@ -1025,10 +1063,10 @@
     </div>
 
     <div class="simulator-container" id="simulatorContainer" style="display: block;">
-        <button class="back-button" onclick="endScenario()">
+        <button class="back-button" onclick="endScenario()" style="display: none;">
             ◀ End Scenario
         </button>
-        <button class="back-button reset-button" onclick="resetScenario()">
+        <button class="back-button reset-button" onclick="resetScenario()" style="display: none;">
             🔄 Reset Scenario
         </button>
 
@@ -1048,17 +1086,17 @@
                 <div class="control-section">
                     <h4>Quick Rhythm Change</h4>
                     <div class="rhythm-buttons">
-                        <button class="rhythm-btn" onclick="quickSetRhythm('nsr')">NSR</button>
-                        <button class="rhythm-btn" onclick="quickSetRhythm('vfib')">VF</button>
-                        <button class="rhythm-btn" onclick="quickSetRhythm('vtach')">VT</button>
-                        <button class="rhythm-btn" onclick="quickSetRhythm('svt')">SVT</button>
-                        <button class="rhythm-btn" onclick="quickSetRhythm('afib')">AF</button>
-                        <button class="rhythm-btn" onclick="quickSetRhythm('sinus_brady')">SB</button>
-                        <button class="rhythm-btn" onclick="quickSetRhythm('sinus_tach')">ST</button>
-                        <button class="rhythm-btn" onclick="quickSetRhythm('asystole')">ASY</button>
-                        <button class="rhythm-btn" onclick="quickSetRhythm('chb')">CHB</button>
-                        <button class="rhythm-btn" onclick="quickSetRhythm('paced')">PACED</button>
-                        <button class="rhythm-btn" onclick="quickSetRhythm('idioventricular')">IVR</button>
+                        <button class="rhythm-btn" data-rhythm="nsr" onclick="quickSetRhythm('nsr')">NSR</button>
+                        <button class="rhythm-btn" data-rhythm="vfib" onclick="quickSetRhythm('vfib')">VF</button>
+                        <button class="rhythm-btn" data-rhythm="vtach" onclick="quickSetRhythm('vtach')">VT</button>
+                        <button class="rhythm-btn" data-rhythm="svt" onclick="quickSetRhythm('svt')">SVT</button>
+                        <button class="rhythm-btn" data-rhythm="afib" onclick="quickSetRhythm('afib')">AF</button>
+                        <button class="rhythm-btn" data-rhythm="sinus_brady" onclick="quickSetRhythm('sinus_brady')">SB</button>
+                        <button class="rhythm-btn" data-rhythm="sinus_tach" onclick="quickSetRhythm('sinus_tach')">ST</button>
+                        <button class="rhythm-btn" data-rhythm="asystole" onclick="quickSetRhythm('asystole')">ASY</button>
+                        <button class="rhythm-btn" data-rhythm="chb" onclick="quickSetRhythm('chb')">CHB</button>
+                        <button class="rhythm-btn" data-rhythm="paced" onclick="quickSetRhythm('paced')">PACED</button>
+                        <button class="rhythm-btn" data-rhythm="idioventricular" onclick="quickSetRhythm('idioventricular')">IVR</button>
                     </div>
                 </div>
 
@@ -1372,6 +1410,12 @@
             if (!canvas) return;
             
             ctx = canvas.getContext('2d');
+
+            // --- ADDED FOR REALISM: Smoother lines ---
+            ctx.lineJoin = 'round';
+            ctx.lineCap = 'round';
+            // --- END ADDED ---
+
             canvas.width = canvas.offsetWidth;
             canvas.height = canvas.offsetHeight;
             
@@ -1414,11 +1458,20 @@
                     y -= 30 - ((qrsPos - 0.75) / 0.25) * 30;
                 }
             }
-            // ST + T wave: 0.30 - 0.46
-            else if (s < 0.46) {
-                const t = (s - 0.30) / 0.16;
-                y = baseline - Math.sin(t * Math.PI) * 20;
+            // --- MODIFIED FOR REALISM: Asymmetric T-wave ---
+            // ST + T wave: 0.30 - 0.48 (extended slightly)
+            else if (s < 0.48) {
+                const t = (s - 0.30) / 0.18; // t from 0..1
+                let t_y;
+                if (t < 0.4) { // Slower upstroke (40% of time)
+                    t_y = Math.sin((t / 0.4) * (Math.PI / 2));
+                } else { // Faster downstroke (60% of time)
+                    t_y = Math.cos(((t - 0.4) / 0.6) * (Math.PI / 2));
+                }
+                y = baseline - (t_y * 20); // 20px T-wave
             }
+            // --- END MODIFIED ---
+            
             // Rest of cycle
             else {
                 y = baseline;
@@ -1495,27 +1548,32 @@
                 return y;
             },
 
-            // Atrial fibrillation - irregular RR, variable QRS amplitude, fibrillatory baseline
+            // --- MODIFIED FOR REALISM: Noisier AFib ---
             afib: (x, hr, tSeconds = 0) => {
                 const baseline = canvas.height / 2;
                 const baseHr = hr && hr > 0 ? hr : 140;
 
-                // Slightly varying HR over time to give irregularity
-                const variability = 0.25 * Math.sin(tSeconds * 2.1) + 0.15 * Math.sin(tSeconds * 3.7);
+                // More chaotic, faster variability for RR interval
+                const variability = 0.3 * Math.sin(tSeconds * 2.1) + 
+                                  0.2 * Math.sin(tSeconds * 3.7) + 
+                                  0.15 * Math.sin(tSeconds * 5.5);
+                
                 const effectiveHr = baseHr * (1 + variability);
                 const cycle = (60 / effectiveHr) * ecgSpeed;
                 const pos = (x % cycle);
                 const s = pos / cycle;
                 let y = baseline;
 
-                // Fibrillatory baseline
-                const fibrillatory = Math.sin((x * 0.35) + tSeconds * 5) * 4 +
-                                     Math.sin((x * 0.9) + tSeconds * 3) * 2;
+                // More prominent fibrillatory baseline
+                const fibrillatory = Math.sin((x * 0.4) + tSeconds * 8) * 5 +
+                                     Math.sin((x * 0.9) + tSeconds * 5) * 3 +
+                                     Math.sin((x * 1.5) + tSeconds * 12) * 2;
 
-                // QRS complex, slight beat-to-beat amplitude variation using deterministic function
+                // QRS complex, slight beat-to-beat amplitude variation
                 if (s < 0.14) {
                     const qrsPos = s / 0.14;
-                    const ampMod = 0.7 + 0.3 * Math.sin((tSeconds + x * 0.001) * 2.9);
+                    // Modulate amplitude based on x, not just t, for more "beat-to-beat" look
+                    const ampMod = 0.8 + 0.2 * Math.sin((x * 0.05));
                     if (qrsPos < 0.3) {
                         y += ampMod * (qrsPos / 0.3 * 20);
                     } else if (qrsPos < 0.6) {
@@ -1529,23 +1587,29 @@
 
                 return y + fibrillatory;
             },
+            // --- END MODIFIED ---
 
-            // Ventricular fibrillation - coarse -> fine over time
+            // --- MODIFIED FOR REALISM: More chaotic VFib ---
             vfib: (x, hr, tSeconds = 0) => {
                 const baseline = canvas.height / 2;
 
-                // Amplitude decays over time to represent "finer" VF if untreated
+                // Amplitude decays over time
                 const timeFactor = Math.min(tSeconds / 120, 1); // up to 2 minutes
                 const coarseAmp = 40;
                 const fineAmp = 12;
                 const amplitude = coarseAmp * (1 - timeFactor) + fineAmp * timeFactor;
 
-                const y =
-                    Math.sin((x * 0.25) + tSeconds * 3) * amplitude +
-                    Math.sin((x * 0.55) + tSeconds * 4.1) * (amplitude * 0.6);
+                // Sum multiple sines with different, non-harmonic frequencies and phases
+                const t = tSeconds * 5; // Use time to "move" the waves
+                const y1 = Math.sin(x * 0.2 + t) * (amplitude * 0.6);
+                const y2 = Math.sin(x * 0.3 + t * 1.2) * (amplitude * 0.4);
+                const y3 = Math.sin(x * 0.5 + t * 0.8) * (amplitude * 0.3);
+                const y4 = Math.sin(x * 0.9 + t * 1.5) * (amplitude * 0.2);
+                const y5 = Math.sin(x * 1.5 + t * 2.0) * (amplitude * 0.1);
 
-                return baseline + y;
+                return baseline + y1 + y2 + y3 + y4 + y5;
             },
+            // --- END MODIFIED ---
 
             // Bradycardia - sinus with low rate
             brady: (x, hr) => nsrTemplate(x, hr || 38),
@@ -1755,6 +1819,15 @@
                         }
                     }
 
+                    // --- ADDED FOR REALISM: Noise and Wander ---
+                    // 1. Low-frequency baseline wander (breathing)
+                    if (displayHR > 0) { // Only if not in arrest
+                        y += Math.sin((waveformX + x) * 0.005 + simTimeSeconds * 0.5) * 4;
+                    }
+                    // 2. High-frequency electrical noise (slight)
+                    y += Math.sin((waveformX + x) * 2.5) * 0.75; 
+                    // --- END ADDED ---
+
                     if (x === 0) ctx.moveTo(x, y);
                     else ctx.lineTo(x, y);
                 }
@@ -1852,6 +1925,9 @@
             document.getElementById('menuWrapper').style.display = 'flex'; // CHANGED
             document.getElementById('scenarioScreen').style.display = 'flex';
             document.getElementById('modeTitle').textContent = mode === 'education' ? 'Education Mode' : 'Testing Mode';
+
+            // ADDED FOR REQUEST 3: Hide scenario buttons
+            document.querySelectorAll('.back-button').forEach(b => b.style.display = 'inline-flex');
         }
 
         function backToModeSelect() {
@@ -1859,6 +1935,9 @@
             document.getElementById('menuWrapper').style.display = 'none'; // CHANGED
             document.getElementById('modeSelectScreen').style.display = 'block'; // CHANGED
             state.selectedMode = null;
+
+            // ADDED FOR REQUEST 3: Hide scenario buttons
+            document.querySelectorAll('.back-button').forEach(b => b.style.display = 'none');
         }
 
         function selectScenario(scenarioId) {
@@ -2185,6 +2264,9 @@
             document.getElementById('simulatorContainer').style.display = 'block';
             document.getElementById('modeSelectScreen').style.display = 'block'; // Show the top panel
             
+            // ADDED FOR REQUEST 3: Hide scenario buttons
+            document.querySelectorAll('.back-button').forEach(b => b.style.display = 'none');
+            
             if (animationId) {
                 cancelAnimationFrame(animationId);
                 animationId = null;
@@ -2203,7 +2285,7 @@
             
             // Reset defib state to default
             setMode('monitor');
-            quickSetRhythm('nsr');
+            quickSetRhythm('nsr'); // This will also set the active button
             state.hr = 75;
             state.spo2 = 98;
             state.etco2 = 38;
@@ -2212,6 +2294,7 @@
             state.hasPulse = true;
 
             updateDisplays();
+            setMessage('SIMULATOR READY', 'ready'); // Reset message
 
             // Re-init canvas
             if (!animationId) {
@@ -2275,11 +2358,10 @@
         }
 
         function chargeDefib() {
-            if (!state.scenarioActive) {
-                // Allow charging even if scenario not active
-                // setMessage('Select a scenario to begin', '');
-                // return;
+            if (!state.scenarioActive && state.selectedScenario) {
+                // If in a scenario but not 'active' (e.g. countdown)
             }
+            
             if (state.deviceMode !== 'defib') {
                 setMessage('SWITCH TO DEFIB MODE TO CHARGE', '');
                 return;
@@ -2300,8 +2382,6 @@
 
         function deliverShock() {
             if (!state.charged) return;
-            // Allow shock even if scenario not active for testing
-            // if (!state.scenarioActive) return;
             
             const scenario = scenarios[state.selectedScenario];
             state.shockCount++;
@@ -2365,16 +2445,20 @@
         }
 
         function analyseRhythm() {
-            if (!state.scenarioActive) {
-                // Allow analysis even if scenario not active
-                // setMessage('Select a scenario to begin', '');
-                // return;
+            if (!state.scenarioActive && state.selectedScenario) {
+                // In scenario but not active
             }
             setMessage('ANALYSING...', '');
             logAction('Rhythm analysed');
             
             setTimeout(() => {
-                if (state.rhythm === 'vfib' || state.rhythm === 'vtach') {
+                // Don't give hints if not in a scenario
+                if (!state.selectedScenario) {
+                    setMessage('ANALYSIS COMPLETE', 'ready');
+                    return;
+                }
+
+                if (state.rhythm === 'vfib' || (state.rhythm === 'vtach' && !state.hasPulse)) {
                     setMessage('SHOCKABLE RHYTHM DETECTED', 'alert');
                     logAction('Analysis result', 'Shockable rhythm');
                 } else {
@@ -2423,12 +2507,31 @@
             updateDisplays();
         }
 
+        // MODIFIED FOR REQUEST 3: Add active class logic
         function quickSetRhythm(rhythm) {
             state.rhythm = rhythm;
             state.hr = getRhythmHR(rhythm);
             state.roscAchieved = false;
+
+            // Handle pulse for non-scenario mode
+            if (['vfib', 'vtach', 'asystole'].includes(rhythm)) {
+                state.hasPulse = false;
+            } else {
+                state.hasPulse = true;
+            }
+            
             updateDisplays();
+
+            // Update active button
+            const allButtons = document.querySelectorAll('.rhythm-btn');
+            allButtons.forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.dataset.rhythm === rhythm) {
+                    btn.classList.add('active');
+                }
+            });
         }
+        // --- END MODIFIED ---
 
         function toggleInstructorPanel() {
             const panel = document.getElementById('instructorPanel');
@@ -2451,29 +2554,30 @@
         // Pulse check function
         function checkPulse() {
             const scenario = scenarios[state.selectedScenario];
-            if (!scenario || !state.scenarioActive) {
-                // Check pulse based on current state even if not in scenario
+            
+            // Logic for scenario mode
+            if (scenario && state.scenarioActive) {
+                setMessage('CHECKING FOR PULSE...', '');
+                logAction('Pulse check performed');
+                
+                setTimeout(() => {
+                    if (scenario.hasPulse || state.roscAchieved) {
+                        setMessage('PULSE PRESENT - CAROTID PULSE PALPABLE', 'ready');
+                        logAction('Pulse check result', 'Pulse present');
+                    } else {
+                        setMessage('NO PULSE DETECTED - CARDIAC ARREST CONFIRMED', 'alert');
+                        logAction('Pulse check result', 'No pulse - cardiac arrest');
+                    }
+                }, 1500);
+            } else {
+                // Logic for non-scenario (sandbox) mode
+                logAction('Pulse check performed');
                 if (state.hasPulse || state.roscAchieved) {
                     setMessage('PULSE PRESENT - CAROTID PULSE PALPABLE', 'ready');
                 } else {
                     setMessage('NO PULSE DETECTED', 'alert');
                 }
-                logAction('Pulse check performed');
-                return;
             }
-            
-            setMessage('CHECKING FOR PULSE...', '');
-            logAction('Pulse check performed');
-            
-            setTimeout(() => {
-                if (scenario.hasPulse || state.roscAchieved) {
-                    setMessage('PULSE PRESENT - CAROTID PULSE PALPABLE', 'ready');
-                    logAction('Pulse check result', 'Pulse present');
-                } else {
-                    setMessage('NO PULSE DETECTED - CARDIAC ARREST CONFIRMED', 'alert');
-                    logAction('Pulse check result', 'No pulse - cardiac arrest');
-                }
-            }, 1500);
         }
 
         // Try again function
