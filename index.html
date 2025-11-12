@@ -39,7 +39,7 @@ return baseline+y}
 function brady(x,hr,tSeconds,canvas){return sinusTemplate(x,hr||38,canvas.height,tSeconds,{rAmp:0.9,tAmp:0.25})}
 function asystole(x,_hr,tSeconds,canvas){const baseline=canvas.height/2;const wander=Math.sin(tSeconds*0.2)*(PX_PER_MM*0.2);return baseline+wander}
 const rhythms={nsr:function(x,hr,tSeconds){return nsr(x,hr,tSeconds,window.__ecgCanvas||document.getElementById('ecgCanvas'))},sinus_brady:function(x,hr,tSeconds){return sinusBrady(x,hr,tSeconds,window.__ecgCanvas||document.getElementById('ecgCanvas'))},sinus_tach:function(x,hr,tSeconds){return sinusTach(x,hr,tSeconds,window.__ecgCanvas||document.getElementById('ecgCanvas'))},svt:function(x,hr,tSeconds){return svt(x,hr,tSeconds,window.__ecgCanvas||document.getElementById('ecgCanvas'))},afib:function(x,hr,tSeconds){return afib(x,hr,tSeconds,window.__ecgCanvas||document.getElementById('ecgCanvas'))},vtach:function(x,hr,tSeconds){return vtach(x,hr,tSeconds,window.__ecgCanvas||document.getElementById('ecgCanvas'))},vt_pulseless:function(x,hr,tSeconds){return vtach(x,180,tSeconds,window.__ecgCanvas||document.getElementById('ecgCanvas'))},vfib:function(x,hr,tSeconds){return vfib(x,hr,tSeconds,window.__ecgCanvas||document.getElementById('ecgCanvas'))},brady:function(x,hr,tSeconds){return brady(x,hr,tSeconds,window.__ecgCanvas||document.getElementById('ecgCanvas'))},chb:function(x,hr,tSeconds){return chb(x,hr,tSeconds,window.__ecgCanvas||document.getElementById('ecgCanvas'))},
-paced:function(x,hr,tSeconds){return paced(x,hr,tSeconds,window.__ecgCanvas||document.getElementById('ecgCanvas'))}, // <<< *** THIS LINE IS NOW FIXED ***
+paced:function(x,hr,tSeconds){return paced(x,hr,tSeconds,window.__ecgCanvas||document.getElementById('ecgCanvas'))}, // <<< *** THE TYPO IS FIXED HERE ***
 idioventricular:function(x,hr,tSeconds){return idioventricular(x,hr,tSeconds,window.__ecgCanvas||document.getElementById('ecgCanvas'))},asystole:function(x,hr,tSeconds){return asystole(x,hr,tSeconds,window.__ecgCanvas||document.getElementById('ecgCanvas'))},sinus:function(x,hr,tSeconds){return nsr(x,hr,tSeconds,window.__ecgCanvas||document.getElementById('ecgCanvas'))},};function drawECGGrid(ctx,w,h){ctx.save();ctx.clearRect(0,0,w,h);ctx.strokeStyle='rgba(255,255,255,0.06)';ctx.lineWidth=1;ctx.beginPath();for(let x=0;x<=w;x+=PX_PER_MM){ctx.moveTo(x+0.5,0);ctx.lineTo(x+0.5,h)}
 for(let y=0;y<=h;y+=PX_PER_MM){ctx.moveTo(0,y+0.5);ctx.lineTo(w,y+0.5)}
 ctx.stroke();ctx.strokeStyle='rgba(255,255,255,0.12)';ctx.lineWidth=1.2;ctx.beginPath();for(let x=0;x<=w;x+=PX_PER_BIG){ctx.moveTo(x+0.5,0);ctx.lineTo(x+0.5,h)}
@@ -696,9 +696,9 @@ window.drawECGGrid=drawECGGrid;window.drawCalibrationPulse=drawCalibrationPulse;
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
             }
             
-            // Safety check: if rhythms aren't loaded, don't crash
-            if (!window.rhythms || !window.cleanRhythms) {
-                console.error("Rhythms not loaded!");
+            // Safety check
+            if (!window.rhythms || !window.cleanRhythms || !window.rhythms[state.rhythm] || !window.cleanRhythms[state.rhythm]) {
+                console.error(`Rhythm "${state.rhythm}" not found.`);
                 animationId = requestAnimationFrame(animate);
                 return;
             }
@@ -731,7 +731,7 @@ window.drawECGGrid=drawECGGrid;window.drawCalibrationPulse=drawCalibrationPulse;
 
             const getUnderlyingY = (x_pos) => {
                 if (y_underlying_cache[x_pos]) return y_underlying_cache[x_pos];
-                if (!window.cleanRhythms[state.rhythm]) return 0; // Safety check
+                if (!window.cleanRhythms[state.rhythm]) return 0;
                 const y = window.cleanRhythms[state.rhythm](x_pos, displayHR, simTimeSeconds) - baselineY;
                 y_underlying_cache[x_pos] = y;
                 return y;
