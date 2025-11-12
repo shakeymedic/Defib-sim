@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ZOLL R Series Simulator - WMEBEM | RCUK 2025</title>
+    <title>ZOLL R Series Simulator V3 - WMEBEM | RCUK 2025 | Phase 1</title>
     <style>
         * {
             margin: 0;
@@ -877,6 +877,530 @@
                 box-shadow: none;
             }
         }
+
+        /* ========================================
+           PHASE 1 FEATURES CSS
+           ======================================== */
+
+        /* Achievement System */
+        .achievement-container {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            border-radius: 12px;
+            padding: 15px;
+            max-width: 280px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            z-index: 900;
+            max-height: calc(100vh - 100px);
+            overflow-y: auto;
+        }
+
+        .achievement-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+            color: #ecf0f1;
+            font-size: 16px;
+            font-weight: bold;
+        }
+
+        .achievement-counter {
+            background: linear-gradient(180deg, #f39c12 0%, #e67e22 100%);
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 13px;
+            color: white;
+        }
+
+        .achievement-list {
+            display: grid;
+            gap: 8px;
+        }
+
+        .achievement-item {
+            background: rgba(0,0,0,0.3);
+            padding: 10px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border: 2px solid transparent;
+            transition: all 0.3s;
+        }
+
+        .achievement-item.unlocked {
+            border-color: #f39c12;
+            background: linear-gradient(135deg, rgba(243, 156, 18, 0.2) 0%, rgba(230, 126, 34, 0.2) 100%);
+        }
+
+        .achievement-icon {
+            font-size: 24px;
+            filter: grayscale(1);
+            opacity: 0.3;
+        }
+
+        .achievement-item.unlocked .achievement-icon {
+            filter: grayscale(0);
+            opacity: 1;
+        }
+
+        .achievement-info {
+            flex: 1;
+        }
+
+        .achievement-name {
+            font-size: 12px;
+            font-weight: bold;
+            color: #bdc3c7;
+        }
+
+        .achievement-item.unlocked .achievement-name {
+            color: #f39c12;
+        }
+
+        .achievement-desc {
+            font-size: 10px;
+            color: #7f8c8d;
+            margin-top: 2px;
+        }
+
+        /* Achievement Unlock Notification */
+        .achievement-notification {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+            padding: 30px 40px;
+            border-radius: 15px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.7);
+            z-index: 10000;
+            text-align: center;
+            border: 4px solid #d68910;
+            animation: achievement-popup 3s ease-out;
+        }
+
+        @keyframes achievement-popup {
+            0% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
+            10% { transform: translate(-50%, -50%) scale(1.1); opacity: 1; }
+            20% { transform: translate(-50%, -50%) scale(1); }
+            80% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+            100% { transform: translate(-50%, -50%) scale(0.8); opacity: 0; }
+        }
+
+        .achievement-notification .icon {
+            font-size: 60px;
+            margin-bottom: 15px;
+        }
+
+        .achievement-notification .title {
+            font-size: 24px;
+            font-weight: bold;
+            color: white;
+            margin-bottom: 10px;
+        }
+
+        .achievement-notification .description {
+            font-size: 14px;
+            color: rgba(255,255,255,0.9);
+        }
+
+        /* Hint System */
+        .hint-panel {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            max-width: 400px;
+            background: linear-gradient(135deg, #3498db 0%, #2874a6 100%);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            z-index: 950;
+            border: 3px solid #2874a6;
+            animation: hint-slide-up 0.3s ease-out;
+            display: none;
+        }
+
+        @keyframes hint-slide-up {
+            from {
+                transform: translateY(100px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .hint-panel.urgency-medium {
+            background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+            border-color: #e67e22;
+        }
+
+        .hint-panel.urgency-high {
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+            border-color: #c0392b;
+            animation: hint-pulse 2s infinite;
+        }
+
+        @keyframes hint-pulse {
+            0%, 100% { box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+            50% { box-shadow: 0 10px 40px rgba(231, 76, 60, 0.6); }
+        }
+
+        .hint-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .hint-title {
+            font-size: 16px;
+            font-weight: bold;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .hint-close {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 16px;
+            line-height: 1;
+        }
+
+        .hint-close:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
+        .hint-message {
+            color: white;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        /* Quick Reference Button */
+        .quick-ref-button {
+            position: fixed;
+            top: 80px;
+            right: 320px;
+            background: linear-gradient(180deg, #27ae60 0%, #229954 100%);
+            color: white;
+            border: 3px solid #229954;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            z-index: 900;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .quick-ref-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(0,0,0,0.4);
+        }
+
+        /* Quick Reference Modal */
+        .quick-reference-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.85);
+            z-index: 10000;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .quick-reference-content {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            border-radius: 15px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.7);
+        }
+
+        .quick-reference-header {
+            background: #1a252f;
+            padding: 20px 30px;
+            border-radius: 15px 15px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .quick-reference-title {
+            color: #ecf0f1;
+            font-size: 24px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .quick-reference-close {
+            background: #e74c3c;
+            border: none;
+            color: white;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            font-size: 24px;
+            cursor: pointer;
+            line-height: 1;
+        }
+
+        .quick-reference-close:hover {
+            background: #c0392b;
+        }
+
+        .quick-reference-tabs {
+            display: flex;
+            background: #1a252f;
+            padding: 0 30px;
+            gap: 5px;
+            border-bottom: 2px solid #34495e;
+        }
+
+        .quick-reference-tab {
+            padding: 12px 20px;
+            background: transparent;
+            border: none;
+            color: #95a5a6;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 8px 8px 0 0;
+            transition: all 0.3s;
+        }
+
+        .quick-reference-tab:hover {
+            background: rgba(52, 152, 219, 0.1);
+            color: #3498db;
+        }
+
+        .quick-reference-tab.active {
+            background: #2c3e50;
+            color: #3498db;
+        }
+
+        .quick-reference-body {
+            padding: 30px;
+            color: #ecf0f1;
+            max-height: calc(100vh - 200px);
+            overflow-y: auto;
+        }
+
+        .quick-reference-tab-content {
+            display: none;
+        }
+
+        .quick-reference-tab-content.active {
+            display: block;
+        }
+
+        .qr-section {
+            margin-bottom: 25px;
+        }
+
+        .qr-section-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #3498db;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #34495e;
+        }
+
+        .qr-algorithm-box {
+            background: rgba(52, 152, 219, 0.1);
+            border-left: 4px solid #3498db;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 5px;
+        }
+
+        .qr-algorithm-box h4 {
+            color: #3498db;
+            margin-bottom: 10px;
+        }
+
+        .qr-algorithm-box ul {
+            margin-left: 20px;
+            line-height: 1.8;
+        }
+
+        .qr-drug-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+
+        .qr-drug-table th {
+            background: #34495e;
+            color: #3498db;
+            padding: 10px;
+            text-align: left;
+            font-size: 13px;
+        }
+
+        .qr-drug-table td {
+            padding: 10px;
+            border-bottom: 1px solid #34495e;
+            font-size: 13px;
+        }
+
+        .qr-drug-table tr:hover {
+            background: rgba(52, 152, 219, 0.05);
+        }
+
+        .qr-energy-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+
+        .qr-energy-table th {
+            background: #e74c3c;
+            color: white;
+            padding: 10px;
+            text-align: left;
+            font-size: 13px;
+        }
+
+        .qr-energy-table td {
+            padding: 10px;
+            border-bottom: 1px solid #34495e;
+            font-size: 13px;
+        }
+
+        .qr-rhythm-box {
+            background: rgba(46, 204, 113, 0.1);
+            border-left: 4px solid #27ae60;
+            padding: 12px;
+            margin-bottom: 12px;
+            border-radius: 5px;
+        }
+
+        .qr-rhythm-box.shockable {
+            background: rgba(231, 76, 60, 0.1);
+            border-left-color: #e74c3c;
+        }
+
+        .qr-critical-point {
+            background: rgba(243, 156, 18, 0.1);
+            border-left: 4px solid #f39c12;
+            padding: 12px;
+            margin: 15px 0;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+
+        /* Enhanced Artefact Controls */
+        .artefact-controls-section {
+            background: #1a252f;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+
+        .artefact-controls-title {
+            color: #3498db;
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .artefact-control {
+            background: #2c3e50;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 10px;
+            border: 2px solid transparent;
+            transition: all 0.3s;
+        }
+
+        .artefact-control.active {
+            border-color: #e74c3c;
+            background: rgba(231, 76, 60, 0.1);
+        }
+
+        .artefact-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .artefact-name {
+            color: #ecf0f1;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .artefact-enable {
+            background: #7f8c8d;
+            color: white;
+            border: none;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: bold;
+            cursor: pointer;
+            min-width: 50px;
+        }
+
+        .artefact-enable.active {
+            background: #e74c3c;
+        }
+
+        .severity-buttons {
+            display: flex;
+            gap: 5px;
+        }
+
+        .severity-btn {
+            flex: 1;
+            background: #34495e;
+            color: #bdc3c7;
+            border: 2px solid #2c3e50;
+            padding: 6px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .severity-btn:hover {
+            background: #3d5a6b;
+        }
+
+        .severity-btn.active {
+            background: #f39c12;
+            color: white;
+            border-color: #e67e22;
+        }
+
     </style>
 </head>
 <body>
@@ -1379,6 +1903,38 @@
                 cpr: false,
                 leadoff: false
             }
+            
+            // Phase 1: Artefact System
+            artefacts: {
+                mains: { enabled: false, severity: 0 },
+                tremor: { enabled: false, severity: 0 },
+                wander: { enabled: false, severity: 0 },
+                leadoff: { enabled: false, severity: 0 },
+                movement: { enabled: false, severity: 0 },
+                cpr: { enabled: false, severity: 0 }
+            },
+            
+            // Phase 1: Achievement System
+            achievements: {
+                first_shock: { unlocked: false, name: '⚡ First Shock', desc: 'Deliver your first shock' },
+                quick_response: { unlocked: false, name: '⏱️ Quick Response', desc: 'Shock within 60 seconds' },
+                sync_master: { unlocked: false, name: '🎯 Sync Master', desc: 'Use SYNC correctly for cardioversion' },
+                pacing_pro: { unlocked: false, name: '💓 Pacing Pro', desc: 'Achieve pacing capture' },
+                pulse_checker: { unlocked: false, name: '🫀 Pulse Checker', desc: 'Check pulse 2+ times' },
+                rhythm_reader: { unlocked: false, name: '📊 Rhythm Reader', desc: 'Complete 5 different scenarios' },
+                guideline_guru: { unlocked: false, name: '✅ Guideline Guru', desc: 'Follow RCUK 2025 perfectly' },
+                persistent: { unlocked: false, name: '🔄 Persistent', desc: 'Try same scenario 3 times' },
+                all_scenarios: { unlocked: false, name: '🏆 All Scenarios', desc: 'Complete all 7 scenarios' },
+                speed_demon: { unlocked: false, name: '🚀 Speed Demon', desc: 'Complete scenario <5 minutes' }
+            },
+            achievementsUnlocked: 0,
+            scenariosCompleted: [],
+            scenarioAttempts: {},
+            
+            // Phase 1: Hint System
+            lastHintTime: 0,
+            hintsShown: [],
+            hintCheckInterval: null,
         };
 
         // Canvas
@@ -1838,6 +2394,7 @@
                         }
                     }
 
+                    y = applyArtefacts(y, waveformX + x, simTimeSeconds, baseline);
                     waveformData.push(y);
                 }
 
@@ -1913,6 +2470,400 @@
             animationId = requestAnimationFrame(animate);
         }
 
+
+        // ============================================
+        // ACHIEVEMENT SYSTEM
+        // ============================================
+        
+        function initAchievements() {
+            const container = document.getElementById('achievementContainer');
+            const list = document.getElementById('achievementList');
+            
+            if (!container || !list) return;
+            
+            list.innerHTML = '';
+            
+            Object.keys(state.achievements).forEach(key => {
+                const achievement = state.achievements[key];
+                const item = document.createElement('div');
+                item.className = 'achievement-item' + (achievement.unlocked ? ' unlocked' : '');
+                item.id = `achievement-${key}`;
+                
+                const icon = achievement.name.split(' ')[0];
+                const name = achievement.name.substring(achievement.name.indexOf(' ') + 1);
+                
+                item.innerHTML = `
+                    <div class="achievement-icon">${icon}</div>
+                    <div class="achievement-info">
+                        <div class="achievement-name">${name}</div>
+                        <div class="achievement-desc">${achievement.desc}</div>
+                    </div>
+                `;
+                
+                list.appendChild(item);
+            });
+            
+            updateAchievementCounter();
+            container.style.display = 'block';
+        }
+        
+        function updateAchievementCounter() {
+            const counter = document.getElementById('achievementCounter');
+            if (!counter) return;
+            
+            const total = Object.keys(state.achievements).length;
+            const unlocked = state.achievementsUnlocked;
+            counter.textContent = `${unlocked}/${total}`;
+        }
+        
+        function unlockAchievement(key) {
+            if (!state.achievements[key] || state.achievements[key].unlocked) return;
+            
+            state.achievements[key].unlocked = true;
+            state.achievementsUnlocked++;
+            
+            // Update display
+            const item = document.getElementById(`achievement-${key}`);
+            if (item) {
+                item.classList.add('unlocked');
+            }
+            
+            updateAchievementCounter();
+            
+            // Show notification
+            showAchievementNotification(state.achievements[key]);
+            
+            // Play sound
+            playSound('achievement');
+        }
+        
+        function showAchievementNotification(achievement) {
+            const icon = achievement.name.split(' ')[0];
+            const name = achievement.name.substring(achievement.name.indexOf(' ') + 1);
+            
+            const notification = document.createElement('div');
+            notification.className = 'achievement-notification';
+            notification.innerHTML = `
+                <div class="icon">${icon}</div>
+                <div class="title">Achievement Unlocked!</div>
+                <div class="description">${name}: ${achievement.desc}</div>
+            `;
+            
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.remove();
+            }, 3000);
+        }
+        
+        function checkAchievements() {
+            // First Shock
+            if (state.shockCount >= 1 && !state.achievements.first_shock.unlocked) {
+                unlockAchievement('first_shock');
+            }
+            
+            // Quick Response (shock within 60s)
+            if (state.shockCount >= 1) {
+                const firstShock = state.actions.find(a => a.action.includes('delivered'));
+                if (firstShock && firstShock.time <= 60 && !state.achievements.quick_response.unlocked) {
+                    unlockAchievement('quick_response');
+                }
+            }
+            
+            // Sync Master
+            const scenario = scenarios[state.selectedScenario];
+            if (scenario && scenario.hasPulse && state.syncMode && state.shockCount >= 1) {
+                if (!state.achievements.sync_master.unlocked) {
+                    unlockAchievement('sync_master');
+                }
+            }
+            
+            // Pacing Pro
+            if (state.pacerOutput >= 80 && state.pacingActive) {
+                if (!state.achievements.pacing_pro.unlocked) {
+                    unlockAchievement('pacing_pro');
+                }
+            }
+            
+            // Pulse Checker
+            const pulseChecks = state.actions.filter(a => a.action === 'Pulse check performed');
+            if (pulseChecks.length >= 2 && !state.achievements.pulse_checker.unlocked) {
+                unlockAchievement('pulse_checker');
+            }
+            
+            // Rhythm Reader (5 scenarios)
+            if (state.scenariosCompleted.length >= 5 && !state.achievements.rhythm_reader.unlocked) {
+                unlockAchievement('rhythm_reader');
+            }
+            
+            // All Scenarios (7 scenarios)
+            if (state.scenariosCompleted.length >= 7 && !state.achievements.all_scenarios.unlocked) {
+                unlockAchievement('all_scenarios');
+            }
+            
+            // Persistent (same scenario 3 times)
+            if (state.selectedScenario && state.scenarioAttempts[state.selectedScenario] >= 3) {
+                if (!state.achievements.persistent.unlocked) {
+                    unlockAchievement('persistent');
+                }
+            }
+            
+            // Speed Demon (<5 min)
+            if (state.roscAchieved && state.scenarioStartTime) {
+                const elapsed = (Date.now() - state.scenarioStartTime) / 1000;
+                if (elapsed < 300 && !state.achievements.speed_demon.unlocked) {
+                    unlockAchievement('speed_demon');
+                }
+            }
+        }
+        
+        // ============================================
+        // HINT SYSTEM
+        // ============================================
+        
+        function showHint(message, urgency = 'low', title = '💡 Hint') {
+            const panel = document.getElementById('hintPanel');
+            const titleEl = document.getElementById('hintTitle');
+            const messageEl = document.getElementById('hintMessage');
+            
+            if (!panel || !titleEl || !messageEl) return;
+            
+            // Check if hint was shown recently (anti-spam)
+            const now = Date.now();
+            if (now - state.lastHintTime < 10000) return; // 10 second cooldown
+            
+            // Check if this specific hint was already shown
+            if (state.hintsShown.includes(message)) return;
+            
+            state.lastHintTime = now;
+            state.hintsShown.push(message);
+            
+            // Set urgency class
+            panel.className = 'hint-panel';
+            if (urgency === 'medium') {
+                panel.classList.add('urgency-medium');
+                titleEl.textContent = '⚠️ Important Hint';
+            } else if (urgency === 'high') {
+                panel.classList.add('urgency-high');
+                titleEl.textContent = '🚨 Critical Hint';
+            } else {
+                titleEl.textContent = title;
+            }
+            
+            messageEl.textContent = message;
+            panel.style.display = 'block';
+            
+            // Auto-hide medium urgency hints after 15 seconds
+            if (urgency === 'medium') {
+                setTimeout(() => {
+                    panel.style.display = 'none';
+                }, 15000);
+            }
+            // High urgency hints stay until dismissed
+        }
+        
+        function closeHint() {
+            const panel = document.getElementById('hintPanel');
+            if (panel) panel.style.display = 'none';
+        }
+        
+        function checkForHints() {
+            if (!state.scenarioActive || !state.selectedScenario) return;
+            
+            const scenario = scenarios[state.selectedScenario];
+            if (!scenario) return;
+            
+            const elapsed = state.scenarioStartTime ? (Date.now() - state.scenarioStartTime) / 1000 : 0;
+            
+            // Hint 1: Cardiac arrest not recognized (high urgency)
+            if (!scenario.hasPulse && state.shockCount === 0 && elapsed > 30) {
+                showHint(
+                    'Patient has NO pulse - this is cardiac arrest! Immediate defibrillation required for VF/VT.',
+                    'high'
+                );
+            }
+            
+            // Hint 2: Wrong sync mode for arrest (high urgency)
+            if (!scenario.hasPulse && state.syncMode && elapsed > 20) {
+                showHint(
+                    'In cardiac arrest (no pulse), turn OFF sync mode. Defibrillation should be unsynchronised.',
+                    'high'
+                );
+            }
+            
+            // Hint 3: Sync not used for cardioversion (high urgency)
+            if (scenario.hasPulse && !state.syncMode && state.charged && scenario.category === 'cardioversion') {
+                showHint(
+                    'Patient has a pulse - you should use SYNC mode for cardioversion to avoid inducing VF.',
+                    'high'
+                );
+            }
+            
+            // Hint 4: Low pacing output (medium urgency)
+            if (scenario.requiresPacing && state.pacingActive && state.pacerOutput < 70 && elapsed > 45) {
+                showHint(
+                    'Pacing output seems low. Try starting at ≥70mA and increase until you achieve capture.',
+                    'medium'
+                );
+            }
+            
+            // Hint 5: Delayed first shock (medium urgency)
+            if (!scenario.hasPulse && state.shockCount === 0 && elapsed > 90) {
+                showHint(
+                    'Time to first shock is important in cardiac arrest. RCUK guidelines recommend minimising delays.',
+                    'medium'
+                );
+            }
+            
+            // Hint 6: No pulse check (medium urgency)
+            const pulseChecks = state.actions.filter(a => a.action === 'Pulse check performed');
+            if (pulseChecks.length === 0 && elapsed > 60) {
+                showHint(
+                    'Have you checked for a pulse? This determines whether to use defibrillation or cardioversion.',
+                    'medium'
+                );
+            }
+        }
+        
+        // ============================================
+        // QUICK REFERENCE FUNCTIONS
+        // ============================================
+        
+        function openQuickReference() {
+            const modal = document.getElementById('quickReferenceModal');
+            if (modal) {
+                modal.style.display = 'block';
+            }
+        }
+        
+        function closeQuickReference() {
+            const modal = document.getElementById('quickReferenceModal');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+        }
+        
+        function showQuickRefTab(tabName) {
+            // Hide all tab contents
+            const contents = document.querySelectorAll('.quick-reference-tab-content');
+            contents.forEach(c => c.classList.remove('active'));
+            
+            // Remove active class from all tabs
+            const tabs = document.querySelectorAll('.quick-reference-tab');
+            tabs.forEach(t => t.classList.remove('active'));
+            
+            // Show selected tab content
+            const content = document.getElementById(`qr-${tabName}`);
+            if (content) content.classList.add('active');
+            
+            // Set active tab button
+            const activeTab = Array.from(tabs).find(t => t.textContent.toLowerCase().includes(tabName.substring(0, 3)));
+            if (activeTab) activeTab.classList.add('active');
+        }
+        
+        // ============================================
+        // ARTEFACT SYSTEM
+        // ============================================
+        
+        function toggleArtefact(type) {
+            if (!state.artefacts[type]) return;
+            
+            state.artefacts[type].enabled = !state.artefacts[type].enabled;
+            
+            // Update UI
+            const control = document.getElementById(`artefact-${type}`);
+            const button = control?.querySelector('.artefact-enable');
+            
+            if (state.artefacts[type].enabled) {
+                control?.classList.add('active');
+                if (button) button.textContent = 'ON';
+                button?.classList.add('active');
+                
+                // Set to low severity if enabling
+                if (state.artefacts[type].severity === 0) {
+                    setArtefactSeverity(type, 1);
+                }
+            } else {
+                control?.classList.remove('active');
+                if (button) button.textContent = 'OFF';
+                button?.classList.remove('active');
+            }
+        }
+        
+        function setArtefactSeverity(type, level) {
+            if (!state.artefacts[type]) return;
+            
+            state.artefacts[type].severity = level;
+            
+            // Update UI
+            const control = document.getElementById(`artefact-${type}`);
+            const buttons = control?.querySelectorAll('.severity-btn');
+            
+            buttons?.forEach((btn, index) => {
+                if (index === level) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+            
+            // Enable artefact if setting severity > 0
+            if (level > 0 && !state.artefacts[type].enabled) {
+                toggleArtefact(type);
+            }
+        }
+        
+        function applyArtefacts(y, x, t, baseline) {
+            let modifiedY = y;
+            
+            // Apply each enabled artefact
+            if (state.artefacts.mains.enabled && state.artefacts.mains.severity > 0) {
+                const amplitude = [0, 3, 6, 10][state.artefacts.mains.severity];
+                modifiedY += Math.sin(x * 0.15 + t * 10) * amplitude;
+            }
+            
+            if (state.artefacts.tremor.enabled && state.artefacts.tremor.severity > 0) {
+                const amplitude = [0, 4, 8, 14][state.artefacts.tremor.severity];
+                modifiedY += Math.sin(x * 0.3 + t * 8) * amplitude * 0.6;
+                modifiedY += Math.random() * amplitude * 0.4;
+            }
+            
+            if (state.artefacts.wander.enabled && state.artefacts.wander.severity > 0) {
+                const amplitude = [0, 15, 30, 50][state.artefacts.wander.severity];
+                modifiedY += Math.sin(x * 0.008 + t * 0.5) * amplitude;
+                modifiedY += Math.sin(x * 0.015 + t * 0.3) * amplitude * 0.5;
+            }
+            
+            if (state.artefacts.leadoff.enabled && state.artefacts.leadoff.severity > 0) {
+                const probability = [0, 0.005, 0.015, 0.03][state.artefacts.leadoff.severity];
+                if (Math.random() < probability) {
+                    return baseline + (Math.random() - 0.5) * 200;
+                }
+            }
+            
+            if (state.artefacts.movement.enabled && state.artefacts.movement.severity > 0) {
+                const amplitude = [0, 20, 40, 70][state.artefacts.movement.severity];
+                modifiedY += Math.sin(x * 0.02 + t * 3) * amplitude;
+                modifiedY += Math.sin(x * 0.05 + t * 4) * amplitude * 0.5;
+                if (Math.random() < 0.01) {
+                    modifiedY += (Math.random() - 0.5) * amplitude * 2;
+                }
+            }
+            
+            if (state.artefacts.cpr.enabled && state.artefacts.cpr.severity > 0) {
+                const amplitude = [0, 25, 50, 80][state.artefacts.cpr.severity];
+                const compressionRate = 100 / 60; // ~100 compressions per minute
+                const period = ecgSpeed / compressionRate;
+                const phase = (x % period) / period;
+                
+                if (phase < 0.3) {
+                    modifiedY -= amplitude * (1 - phase / 0.3);
+                }
+            }
+            
+            return modifiedY;
+        }
+        
         function updateDisplays() {
             const scenario = scenarios[state.selectedScenario];
             let displayHR = state.hr;
@@ -2075,6 +3026,22 @@
                     state.scenarioStartTime = Date.now();
                     state.scenarioActive = true;
 
+                
+                // Initialize Phase 1 features
+                initAchievements();
+                document.getElementById('quickRefButton').style.display = 'block';
+                state.lastHintTime = 0;
+                state.hintsShown = [];
+                
+                // Start hint checking
+                state.hintCheckInterval = setInterval(checkForHints, 5000);
+                
+                // Track scenario attempts
+                if (!state.scenarioAttempts[scenarioId]) {
+                    state.scenarioAttempts[scenarioId] = 0;
+                }
+                state.scenarioAttempts[scenarioId]++;
+
                     let msg = scenario.description.toUpperCase();
                     if (!scenario.hasPulse) {
                         setMessage(msg, 'alert');
@@ -2101,6 +3068,21 @@
                 animationId = null;
             }
             
+
+            
+            // Clean up Phase 1 features
+            if (state.hintCheckInterval) {
+                clearInterval(state.hintCheckInterval);
+                state.hintCheckInterval = null;
+            }
+            closeHint();
+            
+            // Mark scenario as completed
+            if (state.selectedScenario && !state.scenariosCompleted.includes(state.selectedScenario)) {
+                state.scenariosCompleted.push(state.selectedScenario);
+            }
+            
+            checkAchievements();
             showSummary();
         }
 
@@ -2445,6 +3427,7 @@
             document.getElementById('shockBtn').disabled = true;
             
             playSound('shock');
+            checkAchievements();
             
             logAction(`Shock ${state.shockCount} delivered`, `${shockEnergy}J ${shockType}`);
             
@@ -2704,6 +3687,17 @@
                     oscillator.stop(audioContext.currentTime + 0.5);
                     break;
                     
+                
+                case 'achievement':
+                    oscillator.frequency.setValueAtTime(600, audioContext.currentTime);
+                    oscillator.frequency.linearRampToValueAtTime(800, audioContext.currentTime + 0.1);
+                    oscillator.frequency.linearRampToValueAtTime(1000, audioContext.currentTime + 0.2);
+                    gainNode.gain.setValueAtTime(0.4, audioContext.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+                    oscillator.start(audioContext.currentTime);
+                    oscillator.stop(audioContext.currentTime + 0.5);
+                    break;
+                    
                 case 'shock':
                     oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
                     gainNode.gain.setValueAtTime(0.5, audioContext.currentTime);
@@ -2757,5 +3751,569 @@
             }
         }, 1000);
     </script>
+
+    <!-- Quick Reference Modal -->
+    <div class="quick-reference-modal" id="quickReferenceModal">
+        <div class="quick-reference-content">
+            <div class="quick-reference-header">
+                <div class="quick-reference-title">📖 Quick Reference Guide</div>
+                <button class="quick-reference-close" onclick="closeQuickReference()">×</button>
+            </div>
+            <div class="quick-reference-tabs">
+                <button class="quick-reference-tab active" onclick="showQuickRefTab('algorithms')">Algorithms</button>
+                <button class="quick-reference-tab" onclick="showQuickRefTab('drugs')">Drug Doses</button>
+                <button class="quick-reference-tab" onclick="showQuickRefTab('ecg')">ECG Guide</button>
+                <button class="quick-reference-tab" onclick="showQuickRefTab('energy')">Energy Levels</button>
+                <button class="quick-reference-tab" onclick="showQuickRefTab('pacing')">Pacing</button>
+            </div>
+            <div class="quick-reference-body">
+                <!-- ALGORITHMS TAB -->
+                <div id="qr-algorithms" class="quick-reference-tab-content active">
+                    <div class="qr-section">
+                        <div class="qr-section-title">Cardiac Arrest - Shockable Rhythms (VF/VT)</div>
+                        <div class="qr-algorithm-box">
+                            <h4>Initial Management</h4>
+                            <ul>
+                                <li><strong>Confirm cardiac arrest:</strong> Unresponsive, not breathing normally, no pulse</li>
+                                <li><strong>Start CPR</strong> immediately (30:2 if no airway, continuous once intubated)</li>
+                                <li><strong>Attach defibrillator/monitor</strong> as soon as available</li>
+                                <li><strong>Identify shockable rhythm:</strong> VF or pulseless VT</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="qr-algorithm-box">
+                            <h4>Defibrillation Sequence</h4>
+                            <ul>
+                                <li><strong>1st Shock:</strong> 150-200J (biphasic), resume CPR immediately for 2 minutes</li>
+                                <li><strong>After 3rd shock:</strong> Give Adrenaline 1mg IV + Amiodarone 300mg IV</li>
+                                <li><strong>After 5th shock:</strong> Give Amiodarone 150mg IV (if not already given)</li>
+                                <li><strong>Continue:</strong> Shock → 2 min CPR → Rhythm check cycle</li>
+                                <li><strong>Adrenaline:</strong> 1mg IV every 3-5 minutes (alternate loops)</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="qr-algorithm-box">
+                            <h4>4Hs and 4Ts - Reversible Causes</h4>
+                            <ul>
+                                <li><strong>Hypoxia:</strong> Check ventilation, oxygen</li>
+                                <li><strong>Hypovolaemia:</strong> Fluid resuscitation</li>
+                                <li><strong>Hypo/hyperkalaemia:</strong> Check blood gas</li>
+                                <li><strong>Hypothermia:</strong> Core temperature</li>
+                                <li><strong>Thrombosis (coronary/pulmonary):</strong> Consider thrombolysis</li>
+                                <li><strong>Tension pneumothorax:</strong> Decompress</li>
+                                <li><strong>Tamponade (cardiac):</strong> Pericardiocentesis</li>
+                                <li><strong>Toxins:</strong> Consider antidotes</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="qr-section">
+                        <div class="qr-section-title">Tachycardia with Adverse Features</div>
+                        <div class="qr-algorithm-box">
+                            <h4>Adverse Features (any one requires immediate cardioversion)</h4>
+                            <ul>
+                                <li><strong>Shock:</strong> Hypotension (systolic BP <90mmHg), pallor, sweating, confusion</li>
+                                <li><strong>Syncope:</strong> Loss of consciousness due to reduced cardiac output</li>
+                                <li><strong>Myocardial ischaemia:</strong> Chest pain, ECG changes</li>
+                                <li><strong>Heart failure:</strong> Pulmonary oedema, raised JVP</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="qr-algorithm-box">
+                            <h4>Synchronised Cardioversion</h4>
+                            <ul>
+                                <li><strong>Broad complex (VT):</strong> 120-150J</li>
+                                <li><strong>Narrow complex (AF, Flutter, SVT):</strong> 70-120J</li>
+                                <li><strong>Sedation required</strong> if conscious (unless immediately life-threatening)</li>
+                                <li><strong>SYNC mode ON</strong> - synchronises with R wave</li>
+                                <li><strong>If fails:</strong> Give amiodarone 300mg IV over 10-20 min, repeat cardioversion</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="qr-section">
+                        <div class="qr-section-title">Bradycardia</div>
+                        <div class="qr-algorithm-box">
+                            <h4>Adverse Features</h4>
+                            <ul>
+                                <li><strong>Shock:</strong> Hypotension, pallor, sweating, confusion</li>
+                                <li><strong>Syncope:</strong> Loss of consciousness</li>
+                                <li><strong>Myocardial ischaemia:</strong> Chest pain</li>
+                                <li><strong>Heart failure:</strong> Pulmonary oedema</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="qr-algorithm-box">
+                            <h4>Treatment Sequence</h4>
+                            <ul>
+                                <li><strong>Atropine:</strong> 500mcg IV, repeat up to maximum 3mg</li>
+                                <li><strong>If atropine ineffective:</strong> Consider transcutaneous pacing</li>
+                                <li><strong>Alternative drugs:</strong> Isoprenaline, adrenaline, dopamine infusions</li>
+                                <li><strong>Seek expert help</strong> for transvenous pacing if temporary pacing required</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- DRUGS TAB -->
+                <div id="qr-drugs" class="quick-reference-tab-content">
+                    <div class="qr-section">
+                        <div class="qr-section-title">Emergency Drug Doses (Adult)</div>
+                        <table class="qr-drug-table">
+                            <thead>
+                                <tr>
+                                    <th>Drug</th>
+                                    <th>Indication</th>
+                                    <th>Dose</th>
+                                    <th>Route</th>
+                                    <th>Timing/Notes</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><strong>Adrenaline</strong></td>
+                                    <td>Cardiac arrest</td>
+                                    <td>1mg (1:10,000)</td>
+                                    <td>IV/IO</td>
+                                    <td>After 3rd shock, then every 3-5 min</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Amiodarone</strong></td>
+                                    <td>VF/VT arrest</td>
+                                    <td>300mg</td>
+                                    <td>IV/IO</td>
+                                    <td>After 3rd shock</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Amiodarone</strong></td>
+                                    <td>VF/VT arrest</td>
+                                    <td>150mg</td>
+                                    <td>IV/IO</td>
+                                    <td>After 5th shock (if VF/VT persists)</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Atropine</strong></td>
+                                    <td>Bradycardia</td>
+                                    <td>500mcg</td>
+                                    <td>IV</td>
+                                    <td>Repeat up to 3mg total</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Adenosine</strong></td>
+                                    <td>SVT</td>
+                                    <td>6mg → 12mg → 12mg</td>
+                                    <td>IV rapid</td>
+                                    <td>Followed by 20ml flush, incremental doses</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Magnesium sulphate</strong></td>
+                                    <td>Torsades de pointes</td>
+                                    <td>2g (8mmol)</td>
+                                    <td>IV</td>
+                                    <td>Over 1-2 minutes</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Calcium chloride</strong></td>
+                                    <td>Hyperkalaemia, hypocalcaemia</td>
+                                    <td>10ml of 10%</td>
+                                    <td>IV</td>
+                                    <td>Cardioprotective, over 2-5 minutes</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Sodium bicarbonate</strong></td>
+                                    <td>Severe acidosis, hyperkalaemia</td>
+                                    <td>50ml of 8.4%</td>
+                                    <td>IV</td>
+                                    <td>Only if indicated, not routine</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Lidocaine</strong></td>
+                                    <td>VF/VT (alternative)</td>
+                                    <td>1mg/kg</td>
+                                    <td>IV/IO</td>
+                                    <td>If amiodarone unavailable</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="qr-critical-point">
+                        ⚠️ <strong>Drug Administration:</strong> All cardiac arrest drugs via IV/IO. If no IV access, establish IO immediately. Do NOT delay CPR to give drugs - quality CPR and early defibrillation are priorities.
+                    </div>
+                </div>
+
+                <!-- ECG TAB -->
+                <div id="qr-ecg" class="quick-reference-tab-content">
+                    <div class="qr-section">
+                        <div class="qr-section-title">Shockable Rhythms</div>
+                        
+                        <div class="qr-rhythm-box shockable">
+                            <h4>Ventricular Fibrillation (VF)</h4>
+                            <ul>
+                                <li><strong>Appearance:</strong> Chaotic, irregular waveform with no identifiable QRS complexes</li>
+                                <li><strong>Rate:</strong> Cannot determine (chaotic electrical activity)</li>
+                                <li><strong>Can be coarse or fine:</strong> Coarse VF (larger amplitude) more likely to respond to defibrillation</li>
+                                <li><strong>Clinical:</strong> Cardiac arrest - no pulse, no cardiac output</li>
+                                <li><strong>Treatment:</strong> Immediate defibrillation, CPR, adrenaline, amiodarone</li>
+                            </ul>
+                        </div>
+
+                        <div class="qr-rhythm-box shockable">
+                            <h4>Pulseless Ventricular Tachycardia (VT)</h4>
+                            <ul>
+                                <li><strong>Appearance:</strong> Broad QRS complexes (>0.12s), regular rhythm</li>
+                                <li><strong>Rate:</strong> Usually 100-250/min</li>
+                                <li><strong>Broad complexes:</strong> QRS width typically 0.16-0.20s or more</li>
+                                <li><strong>Clinical:</strong> Cardiac arrest - no pulse despite organised rhythm on monitor</li>
+                                <li><strong>Treatment:</strong> SAME as VF - immediate defibrillation</li>
+                                <li><strong>Critical:</strong> MUST check pulse - if pulse present, it's VT with pulse (different treatment)</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="qr-section">
+                        <div class="qr-section-title">Tachycardias (With Pulse)</div>
+                        
+                        <div class="qr-rhythm-box">
+                            <h4>VT with Pulse (Unstable)</h4>
+                            <ul>
+                                <li><strong>Appearance:</strong> Broad QRS (>0.12s), regular, monomorphic</li>
+                                <li><strong>Rate:</strong> 100-250/min</li>
+                                <li><strong>Clinical:</strong> Pulse present but adverse features (shock, syncope, ischaemia, failure)</li>
+                                <li><strong>Treatment:</strong> SYNCHRONISED cardioversion 120-150J</li>
+                                <li><strong>Key point:</strong> SYNC mode ON (waits for R wave to avoid shocking on T wave)</li>
+                            </ul>
+                        </div>
+
+                        <div class="qr-rhythm-box">
+                            <h4>Atrial Fibrillation (AF)</h4>
+                            <ul>
+                                <li><strong>Appearance:</strong> Irregularly irregular rhythm, no P waves, fine fibrillatory baseline</li>
+                                <li><strong>Rate:</strong> Variable ventricular response (can be fast 120-180/min)</li>
+                                <li><strong>QRS:</strong> Narrow (unless aberrant conduction)</li>
+                                <li><strong>Clinical:</strong> If fast with adverse features, needs cardioversion</li>
+                                <li><strong>Treatment:</strong> SYNCHRONISED cardioversion 120-150J if unstable</li>
+                            </ul>
+                        </div>
+
+                        <div class="qr-rhythm-box">
+                            <h4>Supraventricular Tachycardia (SVT)</h4>
+                            <ul>
+                                <li><strong>Appearance:</strong> Narrow QRS (<0.12s), regular rhythm</li>
+                                <li><strong>Rate:</strong> Usually 150-250/min</li>
+                                <li><strong>P waves:</strong> Often hidden or retrograde</li>
+                                <li><strong>Clinical:</strong> Palpitations, may have adverse features if very fast</li>
+                                <li><strong>Treatment:</strong> Adenosine if stable, SYNCHRONISED cardioversion 70-120J if unstable</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="qr-section">
+                        <div class="qr-section-title">Bradycardias</div>
+                        
+                        <div class="qr-rhythm-box">
+                            <h4>Complete Heart Block (3rd Degree AV Block)</h4>
+                            <ul>
+                                <li><strong>Appearance:</strong> P waves and QRS complexes completely dissociated</li>
+                                <li><strong>Atrial rate:</strong> Regular, 60-100/min</li>
+                                <li><strong>Ventricular rate:</strong> Slow, regular, 20-50/min (escape rhythm)</li>
+                                <li><strong>QRS:</strong> Often broad if ventricular escape</li>
+                                <li><strong>Clinical:</strong> Syncope, heart failure, bradycardia with adverse features</li>
+                                <li><strong>Treatment:</strong> Atropine may not work, transcutaneous pacing usually required</li>
+                            </ul>
+                        </div>
+
+                        <div class="qr-rhythm-box">
+                            <h4>Sinus Bradycardia</h4>
+                            <ul>
+                                <li><strong>Appearance:</strong> Normal P-QRS-T, just slow</li>
+                                <li><strong>Rate:</strong> <60/min</li>
+                                <li><strong>Clinical:</strong> May be physiological (athletes) or pathological</li>
+                                <li><strong>Treatment:</strong> Only if adverse features - atropine or pacing</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="qr-section">
+                        <div class="qr-section-title">Non-Shockable Arrest Rhythms</div>
+                        
+                        <div class="qr-rhythm-box">
+                            <h4>Asystole</h4>
+                            <ul>
+                                <li><strong>Appearance:</strong> Flat line (no electrical activity)</li>
+                                <li><strong>Check:</strong> Leads attached? Gain setting correct?</li>
+                                <li><strong>Clinical:</strong> Cardiac arrest - worst prognosis</li>
+                                <li><strong>Treatment:</strong> CPR, adrenaline, treat reversible causes. DO NOT shock.</li>
+                            </ul>
+                        </div>
+
+                        <div class="qr-rhythm-box">
+                            <h4>Pulseless Electrical Activity (PEA)</h4>
+                            <ul>
+                                <li><strong>Appearance:</strong> Organised electrical activity on monitor</li>
+                                <li><strong>Clinical:</strong> NO pulse despite electrical activity</li>
+                                <li><strong>Treatment:</strong> CPR, adrenaline, aggressively treat reversible causes (4Hs 4Ts)</li>
+                                <li><strong>Note:</strong> DO NOT shock - not a shockable rhythm</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="qr-critical-point">
+                        ⚠️ <strong>Always check for pulse!</strong> The monitor can show organised rhythm but patient may have no pulse (PEA). VT on monitor requires pulse check to determine if it's pulseless VT (defibrillation) or VT with pulse (cardioversion with SYNC).
+                    </div>
+                </div>
+
+                <!-- ENERGY TAB -->
+                <div id="qr-energy" class="quick-reference-tab-content">
+                    <div class="qr-section">
+                        <div class="qr-section-title">Defibrillation Energy Levels</div>
+                        
+                        <div class="qr-critical-point">
+                            ⚠️ <strong>SYNC mode OFF</strong> for defibrillation (cardiac arrest - no pulse)
+                        </div>
+
+                        <table class="qr-energy-table">
+                            <thead>
+                                <tr>
+                                    <th>Rhythm</th>
+                                    <th>Initial Energy</th>
+                                    <th>Subsequent Shocks</th>
+                                    <th>Notes</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><strong>VF</strong></td>
+                                    <td>150-200J</td>
+                                    <td>150-360J</td>
+                                    <td>Use same or higher energy for subsequent shocks</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Pulseless VT</strong></td>
+                                    <td>150-200J</td>
+                                    <td>150-360J</td>
+                                    <td>Treat as VF - SYNC OFF, no pulse</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="qr-section">
+                        <div class="qr-section-title">Cardioversion Energy Levels</div>
+                        
+                        <div class="qr-critical-point">
+                            ⚠️ <strong>SYNC mode ON</strong> for cardioversion (patient has pulse)
+                        </div>
+
+                        <table class="qr-energy-table">
+                            <thead>
+                                <tr>
+                                    <th>Rhythm</th>
+                                    <th>Initial Energy</th>
+                                    <th>If Unsuccessful</th>
+                                    <th>Notes</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><strong>VT with pulse</strong></td>
+                                    <td>120-150J</td>
+                                    <td>Increase in steps</td>
+                                    <td>SYNC ON - patient has pulse</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Atrial Fibrillation</strong></td>
+                                    <td>120-150J</td>
+                                    <td>Increase in steps to 200J</td>
+                                    <td>May need amiodarone if fails</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Atrial Flutter</strong></td>
+                                    <td>70-120J</td>
+                                    <td>Increase in steps</td>
+                                    <td>Usually very responsive</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>SVT</strong></td>
+                                    <td>70-120J</td>
+                                    <td>Increase in steps to 150J</td>
+                                    <td>Try adenosine first if stable</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="qr-section">
+                        <div class="qr-section-title">Critical Decision Points</div>
+                        
+                        <div class="qr-algorithm-box">
+                            <h4>SYNC vs NO SYNC Decision</h4>
+                            <ul>
+                                <li><strong>NO SYNC (Defibrillation):</strong>
+                                    <ul>
+                                        <li>Patient in cardiac arrest (no pulse)</li>
+                                        <li>VF or pulseless VT</li>
+                                        <li>Shock delivered immediately, any point in cycle</li>
+                                        <li>Energy: 150-200J initial, up to 360J</li>
+                                    </ul>
+                                </li>
+                                <li><strong>SYNC ON (Cardioversion):</strong>
+                                    <ul>
+                                        <li>Patient has pulse but unstable</li>
+                                        <li>VT, AF, flutter, SVT with adverse features</li>
+                                        <li>Shock synchronised with R wave (avoids T wave)</li>
+                                        <li>Energy: Depends on rhythm (70-150J)</li>
+                                        <li>Sedation required if conscious</li>
+                                    </ul>
+                                </li>
+                            </ul>
+                        </div>
+
+                        <div class="qr-algorithm-box">
+                            <h4>Energy Escalation Strategy</h4>
+                            <ul>
+                                <li>If first shock unsuccessful, use same or higher energy for next shock</li>
+                                <li>Maximum energy available: Usually 360J (biphasic)</li>
+                                <li>Don't reduce energy after failure - maintain or increase</li>
+                                <li>Consider pad position if repeated failures</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PACING TAB -->
+                <div id="qr-pacing" class="quick-reference-tab-content">
+                    <div class="qr-section">
+                        <div class="qr-section-title">Indications for Transcutaneous Pacing</div>
+                        
+                        <div class="qr-algorithm-box">
+                            <h4>When to Pace</h4>
+                            <ul>
+                                <li><strong>Symptomatic bradycardia</strong> not responding to atropine</li>
+                                <li><strong>Complete heart block</strong> with adverse features</li>
+                                <li><strong>Mobitz type II AV block</strong></li>
+                                <li><strong>Third-degree AV block</strong> (especially with broad QRS)</li>
+                                <li><strong>Any bradycardia</strong> with shock, syncope, myocardial ischaemia, or heart failure</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="qr-section">
+                        <div class="qr-section-title">Setup Procedure</div>
+                        
+                        <div class="qr-algorithm-box">
+                            <h4>Step-by-Step</h4>
+                            <ol style="line-height: 2;">
+                                <li><strong>Explain to patient</strong> (if conscious) - pacing can be uncomfortable</li>
+                                <li><strong>Consider analgesia/sedation</strong> if conscious and time allows</li>
+                                <li><strong>Apply pacing electrodes:</strong>
+                                    <ul>
+                                        <li>Anterior-posterior position preferred</li>
+                                        <li>Or anterior-lateral (avoid breast tissue)</li>
+                                        <li>Ensure good contact, dry skin</li>
+                                    </ul>
+                                </li>
+                                <li><strong>Connect to pacing device</strong></li>
+                                <li><strong>Select PACER mode</strong> on defibrillator</li>
+                                <li><strong>Set pacing rate:</strong> 60-70/min initially</li>
+                                <li><strong>Increase output</strong> from zero until capture achieved</li>
+                                <li><strong>Confirm capture:</strong> Check for palpable pulse matching paced rate</li>
+                                <li><strong>Set output 10-20mA above threshold</strong> to ensure consistent capture</li>
+                            </ol>
+                        </div>
+                    </div>
+
+                    <div class="qr-section">
+                        <div class="qr-section-title">Pacing Parameters</div>
+                        
+                        <table class="qr-drug-table">
+                            <thead>
+                                <tr>
+                                    <th>Parameter</th>
+                                    <th>Range</th>
+                                    <th>Initial Setting</th>
+                                    <th>Notes</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><strong>Rate</strong></td>
+                                    <td>30-200 ppm</td>
+                                    <td>60-70 ppm</td>
+                                    <td>Can increase if needed for perfusion</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Output</strong></td>
+                                    <td>0-200 mA</td>
+                                    <td>Start at 0, increase</td>
+                                    <td>Threshold typically 50-100mA</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="qr-section">
+                        <div class="qr-section-title">Confirming Electrical Capture</div>
+                        
+                        <div class="qr-algorithm-box">
+                            <h4>Signs of Capture</h4>
+                            <ul>
+                                <li><strong>ECG:</strong> Pacing spike followed by wide QRS complex</li>
+                                <li><strong>Most important:</strong> Palpable pulse matching paced rate</li>
+                                <li><strong>Blood pressure:</strong> Should improve if capture achieved</li>
+                                <li><strong>Patient perfusion:</strong> Improved conscious level, color</li>
+                            </ul>
+                        </div>
+
+                        <div class="qr-critical-point">
+                            ⚠️ <strong>Electrical vs Mechanical Capture:</strong> Just seeing paced QRS complexes isn't enough! You MUST check for a palpable pulse at the paced rate to confirm mechanical capture and cardiac output.
+                        </div>
+                    </div>
+
+                    <div class="qr-section">
+                        <div class="qr-section-title">Troubleshooting</div>
+                        
+                        <div class="qr-algorithm-box">
+                            <h4>If No Capture</h4>
+                            <ul>
+                                <li>Increase output (up to maximum 200mA)</li>
+                                <li>Check electrode contact and position</li>
+                                <li>Try different pad position (anterior-posterior if was anterior-lateral)</li>
+                                <li>Consider severe hyperkalemia or other metabolic causes</li>
+                                <li>May need transvenous pacing if transcutaneous fails</li>
+                            </ul>
+                        </div>
+
+                        <div class="qr-algorithm-box">
+                            <h4>Patient Discomfort</h4>
+                            <ul>
+                                <li>Transcutaneous pacing causes muscle stimulation - can be painful</li>
+                                <li>Provide analgesia/sedation if patient conscious</li>
+                                <li>Fentanyl 25-50mcg IV or midazolam 1-2mg IV</li>
+                                <li>Explain procedure and sensations to patient</li>
+                                <li>Reassure patient this is temporary measure</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="qr-section">
+                        <div class="qr-section-title">Medication During Pacing</div>
+                        
+                        <div class="qr-algorithm-box">
+                            <h4>Concurrent Therapies</h4>
+                            <ul>
+                                <li><strong>Atropine:</strong> Give before pacing if not already tried (500mcg, up to 3mg total)</li>
+                                <li><strong>Analgesia:</strong> Fentanyl 25-100mcg IV for pain from pacing</li>
+                                <li><strong>Sedation:</strong> Midazolam 1-5mg IV if needed and BP stable</li>
+                                <li><strong>Treat cause:</strong> e.g., if inferior MI consider fluids, avoid bradycardia treatments that reduce preload</li>
+                                <li><strong>Expert help:</strong> Call for transvenous pacing if transcutaneous pacing required for >30 minutes</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
 </body>
 </html>
