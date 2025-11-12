@@ -365,6 +365,7 @@
             svt: function (x, hr, tSeconds)            { return svt(x, hr, tSeconds, window.__ecgCanvas || document.getElementById('ecgCanvas')); },
             afib: function (x, hr, tSeconds)           { return afib(x, hr, tSeconds, window.__ecgCanvas || document.getElementById('ecgCanvas')); },
             vtach: function (x, hr, tSeconds)          { return vtach(x, hr, tSeconds, window.__ecgCanvas || document.getElementById('ecgCanvas')); },
+            vt_pulseless: function (x, hr, tSeconds)   { return vtach(x, 180, tSeconds, window.__ecgCanvas || document.getElementById('ecgCanvas')); }, // NEW
             vfib: function (x, hr, tSeconds)           { return vfib(x, hr, tSeconds, window.__ecgCanvas || document.getElementById('ecgCanvas')); },
             brady: function (x, hr, tSeconds)          { return brady(x, hr, tSeconds, window.__ecgCanvas || document.getElementById('ecgCanvas')); },
             chb: function (x, hr, tSeconds)            { return chb(x, hr, tSeconds, window.__ecgCanvas || document.getElementById('ecgCanvas')); },
@@ -1320,7 +1321,8 @@
         <div class="rhythm-buttons">
             <button class="rhythm-btn active" data-rhythm="nsr" onclick="quickSetRhythm('nsr')">NSR</button>
             <button class="rhythm-btn" data-rhythm="vfib" onclick="quickSetRhythm('vfib')">VF</button>
-            <button class="rhythm-btn" data-rhythm="vtach" onclick="quickSetRhythm('vtach')">VT</button>
+            <button class="rhythm-btn" data-rhythm="vt_pulseless" onclick="quickSetRhythm('vt_pulseless')">VT (Pulseless)</button>
+            <button class="rhythm-btn" data-rhythm="vtach" onclick="quickSetRhythm('vtach')">VT (Pulsed)</button>
             <button class="rhythm-btn" data-rhythm="svt" onclick="quickSetRhythm('svt')">SVT</button>
             <button class="rhythm-btn" data-rhythm="afib" onclick="quickSetRhythm('afib')">AF</button>
             <button class="rhythm-btn" data-rhythm="sinus_brady" onclick="quickSetRhythm('sinus_brady')">SB</button>
@@ -1513,7 +1515,8 @@
                     <div class="rhythm-buttons">
                         <button class="rhythm-btn" data-rhythm="nsr" onclick="quickSetRhythm('nsr')">NSR</button>
                         <button class="rhythm-btn" data-rhythm="vfib" onclick="quickSetRhythm('vfib')">VF</button>
-                        <button class="rhythm-btn" data-rhythm="vtach" onclick="quickSetRhythm('vtach')">VT</button>
+                        <button class="rhythm-btn" data-rhythm="vt_pulseless" onclick="quickSetRhythm('vt_pulseless')">VT (Pulseless)</button>
+                        <button class="rhythm-btn" data-rhythm="vtach" onclick="quickSetRhythm('vtach')">VT (Pulsed)</button>
                         <button class="rhythm-btn" data-rhythm="svt" onclick="quickSetRhythm('svt')">SVT</button>
                         <button class="rhythm-btn" data-rhythm="afib" onclick="quickSetRhythm('afib')">AF</button>
                         <button class="rhythm-btn" data-rhythm="sinus_brady" onclick="quickSetRhythm('sinus_brady')">SB</button>
@@ -1587,8 +1590,8 @@
                         </div>
                         <div class="vital-item">
                             <div class="vital-label">ETCO₂</div>
-                            <div class="vital-value" id="etco2Display">38</div>
-                            <div class="vital-unit">mmHg</div>
+                            <div class="vital-value" id="etco2Display">5.1</div>
+                            <div class="vital-unit">kPa</div>
                         </div>
                         <div class="vital-item">
                             <div class="vital-label">NIBP</div>
@@ -1699,7 +1702,7 @@
                 recommendedEnergy: 150,
                 successEnergy: 150,
                 successRhythm: 'nsr',
-                successVitals: { hr: 82, spo2: 94, etco2: 35, bpSys: 110, bpDia: 70 },
+                successVitals: { hr: 82, spo2: 94, etco2: 4.7, bpSys: 110, bpDia: 70 },
                 requiresSync: false,
                 shockToConvert: 3
             },
@@ -1707,29 +1710,29 @@
                 name: 'Pulseless Ventricular Tachycardia',
                 description: 'Patient in cardiac arrest. Monitor shows broad complex tachycardia. CONFIRM NO PULSE - this is a shockable arrest.',
                 category: 'defibrillation',
-                initialRhythm: 'vtach',
+                initialRhythm: 'vt_pulseless',
                 initialVitals: { hr: 0, spo2: 0, etco2: 0, bpSys: 0, bpDia: 0 },
                 hasPulse: false,
                 shockable: true,
                 recommendedEnergy: 150,
                 successEnergy: 150,
                 successRhythm: 'nsr',
-                successVitals: { hr: 78, spo2: 93, etco2: 34, bpSys: 108, bpDia: 68 },
+                successVitals: { hr: 78, spo2: 93, etco2: 4.5, bpSys: 108, bpDia: 68 },
                 requiresSync: false,
-                shockToConvert: 2
+                shockToConvert: 3
             },
             'unstable-vt': {
                 name: 'VT with Pulse - Unstable',
                 description: 'Patient conscious but severely unwell. Broad complex tachycardia at 180/min. Pulse present. BP 82/48. Requires SYNCHRONISED cardioversion.',
                 category: 'cardioversion',
                 initialRhythm: 'vtach',
-                initialVitals: { hr: 180, spo2: 88, etco2: 28, bpSys: 82, bpDia: 48 },
+                initialVitals: { hr: 180, spo2: 88, etco2: 3.7, bpSys: 82, bpDia: 48 },
                 hasPulse: true,
                 shockable: true,
                 recommendedEnergy: 120,
                 successEnergy: 120,
                 successRhythm: 'nsr',
-                successVitals: { hr: 76, spo2: 97, etco2: 36, bpSys: 118, bpDia: 74 },
+                successVitals: { hr: 76, spo2: 97, etco2: 4.8, bpSys: 118, bpDia: 74 },
                 requiresSync: true,
                 shockToConvert: 1
             },
@@ -1738,13 +1741,13 @@
                 description: 'Patient with palpitations and chest pain. Narrow complex tachycardia at 190/min. BP 80/54. Requires SYNCHRONISED cardioversion.',
                 category: 'cardioversion',
                 initialRhythm: 'svt',
-                initialVitals: { hr: 190, spo2: 90, etco2: 26, bpSys: 80, bpDia: 54 },
+                initialVitals: { hr: 190, spo2: 90, etco2: 3.5, bpSys: 80, bpDia: 54 },
                 hasPulse: true,
                 shockable: true,
                 recommendedEnergy: 100,
                 successEnergy: 100,
                 successRhythm: 'nsr',
-                successVitals: { hr: 74, spo2: 98, etco2: 36, bpSys: 120, bpDia: 76 },
+                successVitals: { hr: 74, spo2: 98, etco2: 4.8, bpSys: 120, bpDia: 76 },
                 requiresSync: true,
                 shockToConvert: 1
             },
@@ -1753,13 +1756,13 @@
                 description: 'Patient with fast irregular rhythm. Atrial fibrillation at 155/min. BP 82/48, pulmonary oedema developing. Requires SYNCHRONISED cardioversion.',
                 category: 'cardioversion',
                 initialRhythm: 'afib',
-                initialVitals: { hr: 155, spo2: 88, etco2: 30, bpSys: 82, bpDia: 48 },
+                initialVitals: { hr: 155, spo2: 88, etco2: 4.0, bpSys: 82, bpDia: 48 },
                 hasPulse: true,
                 shockable: true,
                 recommendedEnergy: 120,
                 successEnergy: 120,
                 successRhythm: 'nsr',
-                successVitals: { hr: 80, spo2: 96, etco2: 35, bpSys: 118, bpDia: 72 },
+                successVitals: { hr: 80, spo2: 96, etco2: 4.7, bpSys: 118, bpDia: 72 },
                 requiresSync: true,
                 shockToConvert: 1
             },
@@ -1768,12 +1771,12 @@
                 description: 'Patient syncopal and hypotensive. Complete dissociation between P waves and QRS. HR 32/min. BP 86/50. Requires transcutaneous pacing.',
                 category: 'pacing',
                 initialRhythm: 'chb',
-                initialVitals: { hr: 32, spo2: 92, etco2: 30, bpSys: 86, bpDia: 50 },
+                initialVitals: { hr: 32, spo2: 92, etco2: 4.0, bpSys: 86, bpDia: 50 },
                 hasPulse: true,
                 shockable: false,
-                captureThreshold: 70,
+                captureThreshold: 60,
                 successRate: 70,
-                successVitals: { hr: 70, spo2: 97, etco2: 36, bpSys: 115, bpDia: 72 },
+                successVitals: { hr: 70, spo2: 97, etco2: 4.8, bpSys: 115, bpDia: 72 },
                 requiresPacing: true
             },
             'symptomatic-brady': {
@@ -1781,12 +1784,12 @@
                 description: 'Patient unwell with dizziness and hypotension. Bradycardia at 38/min. BP 84/52. Failed atropine. Requires pacing.',
                 category: 'pacing',
                 initialRhythm: 'brady',
-                initialVitals: { hr: 38, spo2: 93, etco2: 31, bpSys: 84, bpDia: 52 },
+                initialVitals: { hr: 38, spo2: 93, etco2: 4.1, bpSys: 84, bpDia: 52 },
                 hasPulse: true,
                 shockable: false,
-                captureThreshold: 65,
+                captureThreshold: 60,
                 successRate: 70,
-                successVitals: { hr: 70, spo2: 97, etco2: 35, bpSys: 112, bpDia: 70 },
+                successVitals: { hr: 70, spo2: 97, etco2: 4.7, bpSys: 112, bpDia: 70 },
                 requiresPacing: true
             }
         };
@@ -1801,7 +1804,7 @@
             rhythm: 'nsr',
             hr: 75,
             spo2: 98,
-            etco2: 38,
+            etco2: 5.1,
             bpSys: 120,
             bpDia: 80,
             energy: 120,
@@ -1851,17 +1854,18 @@
         }
 
         const rhythmVitals = {
-            nsr:             { hr: 75,  spo2: 98, etco2: 38, bpSys: 120, bpDia: 80, hasPulse: true },
-            vfib:            { hr: 0,   spo2: 0,  etco2: 0,  bpSys: 0,   bpDia: 0,  hasPulse: false },
-            vtach:           { hr: 180, spo2: 88, etco2: 28, bpSys: 82,  bpDia: 48, hasPulse: true },
-            svt:             { hr: 190, spo2: 90, etco2: 26, bpSys: 80,  bpDia: 54, hasPulse: true },
-            afib:            { hr: 155, spo2: 88, etco2: 30, bpSys: 82,  bpDia: 48, hasPulse: true },
-            sinus_brady:    { hr: 45,  spo2: 96, etco2: 35, bpSys: 90,  bpDia: 50, hasPulse: true },
-            sinus_tach:      { hr: 120, spo2: 97, etco2: 36, bpSys: 110, bpDia: 70, hasPulse: true },
-            asystole:        { hr: 0,   spo2: 0,  etco2: 0,  bpSys: 0,   bpDia: 0,  hasPulse: false },
-            chb:             { hr: 32,  spo2: 92, etco2: 30, bpSys: 86,  bpDia: 50, hasPulse: true },
-            paced:           { hr: 70,  spo2: 97, etco2: 36, bpSys: 115, bpDia: 72, hasPulse: true },
-            idioventricular: { hr: 40,  spo2: 93, etco2: 32, bpSys: 88,  bpDia: 50, hasPulse: true }
+            nsr:             { hr: 75,  spo2: 98, etco2: 5.1, bpSys: 120, bpDia: 80, hasPulse: true },
+            vfib:            { hr: 0,   spo2: 0,  etco2: 0,   bpSys: 0,   bpDia: 0,  hasPulse: false },
+            vtach:           { hr: 180, spo2: 88, etco2: 3.7, bpSys: 82,  bpDia: 48, hasPulse: true },
+            vt_pulseless:    { hr: 0,   spo2: 0,  etco2: 0,   bpSys: 0,   bpDia: 0,  hasPulse: false },
+            svt:             { hr: 190, spo2: 90, etco2: 3.5, bpSys: 80,  bpDia: 54, hasPulse: true },
+            afib:            { hr: 155, spo2: 88, etco2: 4.0, bpSys: 82,  bpDia: 48, hasPulse: true },
+            sinus_brady:     { hr: 45,  spo2: 96, etco2: 4.7, bpSys: 90,  bpDia: 50, hasPulse: true },
+            sinus_tach:      { hr: 120, spo2: 97, etco2: 4.8, bpSys: 110, bpDia: 70, hasPulse: true },
+            asystole:        { hr: 0,   spo2: 0,  etco2: 0,   bpSys: 0,   bpDia: 0,  hasPulse: false },
+            chb:             { hr: 32,  spo2: 92, etco2: 4.0, bpSys: 86,  bpDia: 50, hasPulse: true },
+            paced:           { hr: 70,  spo2: 97, etco2: 4.8, bpSys: 115, bpDia: 72, hasPulse: true },
+            idioventricular: { hr: 40,  spo2: 93, etco2: 4.3, bpSys: 88,  bpDia: 50, hasPulse: true }
         };
 
         function setVitals(rhythm) {
@@ -1955,7 +1959,7 @@
             }
             
             if (state.pacingActive && state.pacerOutput > 0) {
-                const captureThreshold = scenario?.captureThreshold || 70;
+                const captureThreshold = scenario?.captureThreshold || 60; // Defaulting to 60
                 if (state.pacerOutput >= captureThreshold) {
                     displayHR = state.pacerRate;
                 }
@@ -2502,7 +2506,7 @@
                     return;
                 }
 
-                if (state.rhythm === 'vfib' || (state.rhythm === 'vtach' && !state.hasPulse)) {
+                if (state.rhythm === 'vfib' || (state.rhythm === 'vtach' && !state.hasPulse) || state.rhythm === 'vt_pulseless') {
                     setMessage('SHOCKABLE RHYTHM DETECTED', 'alert');
                     logAction('Analysis result', 'Shockable rhythm');
                 } else {
@@ -2591,28 +2595,24 @@
 
         function checkPulse() {
             const scenario = scenarios[state.selectedScenario];
-            
+            let currentPulseState = state.hasPulse;
+
             if (scenario && state.scenarioActive) {
-                setMessage('CHECKING FOR PULSE...', '');
-                logAction('Pulse check performed');
-                
-                setTimeout(() => {
-                    if (scenario.hasPulse || state.roscAchieved) {
-                        setMessage('PULSE PRESENT - CAROTID PULSE PALPABLE', 'ready');
-                        logAction('Pulse check result', 'Pulse present');
-                    } else {
-                        setMessage('NO PULSE DETECTED - CARDIAC ARREST CONFIRMED', 'alert');
-                        logAction('Pulse check result', 'No pulse - cardiac arrest');
-                    }
-                }, 1500);
-            } else {
-                logAction('Pulse check performed');
-                if (state.hasPulse || state.roscAchieved) {
-                    setMessage('PULSE PRESENT - CAROTID PULSE PALPABLE', 'ready');
-                } else {
-                    setMessage('NO PULSE DETECTED', 'alert');
-                }
+                currentPulseState = scenario.hasPulse || state.roscAchieved;
             }
+            
+            logAction('Pulse check performed');
+            setMessage('CHECKING FOR PULSE...', '');
+
+            setTimeout(() => {
+                if (currentPulseState) {
+                    setMessage('PULSE PRESENT - CAROTID PULSE PALPABLE', 'ready');
+                    logAction('Pulse check result', 'Pulse present');
+                } else {
+                    setMessage('NO PULSE DETECTED - CARDIAC ARREST CONFIRMED', 'alert');
+                    logAction('Pulse check result', 'No pulse - cardiac arrest');
+                }
+            }, 1500);
         }
 
         function tryAgain() {
