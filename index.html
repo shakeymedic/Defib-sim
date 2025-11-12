@@ -49,15 +49,16 @@ const wrapped={};Object.keys(rhythms).forEach(k=>wrapped[k]=withArtefacts(rhythm
     <style>
 *{margin:0;padding:0;box-sizing:border-box}body{font-family:Arial,sans-serif;background:#2a2a2a;padding:20px;min-height:100vh}.quick-rhythm-panel{background:linear-gradient(135deg,#2c3e50 0%,#34495e 100%);border-radius:10px;padding:20px;margin:0 auto 20px auto;max-width:1600px;border:3px solid #1a252f}.quick-rhythm-panel h4{color:#3498db;font-size:14px;margin-bottom:15px;text-transform:uppercase;text-align:center}.menu-wrapper{display:flex;justify-content:center;align-items:center}.menu-screen{display:none;flex-direction:column;align-items:center;justify-content:center;background:linear-gradient(135deg,#2c3e50 0%,#34495e 100%);border-radius:15px;padding:60px;max-width:800px;box-shadow:0 20px 60px rgba(0,0,0,0.5)}#modeSelectScreen{padding:30px;max-width:1600px;margin:0 auto 20px auto;border-radius:10px}#modeSelectScreen .menu-title{margin-bottom:30px}#modeSelectScreen .menu-option{padding:25px 20px;font-size:20px}.menu-logo{margin-bottom:30px}.menu-logo img{height:80px;background:white;padding:15px 25px;border-radius:10px}.menu-title{text-align:center;margin-bottom:50px}.menu-title h1{color:#ecf0f1;font-size:36px;margin-bottom:15px}.menu-title p{color:#bdc3c7;font-size:18px}.menu-options{display:grid;grid-template-columns:1fr 1fr;gap:30px;width:100%}.menu-option{background:linear-gradient(180deg,#3498db 0%,#2874a6 100%);color:white;border:none;padding:50px 40px;border-radius:15px;font-size:24px;font-weight:bold;cursor:pointer;transition:all 0.3s;box-shadow:0 10px 25px rgba(0,0,0,0.3);text-align:center}.menu-option:hover{transform:translateY(-5px);box-shadow:0 15px 35px rgba(0,0,0,0.4)}.menu-option.single-column{grid-column:1 / -1}.menu-option .subtitle{font-size:14px;margin-top:10px;opacity:0.9;font-weight:normal}.simulator-container{max-width:1600px;width:100%;margin:0 auto}.back-button{background:#e74c3c;color:white;border:none;padding:15px 30px;border-radius:8px;font-size:16px;font-weight:bold;cursor:pointer;margin-bottom:20px;display:inline-flex;align-items:center;gap:10px;box-shadow:0 4px 10px rgba(0,0,0,0.3)}.back-button:hover{background:#c0392b}.reset-button{background:#3498db;margin-left:10px}.reset-button:hover{background:#2980b9}.instructor-panel{background:linear-gradient(135deg,#2c3e50 0%,#34495e 100%);border-radius:10px;padding:25px;margin-bottom:20px;border:3px solid #1a252f;transition:all 0.3s ease}.instructor-panel.minimised{padding:12px 18px}.instructor-panel.minimised .control-grid{display:none !important}.minimise-btn{background:#34495e;color:#ecf0f1;border:2px solid #2c3e50;padding:8px 16px;border-radius:6px;font-size:12px;cursor:pointer;transition:all 0.3s}.minimise-btn:hover{background:#3a4f5e}.instructor-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:15px}.instructor-logo{display:flex;align-items:center;gap:15px}.instructor-logo img{height:40px;background:white;padding:6px;border-radius:8px}.instructor-title h2{color:#ecf0f1;font-size:18px}.instructor-title p{color:#bdc3c7;font-size:12px;margin-top:4px}.control-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:15px;margin-top:10px}.control-section{background:#2c3e50;padding:15px;border-radius:8px}.control-section h4{color:#3498db;font-size:13px;margin-bottom:10px;text-transform:uppercase}.control-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;padding:8px;background:#34495e;border-radius:6px}.control-row label{color:#ecf0f1;font-size:12px;font-weight:bold;display:flex;align-items:center;gap:6px}.control-row input,.control-row select{width:100px;padding:6px;border-radius:4px;border:1px solid #2c3e50;background:#2c3e50;color:#00ff00;font-weight:bold}.rhythm-buttons{display:grid;grid-template-columns:repeat(auto-fit,minmax(80px,1fr));gap:6px}.rhythm-btn{background:#34495e;color:#ecf0f1;border:2px solid #2c3e50;padding:8px;border-radius:6px;font-size:11px;cursor:pointer;transition:all 0.2s}.rhythm-btn.active{background:#2980b9;border-color:#1f5f8b}.zoll-device{background:#c8d0d8;border:20px solid #2b7bbf;border-radius:25px;padding:30px;box-shadow:0 20px 60px rgba(0,0,0,0.5);position:relative;display:grid;grid-template-columns:1.2fr 0.8fr;gap:20px;max-width:1400px;margin:0 auto}.zoll-top-logo{position:absolute;top:25px;right:30px;height:40px;background:white;padding:6px;border-radius:8px;z-index:10}.device-screen-section{background:#a8b0b8;padding:25px;border-radius:15px;box-shadow:inset 0 4px 10px rgba(0,0,0,0.2)}.screen{background:#000;border-radius:10px;padding:15px;margin-bottom:15px;box-shadow:inset 0 0 20px rgba(0,0,0,0.8);position:relative}.screen-header{display:flex;justify-content:space-between;padding:8px;background:rgba(0,0,0,0.6);border-radius:5px;margin-bottom:10px}.screen-info{color:#00ffff;font-size:13px;font-family:'Courier New',monospace;text-shadow:0 0 5px rgba(0,255,255,0.5)}.screen-info.sync-indicator{color:#ffff00;font-weight:bold;animation:blink 1s infinite}.ecg-canvas-container{background:#000;height:300px;border-radius:8px;position:relative;overflow:hidden;margin-bottom:15px}canvas{width:100%;height:100%}.vitals-display{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:15px;background:rgba(0,0,0,0.6);border-radius:8px}.vital-item{text-align:center}.vital-label{color:#888;font-size:10px;margin-bottom:5px}.vital-value{color:#00ff00;font-size:36px;font-weight:bold;font-family:'Courier New',monospace;text-shadow:0 0 10px rgba(0,255,0,0.6)}.vital-value.critical{color:#ff0000;animation:blink 1s infinite}.vital-unit{color:#888;font-size:11px;margin-top:3px}@keyframes blink{0%,50%{opacity:1}51%,100%{opacity:0.3}}.message-bar{background:rgba(0,0,0,0.8);color:#ffff00;padding:12px;text-align:center;border-radius:6px;font-family:'Courier New',monospace;font-size:14px;font-weight:bold;margin-top:10px;text-shadow:0 0 5px rgba(255,255,0,0.5)}.message-bar.ready{color:#00ff00;text-shadow:0 0 5px rgba(0,255,0,0.5)}.message-bar.alert{color:#ff0000;animation:blink 1s infinite;text-shadow:0 0 5px rgba(255,0,0,0.5)}.softkeys{display:flex;gap:10px;margin-top:15px}.softkey{flex:1;background:#7a8288;color:#fff;border:2px solid #6a7278;padding:12px;border-radius:6px;font-size:11px;cursor:pointer;text-align:center;font-weight:bold}.softkey:hover{background:#8a9298}.softkey.active{background:#27ae60}.device-controls-section{display:flex;flex-direction:column;gap:15px}.top-buttons{display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:start}.btn-teal{background:#17a2b8;color:white;border:3px solid #138496;padding:15px 20px;border-radius:8px;font-size:13px;font-weight:bold;cursor:pointer;box-shadow:0 4px 8px rgba(0,0,0,0.3)}.btn-sync{background:#f39c12;color:white;border:3px solid #d68910;padding:15px 20px;border-radius:8px;font-size:13px;font-weight:bold;cursor:pointer;box-shadow:0 4px 8px rgba(0,0,0,0.3);transition:all 0.3s}.btn-sync.active{background:#e67e22;box-shadow:0 0 15px rgba(230,126,34,0.7)}.btn-shock{background:linear-gradient(135deg,#ff6347 0%,#ff4520 100%);color:white;border:5px solid #cc4f39;width:120px;height:120px;border-radius:50%;font-size:20px;font-weight:bold;cursor:pointer;box-shadow:0 6px 12px rgba(0,0,0,0.4);display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;overflow:hidden}.btn-shock::before{content:'⚡';position:absolute;font-size:80px;opacity:0.15;color:#fff;z-index:0}.btn-shock span{position:relative;z-index:1}.btn-shock:disabled{opacity:0.5;cursor:not-allowed}.btn-shock .number{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);font-size:18px;color:#fff}.side-buttons{display:grid;grid-template-columns:1fr 1fr;gap:10px}.side-btn{background:#7a8288;color:#fff;border:3px solid #6a7278;padding:12px;border-radius:8px;font-size:12px;font-weight:bold;cursor:pointer;box-shadow:0 3px 6px rgba(0,0,0,0.3)}.side-btn:hover{background:#8a9298}.action-buttons-group{display:flex;flex-direction:column;gap:10px}.btn-analyze,.btn-charge{background:linear-gradient(180deg,#ff9933 0%,#ff7700 100%);color:#000;border:4px solid #cc6600;padding:16px;border-radius:10px;font-size:15px;font-weight:bold;cursor:pointer;box-shadow:0 4px 8px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:space-between}.btn-number{background:#fff;color:#ff7700;width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:bold}.energy-selector{background:linear-gradient(180deg,#dc3545 0%,#c82333 100%);color:#fff;border:4px solid #a71d2a;padding:16px;border-radius:10px;cursor:pointer;box-shadow:0 4px 8px rgba(0,0,0,0.3);display:flex;flex-direction:column;align-items:center;gap:8px}.energy-display{font-size:32px;font-weight:bold;text-shadow:0 2px 4px rgba(0,0,0,0.3)}.energy-arrows{display:flex;gap:15px}.energy-arrow{background:#fff;color:#dc3545;width:40px;height:40px;border-radius:50%;border:none;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center}.mode-dial-container{text-align:center;padding:15px;background:#a8b0b8;border-radius:12px}.mode-dial{width:150px;height:150px;background:radial-gradient(circle,#2a2a2a 0%,#1a1a1a 100%);border:6px solid #0a0a0a;border-radius:50%;margin:0 auto 15px;position:relative;cursor:pointer;box-shadow:0 6px 12px rgba(0,0,0,0.5)}.mode-dial::before{content:'';position:absolute;width:8px;height:60px;background:#fff;top:20px;left:50%;transform:translateX(-50%) rotate(var(--dial-rotation,0deg));transform-origin:center bottom;border-radius:4px}.mode-labels{display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:11px;font-weight:bold;color:#2a2a2a}.mode-label{padding:12px 16px;border-radius:8px;cursor:pointer;background:#34495e;color:#ecf0f1;border:3px solid #2c3e50;font-weight:bold;transition:all 0.3s;text-transform:uppercase;font-size:13px}.mode-label:hover{background:#3a4f5e;transform:translateY(-2px)}.mode-label.active{background:linear-gradient(180deg,#3498db 0%,#2874a6 100%);color:white;border-color:#1f5f8b;box-shadow:0 0 15px rgba(52,152,219,0.5)}.pacing-controls{display:grid;grid-template-columns:1fr 1fr;gap:12px}.pacer-dial{background:#2a2a2a;border:5px solid #0a0a0a;border-radius:50%;width:100px;height:100px;margin:0 auto;position:relative;cursor:pointer;box-shadow:0 4px 8px rgba(0,0,0,0.5)}.pacer-dial::before{content:'';position:absolute;width:4px;height:35px;background:#17a2b8;top:15px;left:50%;transform:translateX(-50%) rotate(var(--dial-rotation,0deg));transform-origin:center 35px;border-radius:2px;transition:transform 0.3s ease}.pacer-label{text-align:center;color:#2a2a2a;font-size:11px;font-weight:bold;margin-top:8px}.pacer-value{text-align:center;color:#17a2b8;font-size:20px;font-weight:bold;margin-top:4px}.pacer-controls-btn{display:flex;gap:5px;justify-content:center;margin-top:8px}.pacer-btn{background:#7a8288;color:#fff;border:2px solid #6a7278;width:35px;height:35px;border-radius:5px;font-size:18px;cursor:pointer}.zoll-branding{background:linear-gradient(180deg,#e8eef3 0%,#d8dee3 100%);padding:20px;border-radius:0 0 15px 15px;margin:-30px -30px 0 -30px;text-align:center;box-shadow:0 -4px 10px rgba(0,0,0,0.1)}.zoll-logo-text{font-size:48px;font-weight:bold;color:#9a9a9a;letter-spacing:8px;text-shadow:2px 2px 4px rgba(0,0,0,0.1)}@media (max-width:1200px){.zoll-device{grid-template-columns:1fr}}@media print{body{background:white;padding:0}.menu-wrapper{min-height:0}.menu-screen{display:block !important;box-shadow:none;padding:0;background:white}.menu-option{display:none !important}#certificateContent{box-shadow:none}}
     
-    /* --- ADDED STYLES FOR SPLASH AND OFF MODE --- */
+    /* --- STYLES FOR SPLASH AND OFF MODE --- */
     .splash-screen{position:absolute;top:0;left:0;right:0;bottom:0;background:#1a1a1a;display:flex;align-items:center;justify-content:center;z-index:100}
-    .splash-screen img{height:80px;background:white;padding:15px 25px;border-radius:10px}
+    /* --- MODIFIED LOGO STYLE --- */
+    .splash-screen img{max-width:50%; height:auto; background:white; padding:15px 25px; border-radius:10px}
     .screen.screen-off .screen-header,
     .screen.screen-off .ecg-canvas-container,
     .screen.screen-off .vitals-display,
     .screen.screen-off .message-bar{visibility:hidden}
     .screen.screen-off{background:#1a1a1a}
-    /* --- END ADDED STYLES --- */
+    /* --- END MODIFIED STYLES --- */
     </style>
 </head>
 <body>
@@ -334,6 +335,7 @@ const wrapped={};Object.keys(rhythms).forEach(k=>wrapped[k]=withArtefacts(rhythm
                     <div class="splash-screen" id="splashScreen" style="display: none;">
                         <img src="https://iili.io/KGQOvkl.md.png" alt="WMEBEM Logo">
                     </div>
+
                     <div class="screen-header">
                         <div class="screen-info" id="leadInfo">LEAD: II</div>
                         <div class="screen-info" id="syncIndicator"></div>
@@ -568,7 +570,7 @@ const wrapped={};Object.keys(rhythms).forEach(k=>wrapped[k]=withArtefacts(rhythm
             selectedScenario: null,
             scenarioActive: false,
             scenarioStartTime: null,
-            deviceMode: 'off', // --- MODIFIED: Start in OFF mode
+            deviceMode: 'off', 
             rhythm: 'nsr',
             hr: 75,
             spo2: 98,
@@ -590,15 +592,18 @@ const wrapped={};Object.keys(rhythms).forEach(k=>wrapped[k]=withArtefacts(rhythm
                 movement: false,
                 cpr: false,
                 leadoff: false
-            }
+            },
+            // --- ADDED STATE FOR PACING ---
+            lastSensedQRS_X: -1000,
+            lastPaced_X: -1000
         };
+        window.state = state; // Expose state for artefact overlays
 
         // Canvas
         let canvas, ctx, waveformX = 0, animationId;
         let lastTimestamp = 0;
         const ecgSpeed = 125; // 25 mm/s @ 5 px/mm
 
-        // *** MODIFIED INITCANVAS FUNCTION ***
         function initCanvas() {
             canvas = document.getElementById('ecgCanvas');
             if (!canvas) return;
@@ -618,8 +623,6 @@ const wrapped={};Object.keys(rhythms).forEach(k=>wrapped[k]=withArtefacts(rhythm
             }
             lastTimestamp = 0;
             waveformX = 0;
-            
-            // Do NOT start animation here. setMode will handle it.
         }
 
         const rhythmVitals = {
@@ -647,9 +650,12 @@ const wrapped={};Object.keys(rhythms).forEach(k=>wrapped[k]=withArtefacts(rhythm
             state.bpSys = vitals.bpSys;
             state.bpDia = vitals.bpDia;
             state.hasPulse = vitals.hasPulse;
+            // --- RESET PACER STATE ---
+            state.lastSensedQRS_X = -1000;
+            state.lastPaced_X = -1000;
         }
 
-        // *** MODIFIED ANIMATE FUNCTION ***
+        // *** MODIFIED ANIMATE FUNCTION WITH DEMAND PACING ***
         function animate(timestamp) {
             if (!canvas || !ctx) return;
             
@@ -694,41 +700,80 @@ const wrapped={};Object.keys(rhythms).forEach(k=>wrapped[k]=withArtefacts(rhythm
             ctx.beginPath();
 
             let yValues = [];
-            let lastMarkerX = -100; // Cooldown for sync markers
+            let lastMarkerX = -100;
+            let y_underlying_cache = {}; // Cache for sensor
+
+            const getUnderlyingY = (x_pos) => {
+                if (y_underlying_cache[x_pos]) return y_underlying_cache[x_pos];
+                // Get raw, un-artefacted rhythm for sensing
+                const y = rhythms[state.rhythm](x_pos, displayHR, simTimeSeconds) - baselineY;
+                y_underlying_cache[x_pos] = y;
+                return y;
+            };
 
             for (let x = 0; x < canvas.width; x++) {
                 const currentX = waveformX + x;
                 
+                // Get Y value with artefacts for drawing
                 let y_underlying_raw = underlyingRhythmFunc(currentX, displayHR, simTimeSeconds) - baselineY;
                 let y_final_raw = y_underlying_raw;
 
-                if (state.pacingActive && state.pacerOutput > 0) {
-                    const pacerBpm = state.pacerRate;
-                    const pacerCyclePx = (60 / pacerBpm) * ecgSpeed;
-                    const pacerPos = currentX % pacerCyclePx;
+                // --- SENSING LOGIC ---
+                // Use the *clean* underlying Y for sensing
+                let y_sense = getUnderlyingY(currentX);
+                const refractoryPx = ecgSpeed * 0.20; // 200ms refractory
+                
+                if (currentX - state.lastSensedQRS_X > refractoryPx) {
+                    let y_prev = getUnderlyingY(currentX - 1);
+                    let y_next = getUnderlyingY(currentX + 1);
                     
-                    const spike = pacerSpikeFn(pacerPos);
-                    if (spike !== 0) {
-                        y_final_raw = spike;
+                    // R-wave peak detector (nadir)
+                    if (y_sense < y_prev && y_sense < y_next && y_sense < -PX_PER_MV * 0.3) {
+                        state.lastSensedQRS_X = currentX;
                     }
-                    else if (isCaptured) {
-                        const qrsStart = 3;
-                        const qrsDurPx = 0.14 * ecgSpeed;
-                        const tDurPx = 0.16 * ecgSpeed;
-                        const tEndPx = qrsStart + qrsDurPx + tDurPx;
+                }
+                
+                // --- PACING LOGIC ---
+                if (state.pacingActive && state.pacerOutput > 0) {
+                    const pacerCyclePx = (60 / state.pacerRate) * ecgSpeed;
+                    const timeSinceLastSensed = currentX - state.lastSensedQRS_X;
+                    const timeSinceLastPaced = currentX - state.lastPaced_X;
+                    
+                    const pacedBeatDurPx = (0.14 + 0.16) * ecgSpeed + 3; // qrs + t + spike
+                    
+                    if (timeSinceLastSensed >= pacerCyclePx && timeSinceLastPaced >= pacerCyclePx) {
+                        // Timer expired. We must pace.
+                        state.lastPaced_X = currentX;
+                        state.lastSensedQRS_X = currentX; // Paced beat resets the sense timer
+                        y_final_raw = pacerSpikeFn(0); // Draw spike
+                    
+                    } else if (timeSinceLastPaced < pacedBeatDurPx) {
+                        // We are in the window of drawing a paced beat
+                        const posInPacedCycle = currentX - state.lastPaced_X;
                         
-                        if (pacerPos >= qrsStart && pacerPos < tEndPx) {
-                            if (pacerPos < (qrsStart + qrsDurPx)) {
-                                const s = (pacerPos - qrsStart) / qrsDurPx;
+                        const spike = pacerSpikeFn(posInPacedCycle);
+                        if (spike !== 0) {
+                            y_final_raw = spike;
+                        }
+                        else if (isCaptured) {
+                            const qrsStart = 3;
+                            const qrsDurPx = 0.14 * ecgSpeed;
+                            const tDurPx = 0.16 * ecgSpeed;
+                            
+                            if (posInPacedCycle >= qrsStart && posInPacedCycle < (qrsStart + qrsDurPx)) {
+                                const s = (posInPacedCycle - qrsStart) / qrsDurPx;
                                 y_final_raw = wideQrsFn(s, 0.9);
-                            } else {
-                                const t = (pacerPos - (qrsStart + qrsDurPx)) / tDurPx;
+                            } else if (posInPacedCycle >= (qrsStart + qrsDurPx) && posInPacedCycle < (qrsStart + qrsDurPx + tDurPx)) {
+                                const t = (posInPacedCycle - (qrsStart + qrsDurPx)) / tDurPx;
                                 y_final_raw = tWaveFn(t, 0.25);
+                            } else {
+                                y_final_raw = 0; // Blank out underlying rhythm
                             }
-                        } else if (pacerPos >= tEndPx || pacerPos < qrsStart) {
-                             if (spike === 0) {
+                        } else {
+                            // Not captured. Still draw spike (if in position) but blank rest.
+                            if (posInPacedCycle >= qrsStart) {
                                 y_final_raw = 0;
-                             }
+                            }
                         }
                     }
                 }
@@ -745,7 +790,7 @@ const wrapped={};Object.keys(rhythms).forEach(k=>wrapped[k]=withArtefacts(rhythm
             }
             ctx.stroke(); 
             
-            // --- UPDATED SYNC MARKER LOGIC ---
+            // --- SYNC MARKER LOGIC ---
             const syncRhythms = ['vtach', 'svt', 'afib', 'nsr', 'sinus_brady', 'sinus_tach'];
             if (state.syncMode && syncRhythms.includes(state.rhythm)) {
                 ctx.save();
@@ -756,13 +801,12 @@ const wrapped={};Object.keys(rhythms).forEach(k=>wrapped[k]=withArtefacts(rhythm
                     let prevY = yValues[x-1];
                     let nextY = yValues[x+1];
                     
-                    // Detect the peak (nadir) of the R-wave (which is negative in this sim)
                     if (y < prevY && y < nextY && y < (baselineY - 20)) { 
                         const pixelX = Math.round(x);
-                        if (pixelX - lastMarkerX > 50) { // Cooldown of 50px (200ms)
+                        if (pixelX - lastMarkerX > 50) { // Cooldown
                             ctx.beginPath();
-                            ctx.moveTo(pixelX, 5);  // Start near top
-                            ctx.lineTo(pixelX, 15); // Draw a 10px vertical line
+                            ctx.moveTo(pixelX, 5);
+                            ctx.lineTo(pixelX, 15);
                             ctx.stroke();
                             lastMarkerX = pixelX;
                         }
@@ -770,7 +814,6 @@ const wrapped={};Object.keys(rhythms).forEach(k=>wrapped[k]=withArtefacts(rhythm
                 }
                 ctx.restore();
             }
-            // --- END UPDATED SYNC MARKER LOGIC ---
 
             waveformX += pixelsToMove;
             animationId = requestAnimationFrame(animate);
@@ -779,7 +822,7 @@ const wrapped={};Object.keys(rhythms).forEach(k=>wrapped[k]=withArtefacts(rhythm
 
 
         function updateDisplays() {
-            if (state.deviceMode === 'off') return; // Don't update displays if off
+            if (state.deviceMode === 'off') return; 
 
             const scenario = scenarios[state.selectedScenario];
             let displayHR = state.hr;
@@ -790,7 +833,7 @@ const wrapped={};Object.keys(rhythms).forEach(k=>wrapped[k]=withArtefacts(rhythm
                 displayHR = 0;
             }
             
-            let captureThreshold = 60; // Default for quick mode
+            let captureThreshold = 60; 
             if (scenario && state.scenarioActive && scenario.requiresPacing) {
                 captureThreshold = scenario.captureThreshold;
             }
@@ -811,14 +854,10 @@ const wrapped={};Object.keys(rhythms).forEach(k=>wrapped[k]=withArtefacts(rhythm
             document.getElementById('rateDisplay').textContent = state.pacerRate;
             document.getElementById('modeInfo').textContent = `MODE: ${state.deviceMode.toUpperCase()}`;
             
-            const syncIndicator = document.getElementById('syncIndicator');
-            if (state.syncMode) {
-                syncIndicator.textContent = 'SYNC';
-                syncIndicator.className = 'screen-info sync-indicator';
-            } else {
-                syncIndicator.textContent = '';
-                syncIndicator.className = 'screen-info';
-            }
+            // --- MODIFIED SYNC INDICATOR ---
+            // This is now only handled by the white marker on the canvas
+            document.getElementById('syncIndicator').textContent = '';
+            document.getElementById('syncIndicator').className = 'screen-info';
             
             const hrEl = document.getElementById('hrDisplay');
             hrEl.className = 'vital-value';
@@ -915,8 +954,7 @@ const wrapped={};Object.keys(rhythms).forEach(k=>wrapped[k]=withArtefacts(rhythm
                 document.getElementById('instructorPanel').style.display = 'none';
             }
 
-            // --- Turn on device to MONITOR mode for scenario start ---
-            setMode('monitor');
+            setMode('monitor'); // Turn on device to MONITOR mode
 
             state.scenarioActive = false;
             let countdown = 3;
@@ -1189,7 +1227,6 @@ const wrapped={};Object.keys(rhythms).forEach(k=>wrapped[k]=withArtefacts(rhythm
             setMode('off'); // Return to OFF mode
         }
 
-        // *** ADDED FUNCTION FOR SPLASH SCREEN ***
         function showSplashScreen(callback) {
             const splash = document.getElementById('splashScreen');
             const screenEl = document.querySelector('.screen');
@@ -1198,18 +1235,16 @@ const wrapped={};Object.keys(rhythms).forEach(k=>wrapped[k]=withArtefacts(rhythm
                 return;
             }
             
-            // Hide main content, show splash
-            screenEl.classList.add('screen-off'); // Use this to hide other elements
+            screenEl.classList.add('screen-off');
             splash.style.display = 'flex';
             
             setTimeout(() => {
                 splash.style.display = 'none';
-                screenEl.classList.remove('screen-off'); // Show main content
+                screenEl.classList.remove('screen-off');
                 callback();
             }, 1000); // 1 second
         }
 
-        // *** MODIFIED SETMODE FUNCTION ***
         function setMode(mode) {
             const labels = document.querySelectorAll('.mode-label');
             labels.forEach(label => {
@@ -1227,7 +1262,7 @@ const wrapped={};Object.keys(rhythms).forEach(k=>wrapped[k]=withArtefacts(rhythm
             if (!screenEl) return;
             
             const wasOff = state.deviceMode === 'off';
-            state.deviceMode = mode; // Set new mode
+            state.deviceMode = mode; 
 
             if (mode === 'off') {
                 if (animationId) {
@@ -1255,10 +1290,9 @@ const wrapped={};Object.keys(rhythms).forEach(k=>wrapped[k]=withArtefacts(rhythm
                 screenEl.classList.remove('screen-off');
                 
                 if (wasOff) {
-                    // Turning ON from OFF state
                     showSplashScreen(() => {
                         logAction('Mode changed', mode.toUpperCase());
-                        quickSetRhythm('nsr'); // Set default rhythm when turning on
+                        quickSetRhythm('nsr'); 
                         updateDisplays();
                         
                         if (!animationId) {
@@ -1268,11 +1302,10 @@ const wrapped={};Object.keys(rhythms).forEach(k=>wrapped[k]=withArtefacts(rhythm
                         }
                     });
                 } else {
-                    // Just switching between MONITOR/DEFIB/PACER
                     logAction('Mode changed', mode.toUpperCase());
                     updateDisplays();
                     
-                    if (!animationId) { // Failsafe
+                    if (!animationId) { 
                         lastTimestamp = 0;
                         waveformX = 0;
                         animationId = requestAnimationFrame(animate);
@@ -1340,7 +1373,6 @@ const wrapped={};Object.keys(rhythms).forEach(k=>wrapped[k]=withArtefacts(rhythm
             }, 2000);
         }
 
-        // *** MODIFIED DELIVER SHOCK FUNCTION ***
         function deliverShock() {
             if (!state.charged) return;
             
@@ -1377,18 +1409,15 @@ const wrapped={};Object.keys(rhythms).forEach(k=>wrapped[k]=withArtefacts(rhythm
                         }
                     }
                 } else if (!state.scenarioActive) {
-                    // Logic for non-scenario mode (quick rhythms)
                     const currentRhythm = state.rhythm;
                     
-                    // Defibrillation (pulseless)
                     if (currentRhythm === 'vfib' || currentRhythm === 'vt_pulseless') {
-                        if (state.shockCount >= 3 && shockEnergy >= 150) { // Convert on 3rd shock
+                        if (state.shockCount >= 3 && shockEnergy >= 150) { 
                             shouldConvert = true;
                         }
                     }
-                    // Cardioversion (pulsed)
                     else if (currentRhythm === 'vtach' || currentRhythm === 'svt' || currentRhythm === 'afib') {
-                        if (state.syncMode && shockEnergy >= 100) { // Convert on 1st sync shock
+                        if (state.syncMode && shockEnergy >= 100) { 
                             shouldConvert = true;
                         }
                     }
@@ -1421,7 +1450,6 @@ const wrapped={};Object.keys(rhythms).forEach(k=>wrapped[k]=withArtefacts(rhythm
                 }
             }, 2000);
         }
-        // *** END MODIFIED DELIVER SHOCK FUNCTION ***
 
         function analyseRhythm() {
             if (state.deviceMode === 'off') return;
@@ -1447,7 +1475,6 @@ const wrapped={};Object.keys(rhythms).forEach(k=>wrapped[k]=withArtefacts(rhythm
             }, 2500);
         }
 
-        // *** MODIFIED ADJUST PACER FUNCTION ***
         function adjustPacer(param, change) {
             if (state.deviceMode === 'off') return;
             const scenario = scenarios[state.selectedScenario];
@@ -1460,7 +1487,7 @@ const wrapped={};Object.keys(rhythms).forEach(k=>wrapped[k]=withArtefacts(rhythm
                 const dial = document.querySelector('.pacing-controls > div:first-child .pacer-dial');
                 if (dial) dial.style.setProperty('--dial-rotation', `${rotation}deg`);
                 
-                let captureThreshold = 60; // Default for quick mode
+                let captureThreshold = 60; 
                 let isPacingScenario = false;
                 let canPaceRhythm = (state.rhythm === 'chb' || state.rhythm === 'brady' || state.rhythm === 'sinus_brady');
 
@@ -1475,7 +1502,7 @@ const wrapped={};Object.keys(rhythms).forEach(k=>wrapped[k]=withArtefacts(rhythm
                     if (!alreadyCaptured) {
                         const successVitals = (isPacingScenario) ? scenario.successVitals : rhythmVitals['paced'];
                         
-                        setVitals('paced'); // Set rhythm to paced
+                        // setVitals('paced'); // The demand pacer logic now handles the rhythm
                         state.hr = state.pacerRate; // Use pacer rate
                         state.spo2 = successVitals.spo2;
                         state.etco2 = successVitals.etco2;
@@ -1486,7 +1513,7 @@ const wrapped={};Object.keys(rhythms).forEach(k=>wrapped[k]=withArtefacts(rhythm
                         logAction('Pacing capture achieved', `Electrical and mechanical capture at ${state.pacerOutput}mA`);
                     }
                     
-                    state.hr = state.pacerRate; // Ensure HR display updates
+                    state.hr = state.pacerRate; 
                 }
                 
             } else if (param === 'rate') {
@@ -1497,7 +1524,6 @@ const wrapped={};Object.keys(rhythms).forEach(k=>wrapped[k]=withArtefacts(rhythm
                 const dial = document.querySelector('.pacing-controls > div:last-child .pacer-dial');
                 if (dial) dial.style.setProperty('--dial-rotation', `${rotation}deg`);
 
-                // If already capturing, update HR to new pacer rate
                 let captureThreshold = (scenario && scenario.requiresPacing) ? scenario.captureThreshold : 60;
                 if (state.pacingActive && state.pacerOutput >= captureThreshold) {
                     state.hr = state.pacerRate;
@@ -1506,7 +1532,6 @@ const wrapped={};Object.keys(rhythms).forEach(k=>wrapped[k]=withArtefacts(rhythm
             
             updateDisplays();
         }
-        // *** END MODIFIED ADJUST PACER FUNCTION ***
 
         function quickSetRhythm(rhythm) {
             if (state.scenarioActive) {
@@ -1514,11 +1539,10 @@ const wrapped={};Object.keys(rhythms).forEach(k=>wrapped[k]=withArtefacts(rhythm
                 return;
             }
 
-            setVitals(rhythm);
+            setVitals(rhythm); // This now resets pacer state
             state.roscAchieved = false;
             state.shockCount = 0;
             
-            // Only update displays if the device is not OFF
             if (state.deviceMode !== 'off') {
                 updateDisplays();
             }
@@ -1759,10 +1783,8 @@ const wrapped={};Object.keys(rhythms).forEach(k=>wrapped[k]=withArtefacts(rhythm
         window.checkPulse = checkPulse;
         window.cycleMode = cycleMode;
 
-
-        // *** MODIFIED ONLOAD FUNCTION ***
         window.onload = function() {
-            initCanvas(); // Just sets up the canvas, does not start animation
+            initCanvas(); 
             setMode('off'); // Start in OFF mode
         };
     </script>
