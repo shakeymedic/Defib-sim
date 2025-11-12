@@ -38,7 +38,9 @@ function paced(x,hr,tSeconds,canvas){const baseline=canvas.height/2;const bpm=hr
 return baseline+y}
 function brady(x,hr,tSeconds,canvas){return sinusTemplate(x,hr||38,canvas.height,tSeconds,{rAmp:0.9,tAmp:0.25})}
 function asystole(x,_hr,tSeconds,canvas){const baseline=canvas.height/2;const wander=Math.sin(tSeconds*0.2)*(PX_PER_MM*0.2);return baseline+wander}
-const rhythms={nsr:function(x,hr,tSeconds){return nsr(x,hr,tSeconds,window.__ecgCanvas||document.getElementById('ecgCanvas'))},sinus_brady:function(x,hr,tSeconds){return sinusBrady(x,hr,tSeconds,window.__ecgCanvas||document.getElementById('ecgCanvas'))},sinus_tach:function(x,hr,tSeconds){return sinusTach(x,hr,tSeconds,window.__ecgCanvas||document.getElementById('ecgCanvas'))},svt:function(x,hr,tSeconds){return svt(x,hr,tSeconds,window.__ecgCanvas||document.getElementById('ecgCanvas'))},afib:function(x,hr,tSeconds){return afib(x,hr,tSeconds,window.__ecgCanvas||document.getElementById('ecgCanvas'))},vtach:function(x,hr,tSeconds){return vtach(x,hr,tSeconds,window.__ecgCanvas||document.getElementById('ecgCanvas'))},vt_pulseless:function(x,hr,tSeconds){return vtach(x,180,tSeconds,window.__ecgCanvas||document.getElementById('ecgCanvas'))},vfib:function(x,hr,tSeconds){return vfib(x,hr,tSeconds,window.__ecgCanvas||document.getElementById('ecgCanvas'))},brady:function(x,hr,tSeconds){return brady(x,hr,tSeconds,window.__ecgCanvas||document.getElementById('ecgCanvas'))},chb:function(x,hr,tSeconds){return chb(x,hr,tSeconds,window.__ecgCanvas||document.getElementById('ecgCanvas'))},paced:function(x,hr,tSeconds){return paced(x,hr,tSeconds,window.__ecGCanvas||document.getElementById('ecgCanvas'))},idioventricular:function(x,hr,tSeconds){return idioventricular(x,hr,tSeconds,window.__ecgCanvas||document.getElementById('ecgCanvas'))},asystole:function(x,hr,tSeconds){return asystole(x,hr,tSeconds,window.__ecgCanvas||document.getElementById('ecgCanvas'))},sinus:function(x,hr,tSeconds){return nsr(x,hr,tSeconds,window.__ecgCanvas||document.getElementById('ecgCanvas'))},};function drawECGGrid(ctx,w,h){ctx.save();ctx.clearRect(0,0,w,h);ctx.strokeStyle='rgba(255,255,255,0.06)';ctx.lineWidth=1;ctx.beginPath();for(let x=0;x<=w;x+=PX_PER_MM){ctx.moveTo(x+0.5,0);ctx.lineTo(x+0.5,h)}
+const rhythms={nsr:function(x,hr,tSeconds){return nsr(x,hr,tSeconds,window.__ecgCanvas||document.getElementById('ecgCanvas'))},sinus_brady:function(x,hr,tSeconds){return sinusBrady(x,hr,tSeconds,window.__ecgCanvas||document.getElementById('ecgCanvas'))},sinus_tach:function(x,hr,tSeconds){return sinusTach(x,hr,tSeconds,window.__ecgCanvas||document.getElementById('ecgCanvas'))},svt:function(x,hr,tSeconds){return svt(x,hr,tSeconds,window.__ecgCanvas||document.getElementById('ecgCanvas'))},afib:function(x,hr,tSeconds){return afib(x,hr,tSeconds,window.__ecgCanvas||document.getElementById('ecgCanvas'))},vtach:function(x,hr,tSeconds){return vtach(x,hr,tSeconds,window.__ecgCanvas||document.getElementById('ecgCanvas'))},vt_pulseless:function(x,hr,tSeconds){return vtach(x,180,tSeconds,window.__ecgCanvas||document.getElementById('ecgCanvas'))},vfib:function(x,hr,tSeconds){return vfib(x,hr,tSeconds,window.__ecgCanvas||document.getElementById('ecgCanvas'))},brady:function(x,hr,tSeconds){return brady(x,hr,tSeconds,window.__ecgCanvas||document.getElementById('ecgCanvas'))},chb:function(x,hr,tSeconds){return chb(x,hr,tSeconds,window.__ecgCanvas||document.getElementById('ecgCanvas'))},
+paced:function(x,hr,tSeconds){return paced(x,hr,tSeconds,window.__ecgCanvas||document.getElementById('ecgCanvas'))}, // <<< *** THIS LINE IS NOW FIXED ***
+idioventricular:function(x,hr,tSeconds){return idioventricular(x,hr,tSeconds,window.__ecgCanvas||document.getElementById('ecgCanvas'))},asystole:function(x,hr,tSeconds){return asystole(x,hr,tSeconds,window.__ecgCanvas||document.getElementById('ecgCanvas'))},sinus:function(x,hr,tSeconds){return nsr(x,hr,tSeconds,window.__ecgCanvas||document.getElementById('ecgCanvas'))},};function drawECGGrid(ctx,w,h){ctx.save();ctx.clearRect(0,0,w,h);ctx.strokeStyle='rgba(255,255,255,0.06)';ctx.lineWidth=1;ctx.beginPath();for(let x=0;x<=w;x+=PX_PER_MM){ctx.moveTo(x+0.5,0);ctx.lineTo(x+0.5,h)}
 for(let y=0;y<=h;y+=PX_PER_MM){ctx.moveTo(0,y+0.5);ctx.lineTo(w,y+0.5)}
 ctx.stroke();ctx.strokeStyle='rgba(255,255,255,0.12)';ctx.lineWidth=1.2;ctx.beginPath();for(let x=0;x<=w;x+=PX_PER_BIG){ctx.moveTo(x+0.5,0);ctx.lineTo(x+0.5,h)}
 for(let y=0;y<=h;y+=PX_PER_BIG){ctx.moveTo(0,y+0.5);ctx.lineTo(w,y+0.5)}
@@ -694,6 +696,13 @@ window.drawECGGrid=drawECGGrid;window.drawCalibrationPulse=drawCalibrationPulse;
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
             }
             
+            // Safety check: if rhythms aren't loaded, don't crash
+            if (!window.rhythms || !window.cleanRhythms) {
+                console.error("Rhythms not loaded!");
+                animationId = requestAnimationFrame(animate);
+                return;
+            }
+
             const underlyingRhythmFunc = window.rhythms[state.rhythm];
             const scenario = scenarios[state.selectedScenario];
             
@@ -720,7 +729,6 @@ window.drawECGGrid=drawECGGrid;window.drawCalibrationPulse=drawCalibrationPulse;
             let lastMarkerX = -100;
             let y_underlying_cache = {}; 
 
-            // This function uses window.cleanRhythms (from SCRIPT 1) for sensing
             const getUnderlyingY = (x_pos) => {
                 if (y_underlying_cache[x_pos]) return y_underlying_cache[x_pos];
                 if (!window.cleanRhythms[state.rhythm]) return 0; // Safety check
@@ -732,11 +740,9 @@ window.drawECGGrid=drawECGGrid;window.drawCalibrationPulse=drawCalibrationPulse;
             for (let x = 0; x < canvas.width; x++) {
                 const currentX = waveformX + x;
                 
-                // This uses window.rhythms (with artefacts) for drawing
                 let y_underlying_raw = underlyingRhythmFunc(currentX, displayHR, simTimeSeconds) - baselineY;
                 let y_final_raw = y_underlying_raw;
 
-                // This uses window.cleanRhythms (no artefacts) for sensing
                 let y_sense = getUnderlyingY(currentX);
                 const refractoryPx = ecgSpeed * 0.20; 
                 
@@ -744,13 +750,11 @@ window.drawECGGrid=drawECGGrid;window.drawCalibrationPulse=drawCalibrationPulse;
                     let y_prev = getUnderlyingY(currentX - 1);
                     let y_next = getUnderlyingY(currentX + 1);
                     
-                    // QRS sensing logic
                     if (y_sense < y_prev && y_sense < y_next && y_sense < -PX_PER_MV * 0.3) {
                         state.lastSensedQRS_X = currentX;
                     }
                 }
                 
-                // Pacing logic (now uses the clean sensing)
                 if (state.pacingActive && state.pacerOutput > 0) {
                     const pacerCyclePx = (60 / state.pacerRate) * ecgSpeed;
                     const timeSinceLastSensed = currentX - state.lastSensedQRS_X;
@@ -804,7 +808,6 @@ window.drawECGGrid=drawECGGrid;window.drawCalibrationPulse=drawCalibrationPulse;
             }
             ctx.stroke(); 
             
-            // Sync marker logic (uses clean sensing via yValues)
             const syncRhythms = ['vtach', 'svt', 'afib', 'nsr', 'sinus_brady', 'sinus_tach'];
             if (state.syncMode && syncRhythms.includes(state.rhythm)) {
                 ctx.save();
