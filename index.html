@@ -7,16 +7,20 @@
     
     <script>
 (function(){'use strict';const PX_PER_BIG=25;const PX_PER_MM=PX_PER_BIG/5;const PX_PER_MV=PX_PER_MM*10;let ECG_SPEED=PX_PER_BIG*5;function setSpeed(pxPerSec){ECG_SPEED=pxPerSec}
-const clamp=(v,lo,hi)=>Math.max(lo,Math.min(hi,v));const lerp=(a,b,t)=>a+(b-a)*t;function perlinLikeNoise(x,freq,amp){const a=Math.sin(x*freq*0.71)*0.5+0.5;const b=Math.sin(x*freq*1.33+1.7)*0.5+0.5;return(a*0.6+b*0.4-0.5)*2*amp}
+const lerp=(a,b,t)=>a+(b-a)*t;function perlinLikeNoise(x,freq,amp){const a=Math.sin(x*freq*0.71)*0.5+0.5;const b=Math.sin(x*freq*1.33+1.7)*0.5+0.5;return(a*0.6+b*0.4-0.5)*2*amp}
 function baselineWander(tSeconds){return Math.sin(tSeconds*0.25)*(PX_PER_MM*0.6)}
 function movementArtefact(x,tSeconds){return Math.sin((x+tSeconds*120)*0.05)*(PX_PER_MM*1.0)}
 function leadoffArtefact(tSeconds){return Math.sin(tSeconds*1.2)*(PX_PER_MM*1.5)}
 function cprArtefact(x,tSeconds){const f=2.0;return Math.sin(2*Math.PI*f*tSeconds)*(PX_PER_MV*0.6)+perlinLikeNoise(x+tSeconds*60,0.03,PX_PER_MM*2.0)}
-function pWave(s,amp=0.1){const a=clamp(Math.sin(Math.PI*s),0,1);return-a*(PX_PER_MV*amp)}
+function pWave(s,amp=0.1){const a=Math.max(0,Math.min(1,Math.sin(Math.PI*s)));return-a*(PX_PER_MV*amp)}
 function qrsNarrow(s,rAmp=1.0,qAmp=0.15,sAmp=0.25){if(s<0.22){const t=s/0.22;return PX_PER_MV*qAmp*(t*0.4)}else if(s<0.55){const t=(s-0.22)/0.33;return-PX_PER_MV*rAmp*(Math.sin(t*Math.PI))}else{const t=(s-0.55)/0.45;return PX_PER_MV*sAmp*(Math.sin(t*Math.PI))}}
 function qrsWide(s,rAmp=0.9){return-PX_PER_MV*rAmp*Math.sin(s*Math.PI)}
-function tWave(s,amp=0.3){if(s<0.45){const t=s/0.45;return-PX_PER_MV*amp*Math.sin(t*Math.PI*0.6)}else{const t=(s-0.45)/0.55;return-PX_PER_MV*amp*(Math.cos(t*Math.PI)*0.8)}}
-function pacingSpike(pxPosInCycle){return pxPosInCycle<3?-PX_PER_MV*2.0:0}
+function tWave(s,amp=0.3){
+    // s is 0 to 1. Use a single sine wave that starts and ends at 0.
+    // This fixes the bug where the baseline would jump after a T-wave.
+    return -PX_PER_MV * amp * Math.sin(s * Math.PI);
+}
+function pacingSpike(pxPosInCycle){return pxPosInCycle<3?-PX_PER_MV*2.0:0} // REVERTED: Make spike negative (draws UP)
 function sinusTemplate(x,hr,canvasHeight,tSeconds,opts={}){const baseline=canvasHeight/2;const bpm=hr>0?hr:75;const cyclePx=(60/bpm)*ECG_SPEED;const pos=x%cyclePx;const s=pos/cyclePx;let y=0;const pDur=0.08*ECG_SPEED/cyclePx;const prEnd=pDur+0.10*ECG_SPEED/cyclePx;const qrsDur=0.09*ECG_SPEED/cyclePx;const qrsStart=prEnd;const qrsEnd=qrsStart+qrsDur;const tEnd=qrsEnd+0.16*ECG_SPEED/cyclePx;if(s<pDur){y+=pWave(s/pDur,opts.pAmp??0.1)}else if(s<prEnd){}else if(s<qrsEnd){const qrsPhase=(s-qrsStart)/(qrsDur);y+=qrsNarrow(qrsPhase,opts.rAmp??1.0,opts.qAmp??0.15,opts.sAmp??0.25)}else if(s<tEnd){const tPhase=(s-qrsEnd)/(tEnd-qrsEnd);y+=tWave(tPhase,opts.tAmp??0.3)}
 return baseline+y}
 function nsr(x,hr,tSeconds,canvas){return sinusTemplate(x,hr||75,canvas.height,tSeconds,{})}
@@ -24,13 +28,13 @@ function sinusBrady(x,hr,tSeconds,canvas){return sinusTemplate(x,hr||45,canvas.h
 function sinusTach(x,hr,tSeconds,canvas){return sinusTemplate(x,hr||120,canvas.height,tSeconds,{rAmp:1.1,tAmp:0.35})}
 function svt(x,hr,tSeconds,canvas){const baseline=canvas.height/2;const bpm=hr>0?hr:190;const cyclePx=(60/bpm)*ECG_SPEED;const pos=x%cyclePx;const s=pos/cyclePx;let y=0;const prShort=0.06*ECG_SPEED/cyclePx;const qrsDur=0.08*ECG_SPEED/cyclePx;const qrsStart=prShort;const qrsEnd=qrsStart+qrsDur;const tEnd=qrsEnd+0.14*ECG_SPEED/cyclePx;if(s<prShort){y+=pWave(s/prShort,0.05)}else if(s<qrsEnd){y+=qrsNarrow((s-qrsStart)/qrsDur,0.95,0.1,0.2)}else if(s<tEnd){y+=tWave((s-qrsEnd)/(tEnd-qrsEnd),0.25)}
 return baseline+y}
-function afib(x,hr,tSeconds,canvas){const baseline=canvas.height/2;const baseHr=hr>0?hr:140;const rrVar=1+perlinLikeNoise(x+tSeconds*30,0.0007,0.35);const bpm=clamp(baseHr*rrVar,80,190);const cyclePx=(60/bpm)*ECG_SPEED;const pos=x%cyclePx;const s=pos/cyclePx;let y=0;const qrsDur=0.09*ECG_SPEED/cyclePx;const qrsEnd=qrsDur;if(s<qrsEnd){const beatAmp=0.9;y+=qrsNarrow(s/qrsDur,beatAmp,0.05,0.15)}
+function afib(x,hr,tSeconds,canvas){const baseline=canvas.height/2;const baseHr=hr>0?hr:140;const rrVar=1+perlinLikeNoise(x+tSeconds*30,0.0007,0.35);const bpm=Math.max(80,Math.min(190,baseHr*rrVar));const cyclePx=(60/bpm)*ECG_SPEED;const pos=x%cyclePx;const s=pos/cyclePx;let y=0;const qrsDur=0.09*ECG_SPEED/cyclePx;const qrsEnd=qrsDur;if(s<qrsEnd){const beatAmp=0.9;y+=qrsNarrow(s/qrsDur,beatAmp,0.05,0.15)}
 const fBase=Math.sin((x*0.31)+tSeconds*7.1)*(PX_PER_MM*1.0)+Math.sin((x*0.52)+tSeconds*9.3)*(PX_PER_MM*0.8)+Math.sin((x*0.73)+tSeconds*11.7)*(PX_PER_MM*0.7)+Math.sin((x*1.14)+tSeconds*14.2)*(PX_PER_MM*0.5);return baseline+y+fBase*1.0}
 function vtach(x,hr,tSeconds,canvas){const baseline=canvas.height/2;const bpm=hr>0?hr:180;const cyclePx=(60/bpm)*ECG_SPEED;const pos=x%cyclePx;const s=pos/cyclePx;let y=0;const qrsDur=0.14*ECG_SPEED/cyclePx;if(s<qrsDur){y+=qrsWide(s/qrsDur,0.9)}
 return baseline+y}
 function idioventricular(x,hr,tSeconds,canvas){const baseline=canvas.height/2;const bpm=hr>0?hr:38;const cyclePx=(60/bpm)*ECG_SPEED;const pos=x%cyclePx;const s=pos/cyclePx;let y=0;const qrsDur=0.16*ECG_SPEED/cyclePx;if(s<qrsDur){y+=qrsWide(s/qrsDur,0.8)}
 return baseline+y}
-function vfib(x,_hr,tSeconds,canvas){const baseline=canvas.height/2;const coarse=PX_PER_MV*0.9;const fine=PX_PER_MV*0.25;const k=clamp(tSeconds/120,0,1);const amp=lerp(coarse,fine,k);const y=Math.sin(x*0.22+tSeconds*1.1)*(amp*0.6)+Math.sin(x*0.33+tSeconds*1.5)*(amp*0.45)+Math.sin(x*0.55+tSeconds*0.9)*(amp*0.35)+Math.sin(x*0.88+tSeconds*1.7)*(amp*0.25)+Math.sin(x*1.40+tSeconds*2.2)*(amp*0.15)+perlinLikeNoise(x+tSeconds*30,0.02,amp*0.15);return baseline+y}
+function vfib(x,_hr,tSeconds,canvas){const baseline=canvas.height/2;const coarse=PX_PER_MV*0.9;const fine=PX_PER_MV*0.25;const k=Math.max(0,Math.min(1,tSeconds/120));const amp=lerp(coarse,fine,k);const y=Math.sin(x*0.22+tSeconds*1.1)*(amp*0.6)+Math.sin(x*0.33+tSeconds*1.5)*(amp*0.45)+Math.sin(x*0.55+tSeconds*0.9)*(amp*0.35)+Math.sin(x*0.88+tSeconds*1.7)*(amp*0.25)+Math.sin(x*1.40+tSeconds*2.2)*(amp*0.15)+perlinLikeNoise(x+tSeconds*30,0.02,amp*0.15);return baseline+y}
 function chb(x,hr,tSeconds,canvas){const baseline=canvas.height/2;const vBpm=hr>0?hr:32;const pBpm=80;const vCycle=(60/vBpm)*ECG_SPEED;const pCycle=(60/pBpm)*ECG_SPEED;const vPos=x%vCycle;const pPos=x%pCycle;let y=0;const pDurPx=0.08*ECG_SPEED;if(pPos<pDurPx){y+=pWave(pPos/pDurPx,0.12)}
 const qrsDurPx=0.16*ECG_SPEED;if(vPos<qrsDurPx){y+=qrsWide(vPos/qrsDurPx,0.85)}
 return baseline+y}
@@ -67,6 +71,85 @@ window.drawECGGrid=drawECGGrid;window.drawCalibrationPulse=drawCalibrationPulse;
     .hidden {
         display: none !important;
     }
+    
+    /* --- MOBILE RESPONSIVENESS FIXES --- */
+    @media (max-width: 768px) {
+        body { padding: 10px; }
+        .quick-rhythm-panel { padding: 10px; }
+        .quick-rhythm-panel .rhythm-btn { font-size: 10px; padding: 6px; }
+
+        .zoll-device {
+            grid-template-columns: 1fr; /* Already set at 1200px, but good to be explicit */
+            padding: 15px;
+            border-width: 10px;
+        }
+
+        .device-screen-section { padding: 15px; }
+        .screen { padding: 10px; }
+        .ecg-canvas-container { height: 250px; } /* Reduce canvas height */
+        .vitals-display {
+            grid-template-columns: 1fr 1fr; /* 2x2 grid */
+            gap: 5px;
+            padding: 10px;
+        }
+        .vital-value { font-size: 28px; }
+        .vital-value.critical { font-size: 28px; }
+        #bpDisplay { font-size: 20px !important; }
+
+        .softkeys { gap: 5px; }
+        .softkey { padding: 10px; font-size: 9px; }
+        
+        .top-buttons { grid-template-columns: 1fr 1fr; } /* Stack sync and shock */
+        .btn-shock { width: 100px; height: 100px; font-size: 16px; }
+        .btn-shock .number { font-size: 14px; bottom: 8px; }
+        .btn-shock::before { font-size: 60px; }
+
+        .side-buttons { grid-template-columns: 1fr 1fr; }
+        .side-btn { padding: 10px; font-size: 10px; }
+
+        .btn-analyze, .btn-charge { padding: 12px; font-size: 13px; }
+        .energy-selector { padding: 12px; }
+        .energy-display { font-size: 28px; }
+
+        .mode-dial-container { padding: 10px; }
+        .mode-dial { width: 120px; height: 120px; }
+        .mode-label { padding: 10px; font-size: 11px; }
+
+        .pacing-controls { grid-template-columns: 1fr 1fr; gap: 10px; }
+        .pacer-dial { width: 80px; height: 80px; }
+        .pacer-dial::before { height: 25px; top: 12px; transform-origin: center 28px; }
+        .pacer-value { font-size: 16px; }
+        .pacer-btn { width: 30px; height: 30px; font-size: 16px; }
+
+        .control-grid { grid-template-columns: 1fr; } /* Stack instructor controls */
+        
+        .menu-options { grid-template-columns: 1fr; gap: 15px; }
+        .menu-option { padding: 25px 20px; font-size: 18px; }
+    }
+
+    @media (max-width: 480px) {
+        body { padding: 5px; }
+        .quick-rhythm-panel { padding: 5px; }
+        .quick-rhythm-panel .rhythm-btn { font-size: 9px; padding: 5px; }
+        
+        .zoll-device { padding: 5px; border-width: 5px; }
+        .device-screen-section { padding: 5px; }
+        .screen { padding: 5px; }
+        .ecg-canvas-container { height: 200px; } /* Further reduce canvas height */
+        .vitals-display { padding: 5px; }
+        .vital-value { font-size: 24px; }
+        .vital-value.critical { font-size: 24px; }
+        #bpDisplay { font-size: 18px !important; }
+
+        .btn-shock { width: 80px; height: 80px; font-size: 14px; }
+        .btn-shock .number { font-size: 12px; bottom: 5px; }
+        .btn-shock::before { font-size: 40px; }
+        
+        .mode-dial { width: 100px; height: 100px; }
+        .pacer-dial { width: 70px; height: 70px; }
+    }
+    /* --- END OF MOBILE FIXES --- */
+    
     </style>
 </head>
 <body>
@@ -469,6 +552,8 @@ window.drawECGGrid=drawECGGrid;window.drawCalibrationPulse=drawCalibrationPulse;
     <script>
     document.addEventListener('DOMContentLoaded', () => {
 
+        const clamp=(v,lo,hi)=>Math.max(lo,Math.min(hi,v));
+
         // Scenarios Configuration
         const scenarios = {
             'vf-arrest': {
@@ -625,6 +710,26 @@ window.drawECGGrid=drawECGGrid;window.drawCalibrationPulse=drawCalibrationPulse;
         const resetScenarioBtn = document.getElementById('resetScenarioBtn');
         const zollDevice = document.getElementById('zollDevice');
 
+        // --- FIX: CANVAS RESIZE FUNCTION ---
+        function resizeCanvas() {
+            if (!canvas || !ctx) return;
+            
+            const rect = canvas.getBoundingClientRect();
+            
+            // Only resize if dimensions have actually changed
+            if (canvas.width !== rect.width || canvas.height !== rect.height) {
+                canvas.width = rect.width;
+                canvas.height = rect.height;
+                
+                // Re-set context properties as resizing clears them
+                ctx.lineJoin = 'round';
+                ctx.lineCap = 'round';
+                ctx.imageSmoothingEnabled = false;
+                
+                console.log('Canvas resized to:', canvas.width, 'x', canvas.height);
+            }
+        }
+
         function initCanvas() {
             canvas = document.getElementById('ecgCanvas');
             if (!canvas) {
@@ -634,14 +739,8 @@ window.drawECGGrid=drawECGGrid;window.drawCalibrationPulse=drawCalibrationPulse;
             
             window.__ecgCanvas = canvas;
             ctx = canvas.getContext('2d');
-            ctx.lineJoin = 'round';
-            ctx.lineCap = 'round';
-            ctx.imageSmoothingEnabled = false;
-
-            // CRITICAL FIX: Force canvas to use actual pixel dimensions
-            const rect = canvas.getBoundingClientRect();
-            canvas.width = rect.width;
-            canvas.height = rect.height;
+            
+            resizeCanvas(); // Call new resize function
             
             if (animationId) {
                 cancelAnimationFrame(animationId);
@@ -650,7 +749,7 @@ window.drawECGGrid=drawECGGrid;window.drawCalibrationPulse=drawCalibrationPulse;
             lastTimestamp = 0;
             waveformX = 0;
             
-            console.log('Canvas initialised:', canvas.width, 'x', canvas.height);
+            console.log('Canvas initialised');
         }
 
         const rhythmVitals = {
@@ -776,43 +875,78 @@ window.drawECGGrid=drawECGGrid;window.drawCalibrationPulse=drawCalibrationPulse;
                     if (timeSinceLastSensed >= pacerCyclePx && timeSinceLastPaced >= pacerCyclePx) {
                         state.lastPaced_X = currentX;
                         state.lastSensedQRS_X = currentX; 
-                        y_final_raw = pacerSpikeFn(0); 
+                        
+                        // --- FIX: Check for capture before replacing/adding spike ---
+                        if (isCaptured) {
+                            y_final_raw = pacerSpikeFn(0); // This is just the spike
+                        } else {
+                            y_final_raw += pacerSpikeFn(0); // Add spike to underlying rhythm
+                        }
                     
+                    // --- PACING FIX: Logic should accumulate, not replace ---
                     } else if (timeSinceLastPaced < pacedBeatDurPx) {
                         const posInPacedCycle = currentX - state.lastPaced_X;
                         
-                        const spike = pacerSpikeFn(posInPacedCycle);
-                        if (spike !== 0) {
-                            y_final_raw = y_underlying_raw + spike;
-                        }
-                        else if (isCaptured) {
-                            const qrsStart = 3;
-                            const qrsDurPx = 0.14 * ecgSpeed;
-                            const tDurPx = 0.16 * ecgSpeed;
+                        if (isCaptured) {
+                            y_final_raw = 0; // Start with flatline, replacing underlying rhythm
                             
-                            if (posInPacedCycle >= qrsStart && posInPacedCycle < (qrsStart + qrsDurPx)) {
-                                const s = (posInPacedCycle - qrsStart) / qrsDurPx;
-                                y_final_raw = wideQrsFn(s, 0.9);
-                            } else if (posInPacedCycle >= (qrsStart + qrsDurPx) && posInPacedCycle < (qrsStart + qrsDurPx + tDurPx)) {
-                                const t = (posInPacedCycle - (qrsStart + qrsDurPx)) / tDurPx;
-                                y_final_raw = tWaveFn(t, 0.25);
+                            const spike = pacerSpikeFn(posInPacedCycle); // Negative or 0
+                            y_final_raw += spike; // Add spike
+                            
+                            if (spike === 0) { // Only check for QRS/T if spike is done
+                                const qrsStart = 3;
+                                const qrsDurPx = 0.14 * ecgSpeed;
+                                const tDurPx = 0.16 * ecgSpeed;
+                                const tEnd = qrsStart + qrsDurPx + tDurPx;
+
+                                if (posInPacedCycle >= qrsStart && posInPacedCycle < (qrsStart + qrsDurPx)) {
+                                    const s = (posInPacedCycle - qrsStart) / qrsDurPx;
+                                    y_final_raw += wideQrsFn(s, 0.9); // Add QRS
+                                } else if (posInPacedCycle >= (qrsStart + qrsDurPx) && posInPacedCycle < tEnd) {
+                                    const t = (posInPacedCycle - (qrsStart + qrsDurPx)) / tDurPx;
+                                    y_final_raw += tWaveFn(t, 0.25); // Add T-wave
+                                }
+                                // If after T-wave, y_final_raw remains 0 (flatline)
+                            }
+                        } else {
+                            // Not captured
+                            const spike = pacerSpikeFn(posInPacedCycle); // Negative or 0
+                            if (spike !== 0) {
+                                y_final_raw = y_underlying_raw + spike; // Add spike to underlying
                             } else {
-                                y_final_raw = y_underlying_raw; 
+                                y_final_raw = y_underlying_raw; // Show underlying
                             }
                         }
-                        // **********************************
-                        //  BUG FIX: DELETED 5 LINES HERE
-                        // **********************************
+                    // --- PACING FIX END ---
                     }
                 }
                 
-                const pixelX = Math.round(x);
-                const pixelY = Math.round(baselineY + y_final_raw);
+                // --- JITTER FIX: Removed Math.round() ---
+                const pixelX = x;
+                const raw_pixelY = baselineY + y_final_raw;
+                let pixelY;
+
+                // --- ROBUSTNESS FIX: Check for NaN/Infinity AND Clamp large values ---
+                // This will catch the bug that causes the baseline to jump.
+                // 1. Check if the value is a valid number.
+                if (!isFinite(raw_pixelY)) {
+                    // It's NaN or Infinity, reset to the baseline.
+                    pixelY = baselineY; 
+                } else {
+                    // It's a valid number, but might be huge.
+                    // 2. Clamp it to stay within a visible range (e.g., 3x canvas height).
+                    // This stops a large, erroneous positive value from "sticking"
+                    // and moving the baseline.
+                    pixelY = clamp(raw_pixelY, -canvas.height * 2, canvas.height * 3);
+                }
+                
                 yValues[x] = pixelY; 
 
                 if (x === 0) {
                     ctx.moveTo(pixelX, pixelY);
                 } else {
+                    // We can now safely draw the line, as pixelY is guaranteed
+                    // to be a valid, finite, and clamped number.
                     ctx.lineTo(pixelX, pixelY);
                 }
             }
@@ -823,14 +957,17 @@ window.drawECGGrid=drawECGGrid;window.drawCalibrationPulse=drawCalibrationPulse;
                 ctx.save();
                 ctx.strokeStyle = '#FFFFFF'; 
                 ctx.lineWidth = 2;
+                // --- SYNC MARKER FIX: Now uses smooth yValues ---
                 for (let x = 1; x < canvas.width - 1; x++) {
                     let y = yValues[x];
                     let prevY = yValues[x-1];
                     let nextY = yValues[x+1];
                     
+                    // Find local minimum (R-wave peak, which is negative)
                     if (y < prevY && y < nextY && y < (baselineY - 20)) { 
-                        const pixelX = Math.round(x);
-                        if (pixelX - lastMarkerX > 50) { 
+                        // --- JITTER FIX: Removed Math.round() ---
+                        const pixelX = x;
+                        if (pixelX - lastMarkerX > 50) { // Refractory period
                             ctx.beginPath();
                             ctx.moveTo(pixelX, 5);
                             ctx.lineTo(pixelX, 15);
@@ -1855,6 +1992,9 @@ window.drawECGGrid=drawECGGrid;window.drawCalibrationPulse=drawCalibrationPulse;
         // --- INITIALISATION ---
         initCanvas(); 
         setMode('off'); 
+
+        // --- FIX: Add window resize listener ---
+        window.addEventListener('resize', resizeCanvas);
     
     }); // End of DOMContentLoaded
     </script>
