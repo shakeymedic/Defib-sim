@@ -783,7 +783,7 @@ window.drawECGGrid=drawECGGrid;window.drawCalibrationPulse=drawCalibrationPulse;
                         
                         const spike = pacerSpikeFn(posInPacedCycle);
                         if (spike !== 0) {
-                            y_final_raw = y_underlying_raw + spike;
+                            y_final_raw = spike;
                         }
                         else if (isCaptured) {
                             const qrsStart = 3;
