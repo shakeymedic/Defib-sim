@@ -783,7 +783,7 @@ window.drawECGGrid=drawECGGrid;window.drawCalibrationPulse=drawCalibrationPulse;
                         
                         const spike = pacerSpikeFn(posInPacedCycle);
                         if (spike !== 0) {
-                            y_final_raw = spike;
+                            y_final_raw = y_underlying_raw + spike;
                         }
                         else if (isCaptured) {
                             const qrsStart = 3;
@@ -797,7 +797,7 @@ window.drawECGGrid=drawECGGrid;window.drawCalibrationPulse=drawCalibrationPulse;
                                 const t = (posInPacedCycle - (qrsStart + qrsDurPx)) / tDurPx;
                                 y_final_raw = tWaveFn(t, 0.25);
                             } else {
-                                y_final_raw = 0; 
+                                y_final_raw = y_underlying_raw; 
                             }
                         }
                         // **********************************
