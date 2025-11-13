@@ -14,13 +14,13 @@ function leadoffArtefact(tSeconds){return Math.sin(tSeconds*1.2)*(PX_PER_MM*1.5)
 function cprArtefact(x,tSeconds){const f=2.0;return Math.sin(2*Math.PI*f*tSeconds)*(PX_PER_MV*0.6)+perlinLikeNoise(x+tSeconds*60,0.03,PX_PER_MM*2.0)}
 function pWave(s,amp=0.1){const a=Math.max(0,Math.min(1,Math.sin(Math.PI*s)));return-a*(PX_PER_MV*amp)}
 function qrsNarrow(s,rAmp=1.0,qAmp=0.15,sAmp=0.25){if(s<0.22){const t=s/0.22;return PX_PER_MV*qAmp*(t*0.4)}else if(s<0.55){const t=(s-0.22)/0.33;return-PX_PER_MV*rAmp*(Math.sin(t*Math.PI))}else{const t=(s-0.55)/0.45;return PX_PER_MV*sAmp*(Math.sin(t*Math.PI))}}
-function qrsWide(s,rAmp=0.9){return-PX_PER_MV*rAmp*Math.sin(s*Math.PI)}
+function qrsWide(s,rAmp=0.9){return-PX_PER_MV*rAmp*(Math.sin(s*Math.PI))}
 function tWave(s,amp=0.3){
     // s is 0 to 1. Use a single sine wave that starts and ends at 0.
     // This fixes the bug where the baseline would jump after a T-wave.
     return -PX_PER_MV * amp * Math.sin(s * Math.PI);
 }
-function pacingSpike(pxPosInCycle){return pxPosInCycle<3?-PX_PER_MV*2.0:0} // REVERTED: Make spike negative (draws UP)
+function pacingSpike(pxPosInCycle){return pxPosInCycle<3?-PX_PER_MV*2.0:0} // Spike is negative (draws UP)
 function sinusTemplate(x,hr,canvasHeight,tSeconds,opts={}){const baseline=canvasHeight/2;const bpm=hr>0?hr:75;const cyclePx=(60/bpm)*ECG_SPEED;const pos=x%cyclePx;const s=pos/cyclePx;let y=0;const pDur=0.08*ECG_SPEED/cyclePx;const prEnd=pDur+0.10*ECG_SPEED/cyclePx;const qrsDur=0.09*ECG_SPEED/cyclePx;const qrsStart=prEnd;const qrsEnd=qrsStart+qrsDur;const tEnd=qrsEnd+0.16*ECG_SPEED/cyclePx;if(s<pDur){y+=pWave(s/pDur,opts.pAmp??0.1)}else if(s<prEnd){}else if(s<qrsEnd){const qrsPhase=(s-qrsStart)/(qrsDur);y+=qrsNarrow(qrsPhase,opts.rAmp??1.0,opts.qAmp??0.15,opts.sAmp??0.25)}else if(s<tEnd){const tPhase=(s-qrsEnd)/(tEnd-qrsEnd);y+=tWave(tPhase,opts.tAmp??0.3)}
 return baseline+y}
 function nsr(x,hr,tSeconds,canvas){return sinusTemplate(x,hr||75,canvas.height,tSeconds,{})}
@@ -43,7 +43,7 @@ return baseline+y}
 function brady(x,hr,tSeconds,canvas){return sinusTemplate(x,hr||38,canvas.height,tSeconds,{rAmp:0.9,tAmp:0.25})}
 function asystole(x,_hr,tSeconds,canvas){const baseline=canvas.height/2;const wander=Math.sin(tSeconds*0.2)*(PX_PER_MM*0.2);return baseline+wander}
 const rhythms={nsr:function(x,hr,tSeconds){return nsr(x,hr,tSeconds,window.__ecgCanvas||document.getElementById('ecgCanvas'))},sinus_brady:function(x,hr,tSeconds){return sinusBrady(x,hr,tSeconds,window.__ecgCanvas||document.getElementById('ecgCanvas'))},sinus_tach:function(x,hr,tSeconds){return sinusTach(x,hr,tSeconds,window.__ecgCanvas||document.getElementById('ecgCanvas'))},svt:function(x,hr,tSeconds){return svt(x,hr,tSeconds,window.__ecgCanvas||document.getElementById('ecgCanvas'))},afib:function(x,hr,tSeconds){return afib(x,hr,tSeconds,window.__ecgCanvas||document.getElementById('ecgCanvas'))},vtach:function(x,hr,tSeconds){return vtach(x,hr,tSeconds,window.__ecgCanvas||document.getElementById('ecgCanvas'))},vt_pulseless:function(x,hr,tSeconds){return vtach(x,180,tSeconds,window.__ecgCanvas||document.getElementById('ecgCanvas'))},vfib:function(x,hr,tSeconds){return vfib(x,hr,tSeconds,window.__ecgCanvas||document.getElementById('ecgCanvas'))},brady:function(x,hr,tSeconds){return brady(x,hr,tSeconds,window.__ecgCanvas||document.getElementById('ecgCanvas'))},chb:function(x,hr,tSeconds){return chb(x,hr,tSeconds,window.__ecgCanvas||document.getElementById('ecgCanvas'))},
-paced:function(x,hr,tSeconds){return paced(x,hr,tSeconds,window.__ecgCanvas||document.getElementById('ecgCanvas'))}, // <<< *** THE TYPO IS FIXED HERE ***
+paced:function(x,hr,tSeconds){return paced(x,hr,tSeconds,window.__ecgCanvas||document.getElementById('ecgCanvas'))},
 idioventricular:function(x,hr,tSeconds){return idioventricular(x,hr,tSeconds,window.__ecgCanvas||document.getElementById('ecgCanvas'))},asystole:function(x,hr,tSeconds){return asystole(x,hr,tSeconds,window.__ecgCanvas||document.getElementById('ecgCanvas'))},sinus:function(x,hr,tSeconds){return nsr(x,hr,tSeconds,window.__ecgCanvas||document.getElementById('ecgCanvas'))},};function drawECGGrid(ctx,w,h){ctx.save();ctx.clearRect(0,0,w,h);ctx.strokeStyle='rgba(255,255,255,0.06)';ctx.lineWidth=1;ctx.beginPath();for(let x=0;x<=w;x+=PX_PER_MM){ctx.moveTo(x+0.5,0);ctx.lineTo(x+0.5,h)}
 for(let y=0;y<=h;y+=PX_PER_MM){ctx.moveTo(0,y+0.5);ctx.lineTo(w,y+0.5)}
 ctx.stroke();ctx.strokeStyle='rgba(255,255,255,0.12)';ctx.lineWidth=1.2;ctx.beginPath();for(let x=0;x<=w;x+=PX_PER_BIG){ctx.moveTo(x+0.5,0);ctx.lineTo(x+0.5,h)}
@@ -155,7 +155,7 @@ window.drawECGGrid=drawECGGrid;window.drawCalibrationPulse=drawCalibrationPulse;
 <body>
     <div class="menu-screen" id="modeSelectScreen">
         <div style="display: flex; align-items: center; justify-content: center; gap: 20px; margin-bottom: 30px;">
-            <img src="https://iili.io/KGQOvkl.md.png" alt="WMEBEM Logo" style="height: 60px; background: white; padding: 10px; border-radius: 10px;">
+            <img src="images/logo.png" alt="WMEBEM Logo" style="height: 60px; background: white; padding: 10px; border-radius: 10px;">
             <div class="menu-title" style="margin-bottom: 0; text-align: left;">
                 <h1 style="margin-bottom: 5px; font-size: 32px;">ZOLL R Series Simulator</h1>
                 <p>Select a Scenario Mode</p>
@@ -195,7 +195,7 @@ window.drawECGGrid=drawECGGrid;window.drawCalibrationPulse=drawCalibrationPulse;
         
         <div class="menu-screen hidden" id="scenarioScreen">
             <div style="display: flex; align-items: center; justify-content: center; gap: 20px; margin-bottom: 30px;">
-                <img src="https://iili.io/KGQOvkl.md.png" alt="WMEBEM Logo" style="height: 60px; background: white; padding: 10px; border-radius: 10px;">
+                <img src="images/logo.png" alt="WMEBEM Logo" style="height: 60px; background: white; padding: 10px; border-radius: 10px;">
                 <div class="menu-title" style="margin-bottom: 0; text-align: left;">
                     <h1 id="modeTitle" style="margin-bottom: 5px; font-size: 32px;">Education Mode</h1>
                     <p>Select a clinical scenario</p>
@@ -254,7 +254,7 @@ window.drawECGGrid=drawECGGrid;window.drawCalibrationPulse=drawCalibrationPulse;
         </div>
         <div class="menu-screen hidden" id="summaryScreen">
             <div style="display: flex; align-items: center; justify-content: center; gap: 20px; margin-bottom: 30px;">
-                <img src="https://iili.io/KGQOvkl.md.png" alt="WMEBEM Logo" style="height: 60px; background: white; padding: 10px; border-radius: 10px;">
+                <img src="images/logo.png" alt="WMEBEM Logo" style="height: 60px; background: white; padding: 10px; border-radius: 10px;">
                 <div class="menu-title" style="margin-bottom: 0; text-align: left;">
                     <h1 style="margin-bottom: 5px; font-size: 32px;">Scenario Complete</h1>
                     <p>Defibrillator Performance Summary</p>
@@ -299,7 +299,7 @@ window.drawECGGrid=drawECGGrid;window.drawCalibrationPulse=drawCalibrationPulse;
             <div id="certificateContent" style="background: white; padding: 60px; border-radius: 15px; color: #2c3e50; position: relative;">
                 <div style="border: 8px solid #3498db; padding: 40px; border-radius: 10px;">
                     <div style="text-align: center; margin-bottom: 30px;">
-                        <img src="https://iili.io/KGQOvkl.md.png" alt="WMEBEM Logo" style="height: 60px; margin-bottom: 20px;">
+                        <img src="images/logo.png" alt="WMEBEM Logo" style="height: 60px; margin-bottom: 20px;">
                         <h1 style="color: #2c3e50; font-size: 42px; margin-bottom: 10px;">Certificate of Completion</h1>
                         <div style="width: 100px; height: 3px; background: #3498db; margin: 20px auto;"></div>
                     </div>
@@ -357,7 +357,7 @@ window.drawECGGrid=drawECGGrid;window.drawCalibrationPulse=drawCalibrationPulse;
         <div class="instructor-panel hidden" id="instructorPanel">
             <div class="instructor-header">
                 <div class="instructor-logo">
-                    <img src="https://iili.io/KGQOvkl.md.png" alt="WMEBEM Logo">
+                    <img src="images/logo.png" alt="WMEBEM Logo">
                     <div class="instructor-title">
                         <h2>Instructor Controls</h2>
                         <p id="instructorSubtitle">Scenario in Progress</p>
@@ -419,12 +419,12 @@ window.drawECGGrid=drawECGGrid;window.drawCalibrationPulse=drawCalibrationPulse;
         </div>
 
         <div class="zoll-device" id="zollDevice" style="display: grid;">
-            <img src="https://iili.io/KGQOvkl.md.png" alt="WMEBEM Logo" class="zoll-top-logo">
+            <img src="images/logo.png" alt="WMEBEM Logo" class="zoll-top-logo">
             
             <div class="device-screen-section">
                 <div class="screen">
                     <div class="splash-screen" id="splashScreen" style="display: none;">
-                        <img src="https://iili.io/KGQOvkl.md.png" alt="WMEBEM Logo">
+                        <img src="images/logo.png" alt="WMEBEM Logo">
                     </div>
 
                     <div class="screen-header">
@@ -552,6 +552,7 @@ window.drawECGGrid=drawECGGrid;window.drawCalibrationPulse=drawCalibrationPulse;
     <script>
     document.addEventListener('DOMContentLoaded', () => {
 
+        // --- CLAMP FUNCTION, MOVED TO TOP ---
         const clamp=(v,lo,hi)=>Math.max(lo,Math.min(hi,v));
 
         // Scenarios Configuration
@@ -680,6 +681,10 @@ window.drawECGGrid=drawECGGrid;window.drawCalibrationPulse=drawCalibrationPulse;
             pacerOutput: 0,
             pacerRate: 60,
             pacingActive: false,
+            // --- PACING REFACTOR ---
+            isCaptured: false,
+            originalRhythm: null,
+            // --- END REFACTOR ---
             actions: [],
             hasPulse: true,
             roscAchieved: false,
@@ -710,7 +715,7 @@ window.drawECGGrid=drawECGGrid;window.drawCalibrationPulse=drawCalibrationPulse;
         const resetScenarioBtn = document.getElementById('resetScenarioBtn');
         const zollDevice = document.getElementById('zollDevice');
 
-        // --- FIX: CANVAS RESIZE FUNCTION ---
+        // --- CANVAS RESIZE FUNCTION ---
         function resizeCanvas() {
             if (!canvas || !ctx) return;
             
@@ -815,18 +820,8 @@ window.drawECGGrid=drawECGGrid;window.drawCalibrationPulse=drawCalibrationPulse;
             const underlyingRhythmFunc = window.rhythms[state.rhythm];
             const scenario = scenarios[state.selectedScenario];
             
-            let captureThreshold = 60; 
-            if (scenario && state.scenarioActive && scenario.requiresPacing) {
-                captureThreshold = scenario.captureThreshold;
-            }
-
-            const isCaptured = state.pacerOutput >= captureThreshold;
-            const displayHR = state.hr; 
             const baselineY = canvas.height / 2;
-
             const pacerSpikeFn = window.pacingSpike;
-            const wideQrsFn = window.qrsWide;
-            const tWaveFn = window.tWave;
 
             ctx.strokeStyle = '#00ff00';
             ctx.lineWidth = 2;
@@ -838,20 +833,41 @@ window.drawECGGrid=drawECGGrid;window.drawCalibrationPulse=drawCalibrationPulse;
             let lastMarkerX = -100;
             let y_underlying_cache = {}; 
 
+            // --- PACING BUG FIX ---
+            // This function was crashing the animate loop if state.originalRhythm was 'sinus'
+            // because rhythmVitals['sinus'] does not exist.
             const getUnderlyingY = (x_pos) => {
                 if (y_underlying_cache[x_pos]) return y_underlying_cache[x_pos];
-                if (!window.cleanRhythms[state.rhythm]) return 0;
-                const y = window.cleanRhythms[state.rhythm](x_pos, displayHR, simTimeSeconds) - baselineY;
+                
+                let senseRhythm = state.originalRhythm || state.rhythm;
+                if (senseRhythm === 'sinus') senseRhythm = 'nsr'; // FIX: Map 'sinus' to 'nsr'
+                
+                if (!window.cleanRhythms[senseRhythm]) {
+                     y_underlying_cache[x_pos] = 0;
+                     return 0;
+                }
+                
+                const vitals = rhythmVitals[senseRhythm];
+                if (!vitals) {
+                     console.error("No vitals for", senseRhythm);
+                     y_underlying_cache[x_pos] = 0;
+                     return 0;
+                }
+                const y = window.cleanRhythms[senseRhythm](x_pos, vitals.hr, simTimeSeconds) - baselineY;
                 y_underlying_cache[x_pos] = y;
                 return y;
             };
+            // --- END OF BUG FIX ---
 
             for (let x = 0; x < canvas.width; x++) {
                 const currentX = waveformX + x;
                 
-                let y_underlying_raw = underlyingRhythmFunc(currentX, displayHR, simTimeSeconds) - baselineY;
+                // --- PACING REFACTOR ---
+                // 1. Get the base rhythm (which is now correctly set in state, e.g., 'paced' or 'chb')
+                let y_underlying_raw = underlyingRhythmFunc(currentX, state.hr, simTimeSeconds) - baselineY;
                 let y_final_raw = y_underlying_raw;
 
+                // 2. Run sensing logic, to find R-waves from the *original* rhythm
                 let y_sense = getUnderlyingY(currentX);
                 const refractoryPx = ecgSpeed * 0.20; 
                 
@@ -865,89 +881,48 @@ window.drawECGGrid=drawECGGrid;window.drawCalibrationPulse=drawCalibrationPulse;
                     }
                 }
                 
-                if (state.pacingActive && state.pacerOutput > 0) {
+                // 3. IF pacer is on AND we are NOT captured, add spikes on top of underlying rhythm
+                if (state.pacingActive && !state.isCaptured && state.pacerOutput > 0) {
                     const pacerCyclePx = (60 / state.pacerRate) * ecgSpeed;
                     const timeSinceLastSensed = currentX - state.lastSensedQRS_X;
                     const timeSinceLastPaced = currentX - state.lastPaced_X;
                     
-                    const pacedBeatDurPx = (0.14 + 0.16) * ecgSpeed + 3; 
-                    
+                    // Demand pacing: Only pace if no sensed beat in the pacer interval
                     if (timeSinceLastSensed >= pacerCyclePx && timeSinceLastPaced >= pacerCyclePx) {
+                        y_final_raw += pacerSpikeFn(0); // Just add a spike
                         state.lastPaced_X = currentX;
-                        state.lastSensedQRS_X = currentX; 
-                        
-                        // --- FIX: Check for capture before replacing/adding spike ---
-                        if (isCaptured) {
-                            y_final_raw = pacerSpikeFn(0); // This is just the spike
-                        } else {
-                            y_final_raw += pacerSpikeFn(0); // Add spike to underlying rhythm
-                        }
-                    
-                    // --- PACING FIX: Logic should accumulate, not replace ---
-                    } else if (timeSinceLastPaced < pacedBeatDurPx) {
-                        const posInPacedCycle = currentX - state.lastPaced_X;
-                        
-                        if (isCaptured) {
-                            y_final_raw = 0; // Start with flatline, replacing underlying rhythm
-                            
-                            const spike = pacerSpikeFn(posInPacedCycle); // Negative or 0
-                            y_final_raw += spike; // Add spike
-                            
-                            if (spike === 0) { // Only check for QRS/T if spike is done
-                                const qrsStart = 3;
-                                const qrsDurPx = 0.14 * ecgSpeed;
-                                const tDurPx = 0.16 * ecgSpeed;
-                                const tEnd = qrsStart + qrsDurPx + tDurPx;
-
-                                if (posInPacedCycle >= qrsStart && posInPacedCycle < (qrsStart + qrsDurPx)) {
-                                    const s = (posInPacedCycle - qrsStart) / qrsDurPx;
-                                    y_final_raw += wideQrsFn(s, 0.9); // Add QRS
-                                } else if (posInPacedCycle >= (qrsStart + qrsDurPx) && posInPacedCycle < tEnd) {
-                                    const t = (posInPacedCycle - (qrsStart + qrsDurPx)) / tDurPx;
-                                    y_final_raw += tWaveFn(t, 0.25); // Add T-wave
-                                }
-                                // If after T-wave, y_final_raw remains 0 (flatline)
-                            }
-                        } else {
-                            // Not captured
-                            const spike = pacerSpikeFn(posInPacedCycle); // Negative or 0
-                            if (spike !== 0) {
-                                y_final_raw = y_underlying_raw + spike; // Add spike to underlying
-                            } else {
-                                y_final_raw = y_underlying_raw; // Show underlying
-                            }
-                        }
-                    // --- PACING FIX END ---
+                        state.lastSensedQRS_X = currentX; // Prevent re-triggering
                     }
                 }
+                // 4. (If state.isCaptured is true, the underlyingRhythmFunc is 'paced' anyway, so no extra logic is needed)
+                // --- END OF PACING REFACTOR ---
                 
                 // --- JITTER FIX: Removed Math.round() ---
                 const pixelX = x;
                 const raw_pixelY = baselineY + y_final_raw;
                 let pixelY;
 
-                // --- ROBUSTNESS FIX: Check for NaN/Infinity AND Clamp large values ---
-                // This will catch the bug that causes the baseline to jump.
-                // 1. Check if the value is a valid number.
+                // --- ROBUSTNESS CHECK ---
                 if (!isFinite(raw_pixelY)) {
-                    // It's NaN or Infinity, reset to the baseline.
-                    pixelY = baselineY; 
+                    pixelY = baselineY; // Reset to baseline if NaN/Infinity
                 } else {
-                    // It's a valid number, but might be huge.
-                    // 2. Clamp it to stay within a visible range (e.g., 3x canvas height).
-                    // This stops a large, erroneous positive value from "sticking"
-                    // and moving the baseline.
-                    pixelY = clamp(raw_pixelY, -canvas.height * 2, canvas.height * 3);
+                    pixelY = raw_pixelY;
                 }
                 
                 yValues[x] = pixelY; 
 
                 if (x === 0) {
-                    ctx.moveTo(pixelX, pixelY);
+                    if (isFinite(pixelY)) {
+                        ctx.moveTo(pixelX, pixelY);
+                    } else {
+                        ctx.moveTo(pixelX, baselineY);
+                    }
                 } else {
-                    // We can now safely draw the line, as pixelY is guaranteed
-                    // to be a valid, finite, and clamped number.
-                    ctx.lineTo(pixelX, pixelY);
+                    if (isFinite(pixelY)) {
+                        ctx.lineTo(pixelX, pixelY);
+                    } else {
+                        ctx.moveTo(pixelX, baselineY); // Start new path if bad value
+                    }
                 }
             }
             ctx.stroke(); 
@@ -989,23 +964,17 @@ window.drawECGGrid=drawECGGrid;window.drawCalibrationPulse=drawCalibrationPulse;
             const scenario = scenarios[state.selectedScenario];
             let displayHR = state.hr;
             
-            if (scenario && state.scenarioActive && !scenario.hasPulse && !state.roscAchieved) {
-                displayHR = 0;
+            // --- PACING REFACTOR ---
+            if (state.isCaptured) {
+                displayHR = state.pacerRate; // If captured, HR is pacer rate
+            } else if (scenario && state.scenarioActive && !scenario.hasPulse && !state.roscAchieved) {
+                displayHR = 0; // Arrest scenario
             } else if (!state.hasPulse && !state.roscAchieved) {
-                displayHR = 0;
+                displayHR = 0; // Default arrest
+            } else {
+                displayHR = state.hr; // Use rhythm HR
             }
-            
-            let captureThreshold = 60; 
-            if (scenario && state.scenarioActive && scenario.requiresPacing) {
-                captureThreshold = scenario.captureThreshold;
-            }
-
-            if (state.pacingActive && state.pacerOutput >= captureThreshold && (state.rhythm === 'chb' || state.rhythm === 'brady' || state.rhythm === 'sinus_brady')) {
-                 displayHR = state.pacerRate;
-            } else if (state.pacingActive && state.pacerOutput >= captureThreshold && scenario && scenario.requiresPacing) {
-                 displayHR = state.pacerRate;
-            }
-            
+            // --- END REFACTOR ---
             
             document.getElementById('hrDisplay').textContent = displayHR;
             document.getElementById('spo2Display').textContent = state.spo2;
@@ -1016,8 +985,8 @@ window.drawECGGrid=drawECGGrid;window.drawCalibrationPulse=drawCalibrationPulse;
             document.getElementById('rateDisplay').textContent = state.pacerRate;
             document.getElementById('modeInfo').textContent = `MODE: ${state.deviceMode.toUpperCase()}`;
             
-            document.getElementById('syncIndicator').textContent = '';
-            document.getElementById('syncIndicator').className = 'screen-info';
+            document.getElementById('syncIndicator').textContent = state.syncMode ? 'SYNC' : '';
+            document.getElementById('syncIndicator').className = state.syncMode ? 'screen-info sync-indicator' : 'screen-info';
             
             const hrEl = document.getElementById('hrDisplay');
             hrEl.className = 'vital-value';
@@ -1476,11 +1445,23 @@ window.drawECGGrid=drawECGGrid;window.drawCalibrationPulse=drawCalibrationPulse;
                 }
             }
             
+            // --- PACING REFACTOR ---
             if (mode === 'pacer') {
                 state.pacingActive = true;
+                if (!state.originalRhythm) { // Only store if not already set
+                    state.originalRhythm = state.rhythm;
+                }
             } else {
                 state.pacingActive = false;
+                // If we were captured and now switching mode, restore original rhythm
+                if (state.isCaptured) {
+                    setVitals(state.originalRhythm || 'nsr');
+                    updateDisplays();
+                }
+                state.originalRhythm = null;
+                state.isCaptured = false;
             }
+            // --- END REFACTOR ---
 
             if (mode !== 'off' && !wasOff) {
                  updateDisplays();
@@ -1638,8 +1619,14 @@ window.drawECGGrid=drawECGGrid;window.drawCalibrationPulse=drawCalibrationPulse;
             }, 2500);
         }
 
+        // --- PACING REFACTOR: This is the new logic ---
         function adjustPacer(param, change) {
             if (state.deviceMode === 'off') return;
+            // Add guard clause to only allow adjustment in pacer mode
+            if (state.deviceMode !== 'pacer') {
+                setMessage('Switch to PACER mode to adjust pacing', '');
+                return;
+            }
             const scenario = scenarios[state.selectedScenario];
             
             if (param === 'output') {
@@ -1650,33 +1637,49 @@ window.drawECGGrid=drawECGGrid;window.drawCalibrationPulse=drawCalibrationPulse;
                 const dial = document.querySelector('.pacing-controls > div:first-child .pacer-dial');
                 if (dial) dial.style.setProperty('--dial-rotation', `${rotation}deg`);
                 
+                // State-based capture logic
                 let captureThreshold = 60; 
                 let isPacingScenario = false;
-                let canPaceRhythm = (state.rhythm === 'chb' || state.rhythm === 'brady' || state.rhythm === 'sinus_brady');
-
                 if (scenario && state.scenarioActive && scenario.requiresPacing) {
                     captureThreshold = scenario.captureThreshold;
                     isPacingScenario = true;
+                } else {
+                    // Check if underlying rhythm is paceable
+                    isPacingScenario = (state.originalRhythm === 'chb' || state.originalRhythm === 'brady' || state.originalRhythm === 'sinus_brady');
                 }
-                
-                if (state.pacerOutput >= captureThreshold && state.deviceMode === 'pacer' && (isPacingScenario || canPaceRhythm)) {
+
+                const nowCaptured = (state.pacerOutput >= captureThreshold) && isPacingScenario;
+
+                if (nowCaptured !== state.isCaptured) { // Check if capture state has CHANGED
+                    state.isCaptured = nowCaptured;
                     
-                    const alreadyCaptured = state.actions.some(a => a.action.includes('capture'));
-                    if (!alreadyCaptured) {
-                        const successVitals = (isPacingScenario) ? scenario.successVitals : rhythmVitals['paced'];
+                    if (nowCaptured) {
+                        // --- CAPTURE ACHIEVED ---
+                        const successVitals = (scenario && scenario.requiresPacing) ? scenario.successVitals : rhythmVitals['paced'];
                         
-                        state.hr = state.pacerRate; 
+                        logAction('Pacing capture achieved', `at ${state.pacerOutput}mA`);
+                        setVitals('paced'); // SWITCH RHYTHM
+                        state.hr = state.pacerRate; // Set pacer HR
+                        
+                        // Update vitals to success vitals
                         state.spo2 = successVitals.spo2;
                         state.etco2 = successVitals.etco2;
                         state.bpSys = successVitals.bpSys;
                         state.bpDia = successVitals.bpDia;
                         
                         setMessage(`CAPTURE ACHIEVED AT ${state.pacerOutput}mA`, 'ready');
-                        logAction('Pacing capture achieved', `Electrical and mechanical capture at ${state.pacerOutput}mA`);
+                        
+                    } else {
+                        // --- CAPTURE LOST ---
+                        logAction('Pacing capture lost');
+                        setVitals(state.originalRhythm || 'nsr'); // RESTORE RHYTHM
+                        setMessage('CAPTURE LOST', 'alert');
                     }
-                    
-                    state.hr = state.pacerRate; 
+                    updateDisplays(); // Update *if capture state changes*
                 }
+
+                // Always update display to show new value (e.g., 0 -> 10mA)
+                updateDisplays();
                 
             } else if (param === 'rate') {
                 state.pacerRate = Math.max(30, Math.min(180, state.pacerRate + change));
@@ -1686,14 +1689,16 @@ window.drawECGGrid=drawECGGrid;window.drawCalibrationPulse=drawCalibrationPulse;
                 const dial = document.querySelector('.pacing-controls > div:last-child .pacer-dial');
                 if (dial) dial.style.setProperty('--dial-rotation', `${rotation}deg`);
 
-                let captureThreshold = (scenario && scenario.requiresPacing) ? scenario.captureThreshold : 60;
-                if (state.pacingActive && state.pacerOutput >= captureThreshold) {
+                // Update HR if captured
+                if (state.isCaptured) {
                     state.hr = state.pacerRate;
                 }
+                // Always update display to show new rate value
+                updateDisplays();
             }
-            
-            updateDisplays();
         }
+        // --- END OF PACING REFACTOR ---
+
 
         function quickSetRhythm(rhythm) {
             if (state.scenarioActive) {
@@ -1702,6 +1707,10 @@ window.drawECGGrid=drawECGGrid;window.drawCalibrationPulse=drawCalibrationPulse;
             }
 
             setVitals(rhythm); 
+            // --- FIX: Reset pacing state if rhythm is changed manually ---
+            state.originalRhythm = rhythm;
+            state.isCaptured = false; 
+            // ---
             state.roscAchieved = false;
             state.shockCount = 0;
             
