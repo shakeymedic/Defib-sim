@@ -1153,6 +1153,8 @@ window.drawECGGrid=drawECGGrid;window.drawCalibrationPulse=drawCalibrationPulse;
             state.roscAchieved = false;
             
             setVitals(scenario.initialRhythm);
+            state.originalRhythm = null;
+            state.isCaptured = false;
             state.hr = scenario.initialVitals.hr;
             state.spo2 = scenario.initialVitals.spo2;
             state.etco2 = scenario.initialVitals.etco2;
@@ -1807,8 +1809,8 @@ window.drawECGGrid=drawECGGrid;window.drawCalibrationPulse=drawCalibrationPulse;
             setVitals(rhythm); 
             state.syncMarkers = []; // <<< SYNC MARKER FIX: Clear markers on rhythm change
             // --- FIX: Reset pacing state if rhythm is changed manually ---
-            state.originalRhythm = rhythm;
-            state.isCaptured = false; 
+            state.originalRhythm = null;
+            state.isCaptured = false;
             // ---
             state.roscAchieved = false;
             state.shockCount = 0;
