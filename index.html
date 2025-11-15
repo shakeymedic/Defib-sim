@@ -21,6 +21,31 @@ function tWave(s,amp=0.3){
     return -PX_PER_MV * amp * Math.sin(s * Math.PI);
 }
 function pacingSpike(pxPosInCycle){return pxPosInCycle<5?-PX_PER_MV*2.0:0} // Spike is negative (draws UP), 5 pixels wide
+
+// --- NEW PACING FUNCTION ---
+// This draws a complete "spike + QRS + T" complex.
+// The 'pos' is the number of pixels since the pacer fired.
+function pacingComplex(pos) {
+    let y = 0;
+    y += pacingSpike(pos); // Add the spike at the beginning
+
+    const qrsStart = 3; // Start QRS 3px after spike
+    const qrsDurPx = 0.14 * ECG_SPEED; // ~140ms QRS
+    const tDurPx = 0.16 * ECG_SPEED; // ~160ms T-wave
+    const qrsEnd = qrsStart + qrsDurPx;
+    const tEnd = qrsEnd + tDurPx;
+
+    if (pos >= qrsStart && pos < qrsEnd) {
+        const s = (pos - qrsStart) / qrsDurPx;
+        y += qrsWide(s, 0.9); // Draw the wide QRS
+    } else if (pos >= qrsEnd && pos < tEnd) {
+        const s = (pos - qrsEnd) / tDurPx;
+        y += tWave(s, 0.25); // Draw the T-wave
+    }
+    return y;
+}
+// --- END NEW PACING FUNCTION ---
+
 function sinusTemplate(x,hr,canvasHeight,tSeconds,opts={}){const baseline=canvasHeight/2;const bpm=hr>0?hr:75;const cyclePx=(60/bpm)*ECG_SPEED;const pos=x%cyclePx;const s=pos/cyclePx;let y=0;const pDur=0.08*ECG_SPEED/cyclePx;const prEnd=pDur+0.10*ECG_SPEED/cyclePx;const qrsDur=0.09*ECG_SPEED/cyclePx;const qrsStart=prEnd;const qrsEnd=qrsStart+qrsDur;const tEnd=qrsEnd+0.16*ECG_SPEED/cyclePx;if(s<pDur){y+=pWave(s/pDur,opts.pAmp??0.1)}else if(s<prEnd){}else if(s<qrsEnd){const qrsPhase=(s-qrsStart)/(qrsDur);y+=qrsNarrow(qrsPhase,opts.rAmp??1.0,opts.qAmp??0.15,opts.sAmp??0.25)}else if(s<tEnd){const tPhase=(s-qrsEnd)/(tEnd-qrsEnd);y+=tWave(tPhase,opts.tAmp??0.3)}
 return baseline+y}
 function nsr(x,hr,tSeconds,canvas){return sinusTemplate(x,hr||75,canvas.height,tSeconds,{})}
@@ -39,21 +64,19 @@ function chb(x,hr,tSeconds,canvas){const baseline=canvas.height/2;const vBpm=hr>
 const qrsDurPx=0.16*ECG_SPEED;if(vPos<qrsDurPx){y+=qrsWide(vPos/qrsDurPx,0.85)}
 return baseline+y}
 function paced(x,hr,tSeconds,canvas){
+    // --- THIS FUNCTION IS NO LONGER USED FOR LIVE PACING ---
+    // --- IT'S ONLY A RHYTHM FOR THE QUICK SELECT PANEL ---
     const baseline=canvas.height/2;
-    // --- PACING FIX: Use state.pacerRate directly ---
-    // The 'hr' argument might be briefly incorrect during the state change.
-    // Reading the state directly ensures the cyclePx is always correct.
     const bpm = (window.state && window.state.pacerRate > 0) ? window.state.pacerRate : 70;
     const cyclePx=(60/bpm)*ECG_SPEED;
 
-    // --- PACING FIX: Use lastCardiacEvent as the phase reference ---
-    // This ensures spikes (and captured QRS) align perfectly
-    // with the un-captured spikes, preventing a "jump" on capture.
-    // state.lastCardiacEvent is set to waveformX when pacer mode is activated.
-    const pacerStartTime = (window.state && window.state.lastCardiacEvent) ? window.state.lastCardiacEvent : x;
-    const pos = (x - pacerStartTime) % cyclePx;
-    // --- END OF FIX ---
-
+    // Use a stable 'x' reference, not the moving pacerStartTime
+    const pos = x % cyclePx;
+    
+    let y = 0;
+    y += pacingComplex(pos); // Use the new function
+    
+    /*
     let y=0;
     y+=pacingSpike(pos);
     const qrsStart=3;
@@ -65,6 +88,7 @@ function paced(x,hr,tSeconds,canvas){
         const t=(pos-(qrsStart+qrsDurPx))/(0.16*ECG_SPEED);
         y+=tWave(t,0.25)
     }
+    */
     return baseline+y
 }
 function brady(x,hr,tSeconds,canvas){return sinusTemplate(x,hr||38,canvas.height,tSeconds,{rAmp:0.9,tAmp:0.25})}
@@ -102,7 +126,9 @@ const st=window.state||{};const flags=(st.noise||{});if(flags.movement)y+=moveme
 const wrapped={};Object.keys(rhythms).forEach(k=>wrapped[k]=withArtefacts(rhythms[k]));
 window.rhythms=wrapped; // This is the wrapped one (with artefacts)
 window.cleanRhythms = rhythms; // <<< This is the important fix for pacing/sync
-window.drawECGGrid=drawECGGrid;window.drawCalibrationPulse=drawCalibrationPulse;window.__setECGSpeed=setSpeed;window.pacingSpike=pacingSpike;window.qrsWide=qrsWide;window.tWave=tWave;window.PX_PER_MV=PX_PER_MV;})();
+window.drawECGGrid=drawECGGrid;window.drawCalibrationPulse=drawCalibrationPulse;window.__setECGSpeed=setSpeed;window.pacingSpike=pacingSpike;window.qrsWide=qrsWide;window.tWave=tWave;window.PX_PER_MV=PX_PER_MV;
+window.pacingComplex = pacingComplex; // <<< ADD THIS
+})();
     </script>
     
     <style>
@@ -880,6 +906,8 @@ window.drawECGGrid=drawECGGrid;window.drawCalibrationPulse=drawCalibrationPulse;
                 leadoff: false
             },
             lastSensedQRS_X: -1000,
+            firedSpikes: [], // <<< REPLACES lastFiredSpike_X
+            pacerStartTime: 0, // <<< ADD THIS
             // lastPaced_X: -1000, // No longer needed, lastCardiacEvent serves this purpose
             syncMarkers: [], // <<< SYNC MARKER FIX: Add array to state
             // --- CUSTOM SCENARIO STATE ---
@@ -1035,6 +1063,7 @@ window.drawECGGrid=drawECGGrid;window.drawCalibrationPulse=drawCalibrationPulse;
             
             const baselineY = logicalCanvasHeight / 2; // Use logical height
             const pacerSpikeFn = window.pacingSpike;
+            const pacerComplexFn = window.pacingComplex; // <<< ADD THIS
  
             ctx.strokeStyle = '#00ff00';
             ctx.lineWidth = 2; // This line width is now in logical pixels, scaled by ctx.scale()
@@ -1110,39 +1139,47 @@ window.drawECGGrid=drawECGGrid;window.drawCalibrationPulse=drawCalibrationPulse;
                 
                 // 3. IF pacer is on AND we are NOT captured, add spikes on top of underlying rhythm
                 // --- NEW DEMAND PACING (FIRING) LOGIC ---
-                if (state.pacingActive && !state.isCaptured && state.pacerOutput > 0) {
-                    const pacerCyclePx = (60 / state.pacerRate) * ecgSpeed;
-                    const timeSinceLastEvent = currentX - state.lastCardiacEvent;
-                    const spikeDurationPx = 5;
-
-                    // Step 1: Check if it's time to fire a new spike
-                    if (timeSinceLastEvent >= pacerCyclePx) {
-                        // YES. Set the *start* of this new event
-                        // (which is a spike) to the current pixel.
-                        state.lastCardiacEvent = currentX;
-                        // We recalculate timeSinceLastEvent for the drawing step below
-                        // timeSinceLastEvent = 0; // This would be correct
+                
+                const pacerCyclePx = (60 / state.pacerRate) * ecgSpeed;
+                const timeSinceLastEvent = currentX - state.lastCardiacEvent;
+                
+                // --- FIRING LOGIC ---
+                if (state.pacingActive && timeSinceLastEvent >= pacerCyclePx) {
+                    // Time to fire
+                    state.lastCardiacEvent = currentX;
+                    state.firedSpikes.push(currentX);
+                    
+                    // Prune spikes that are way off-screen (e.g., 2x canvas width)
+                    const pruneThreshold = waveformX - (logicalCanvasWidth * 2);
+                    while(state.firedSpikes.length > 0 && state.firedSpikes[0] < pruneThreshold) {
+                        state.firedSpikes.shift();
                     }
+                }
 
-                    // Step 2: SEPARATELY, check if we are currently *drawing* a spike
-                    // This will be true for 5 pixels after *any* lastCardiacEvent (sensed or fired)
-                    const timeSinceSpikeStart = currentX - state.lastCardiacEvent;
-                    if (timeSinceSpikeStart >= 0 && timeSinceSpikeStart < spikeDurationPx) {
-                        // We are in the spike window.
-                        // We only add the spike if the event was *fired*
-                        // (i.e., not a sensed beat that's < 5px wide)
-                        // A sensed beat will be drawn by underlyingRhythmFunc anyway.
-                        // We only need to add a spike if the *reason* for the event
-                        // was the pacer firing.
-                        // We know the pacer fired if timeSinceLastEvent was >= pacerCyclePx
-                        // on the pixel that *set* lastCardiacEvent.
-                        
-                        // Let's simplify: The underlying rhythm (CHB) won't have a spike.
-                        // So if we are in PACER mode, and not captured,
-                        // we need to draw spikes at the correct interval.
-                        
-                        // Let's try the logic from my thought-trace, it was correct.
-                        y_final_raw += pacerSpikeFn(timeSinceSpikeStart);
+                // --- DRAWING LOGIC ---
+                if (state.pacingActive && state.pacerOutput > 0) {
+                    const spikeDurationPx = 5; // Duration of spike itself
+                    const captureComplexDurationPx = (0.14 + 0.16) * ecgSpeed + 3; // Duration of spike+qrs+t
+                    
+                    // Check if we are near *any* fired spike
+                    for (const spikeX of state.firedSpikes) {
+                        const timeSinceFiredSpike = currentX - spikeX;
+
+                        if (timeSinceFiredSpike >= 0) {
+                            if (state.isCaptured) {
+                                // --- CAPTURED ---
+                                if (timeSinceFiredSpike < captureComplexDurationPx) {
+                                    y_final_raw = pacerComplexFn(timeSinceFiredSpike);
+                                    break; // Found our spike, stop checking
+                                }
+                            } else {
+                                // --- UNCAPTURED ---
+                                if (timeSinceFiredSpike < spikeDurationPx) {
+                                    y_final_raw += pacerSpikeFn(timeSinceFiredSpike);
+                                    break; // Found our spike, stop checking
+                                }
+                            }
+                        }
                     }
                 }
                 // --- END OF NEW DEMAND PACING ---
@@ -1767,6 +1804,8 @@ window.drawECGGrid=drawECGGrid;window.drawCalibrationPulse=drawCalibrationPulse;
                 }
                 // Initialize cardiac event timer to current waveform position
                 state.lastCardiacEvent = waveformX;
+                state.pacerStartTime = waveformX; // <<< ADD THIS
+                state.firedSpikes = []; // <<< THIS IS THE FIX: Replaces lastFiredSpike_X
             } else {
                 state.pacingActive = false;
                 // If we were captured and now switching mode, restore original rhythm
@@ -2058,7 +2097,8 @@ window.drawECGGrid=drawECGGrid;window.drawCalibrationPulse=drawCalibrationPulse;
                         const successVitals = (scenario && scenario.requiresPacing) ? scenario.successVitals : rhythmVitals['paced'];
                         
                         logAction('Pacing capture achieved', `at ${state.pacerOutput}mA`);
-                        setVitals('paced'); // SWITCH RHYTHM
+                        // --- DO NOT SET VITALS. 'isCaptured' flag handles it. ---
+                        // setVitals('paced'); // <<< REMOVE THIS
                         state.hr = state.pacerRate; // Set pacer HR
                         
                         // Update vitals to success vitals
@@ -2072,7 +2112,7 @@ window.drawECGGrid=drawECGGrid;window.drawCalibrationPulse=drawCalibrationPulse;
                     } else {
                         // --- CAPTURE LOST ---
                         logAction('Pacing capture lost');
-                        setVitals(state.originalRhythm || 'nsr'); // RESTORE RHYTHM
+                        setVitals(state.originalRhythm || 'nsr'); // <<< THIS IS OK, restores original vitals
                         setMessage('CAPTURE LOST', 'alert');
                     }
                     updateDisplays(); // Update *if capture state changes*
@@ -2454,9 +2494,3 @@ window.drawECGGrid=drawECGGrid;window.drawCalibrationPulse=drawCalibrationPulse;
     </script>
 </body>
 </html>
-
-
-
-
-
-
