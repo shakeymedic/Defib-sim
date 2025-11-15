@@ -870,7 +870,6 @@ window.drawECGGrid=drawECGGrid;window.drawCalibrationPulse=drawCalibrationPulse;
             isCaptured: false,
             originalRhythm: null,
             lastCardiacEvent: -1000, // Position of last QRS (sensed) or spike (paced) for demand pacing
-            pacerInhibited: false, // <-- FIX: Tracks if last event was an inhibition
             // --- END REFACTOR ---
             actions: [],
             hasPulse: true,
@@ -988,8 +987,7 @@ window.drawECGGrid=drawECGGrid;window.drawCalibrationPulse=drawCalibrationPulse;
             state.bpDia = vitals.bpDia;
             state.hasPulse = vitals.hasPulse;
             state.lastSensedQRS_X = -1000;
-            state.lastFiredSpike_X = -1000; // <-- FIX: Reset this timer too
-            state.lastCardiacEvent = -1000; // <-- FIX: Reset this timer
+            // state.lastPaced_X = -1000; // No longer needed
         }
 
         function animate(timestamp) {
@@ -1099,7 +1097,6 @@ window.drawECGGrid=drawECGGrid;window.drawCalibrationPulse=drawCalibrationPulse;
                         // --- DEMAND PACING LOGIC ---
                         if (state.pacingActive) {
                             state.lastCardiacEvent = currentX; // Reset pacer timer on sensed QRS
-                            state.pacerInhibited = true; // <-- FIX: Set inhibition flag
                         }
                         // --- END DEMAND PACING ---
                         
@@ -1133,19 +1130,19 @@ window.drawECGGrid=drawECGGrid;window.drawCalibrationPulse=drawCalibrationPulse;
                     if (timeSinceSpikeStart >= 0 && timeSinceSpikeStart < spikeDurationPx) {
                         // We are in the spike window.
                         // We only add the spike if the event was *fired*
-                    // Which pacing cycle are we in? (0, 1, 2, 3...)
-                    const cycleNumber = Math.floor(timeSinceStart / pacerCyclePx);
-                    
-                    // Calculate exact position where THIS cycle's spike starts
-                    const thisCycleSpikeStart = state.lastCardiacEvent + (cycleNumber * pacerCyclePx);
-                    
-                    // How far into the spike are we? (0-4 for the 5-pixel spike)
-                    const positionInSpike = currentX - thisCycleSpikeStart;
-                    
-                    // Draw spike if we're in the 5-pixel window AND past the first cycle
-                    if (cycleNumber >= 1 && positionInSpike >= 0 && positionInSpike < 5) {
-                        y_final_raw += pacerSpikeFn(positionInSpike);
-                        state.pacerInhibited = false; // <-- FIX: We just fired, so we are not inhibited
+                        // (i.e., not a sensed beat that's < 5px wide)
+                        // A sensed beat will be drawn by underlyingRhythmFunc anyway.
+                        // We only need to add a spike if the *reason* for the event
+                        // was the pacer firing.
+                        // We know the pacer fired if timeSinceLastEvent was >= pacerCyclePx
+                        // on the pixel that *set* lastCardiacEvent.
+                        
+                        // Let's simplify: The underlying rhythm (CHB) won't have a spike.
+                        // So if we are in PACER mode, and not captured,
+                        // we need to draw spikes at the correct interval.
+                        
+                        // Let's try the logic from my thought-trace, it was correct.
+                        y_final_raw += pacerSpikeFn(timeSinceSpikeStart);
                     }
                 }
                 // --- END OF NEW DEMAND PACING ---
@@ -1319,18 +1316,470 @@ window.drawECGGrid=drawECGGrid;window.drawCalibrationPulse=drawCalibrationPulse;
             state.shockCount = 0;
             state.syncMode = false;
             state.pacingActive = false;
-            // If we were captured and now switching mode, restore original rhythm
-            if (state.isCaptured) {
-                setVitals(state.originalRhythm || 'nsr');
-                updateDisplays();
+            state.charged = false;
+            state.roscAchieved = false;
+            state.customScenarioActive = false; // Not a custom scenario
+            
+            setVitals(scenario.initialRhythm);
+            state.hr = scenario.initialVitals.hr;
+            state.spo2 = scenario.initialVitals.spo2;
+            state.etco2 = scenario.initialVitals.etco2;
+            state.bpSys = scenario.initialVitals.bpSys;
+            state.bpDia = scenario.initialVitals.bpDia;
+            state.hasPulse = scenario.hasPulse;
+            
+            scenarioScreen.classList.add('hidden');
+            menuWrapper.classList.add('hidden'); 
+            simulatorContainer.classList.remove('hidden');
+            
+            if (state.selectedMode === 'education') {
+                const btn = document.getElementById('minimiseBtn');
+                instructorPanel.classList.remove('hidden');
+                instructorPanel.classList.add('minimised');
+                if (btn) btn.textContent = '▼ Show';
+                document.getElementById('instructorSubtitle').textContent = scenario.name;
+            } else {
+                instructorPanel.classList.add('hidden');
             }
-            state.originalRhythm = null;
-            state.isCaptured = false;
-            state.pacerInhibited = false; // <-- FIX: Reset flag
-        }
-        // --- END REFACTOR ---
 
-        if (mode !== 'off' && !wasOff) {
+            setMode('monitor'); 
+
+            state.scenarioActive = false;
+            let countdown = 3;
+            setMessage(`SCENARIO STARTING IN ${countdown}...`, 'ready');
+
+            const countdownInterval = setInterval(() => {
+                countdown--;
+                if (countdown > 0) {
+                    setMessage(`SCENARIO STARTING IN ${countdown}...`, 'ready');
+                } else {
+                    clearInterval(countdownInterval);
+                    state.scenarioStartTime = Date.now();
+                    state.scenarioActive = true;
+
+                    let msg = scenario.description.toUpperCase();
+                    if (!scenario.hasPulse) {
+                        setMessage(msg, 'alert');
+                    } else {
+                        setMessage(msg, 'ready');
+                    }
+                    logAction('Scenario started', scenario.name);
+                }
+            }, 1000);
+        }
+
+        // --- NEW: Start Custom Scenario ---
+        function startCustomScenario() {
+            state.customScenario = [];
+            for (let i = 1; i <= 5; i++) {
+                const initial = document.getElementById(`cycle_${i}_initial`).value;
+                const postshock = document.getElementById(`cycle_${i}_postshock`).value;
+                state.customScenario.push({ initial, postshock });
+            }
+            
+            state.customScenarioActive = true;
+            state.currentScenarioStep = 0;
+            state.selectedScenario = null; // Not a built-in scenario
+            state.actions = [];
+            state.shockCount = 0;
+            state.syncMode = false;
+            state.pacingActive = false;
+            state.charged = false;
+            state.roscAchieved = false;
+            
+            // Set vitals for the first step
+            setVitals(state.customScenario[0].initial);
+            
+            menuWrapper.classList.add('hidden');
+            scenarioCreatorScreen.classList.add('hidden');
+            simulatorContainer.classList.remove('hidden');
+            instructorPanel.classList.add('hidden'); // Hide instructor panel for custom scenarios
+            endScenarioBtn.classList.remove('hidden'); // Show end button
+            
+            setMode('monitor'); 
+
+            state.scenarioActive = true; // Use existing flag
+            state.scenarioStartTime = Date.now();
+            
+            setMessage(`CUSTOM SCENARIO STARTED. CYCLE 1: ${state.customScenario[0].initial.toUpperCase()}`, 'ready');
+            logAction('Custom Scenario started');
+        }
+
+        function endScenario() {
+            // This button now ends *any* active scenario
+            if (!state.scenarioActive) {
+                returnToMenu();
+                return;
+            }
+            
+            // --- MOBILE ENHANCEMENT: Use custom modal instead of confirm() ---
+            if (!window.confirm('End the current scenario?')) {
+                 return;
+            }
+            
+            state.scenarioActive = false;
+            logAction('Scenario ended');
+            
+            if (animationId) {
+                cancelAnimationFrame(animationId);
+                animationId = null;
+            }
+            
+            // Only show summary for *built-in* scenarios
+            if (state.selectedScenario) {
+                showSummary();
+            } else {
+                returnToMenu(); // Just go to main menu for custom scenarios
+            }
+        }
+
+        function resetScenario() {
+            if (state.customScenarioActive) {
+                if (!window.confirm('Reset this custom scenario?')) return;
+                startCustomScenario(); // Just restart it
+            } else if (state.selectedScenario) {
+                if (!window.confirm('Reset this scenario?')) return;
+                selectScenario(state.selectedScenario);
+            }
+        }
+
+        function showSummary() {
+            const scenario = scenarios[state.selectedScenario];
+            if (!scenario) {
+                returnToMenu();
+                return;
+            }
+            
+            simulatorContainer.classList.add('hidden');
+            menuWrapper.classList.remove('hidden');
+            summaryScreen.classList.remove('hidden');
+            
+            document.getElementById('summaryScenarioName').textContent = scenario.name;
+            document.getElementById('summaryScenarioDesc').textContent = scenario.description;
+            
+            let actionsHTML = '';
+            if (state.actions.length > 0) {
+                actionsHTML = '<div style="display: grid; gap: 8px;">';
+                state.actions.forEach(action => {
+                    const timestamp = action.time ? `${Math.floor(action.time / 60)}:${String(action.time % 60).padStart(2, '0')}` : '0:00';
+                    actionsHTML += `<div style="padding: 10px; background: #34495e; border-radius: 5px;">
+                        <strong style="color: #3498db;">${timestamp}</strong> - ${action.action}${action.details ? ': ' + action.details : ''}
+                    </div>`;
+                });
+                actionsHTML += '</div>';
+            } else {
+                actionsHTML = '<div style="color: #e74c3c;">No actions recorded</div>';
+            }
+            document.getElementById('summaryActions').innerHTML = actionsHTML;
+            
+            const feedback = generateFeedback(scenario);
+            document.getElementById('summaryFeedback').innerHTML = feedback;
+            
+            const outcome = generateOutcome(scenario);
+            document.getElementById('summaryOutcome').innerHTML = outcome;
+        }
+
+        function generateFeedback(scenario) {
+            let html = '';
+            const goodPoints = [];
+            const improvementPoints = [];
+            
+            const modeChanges = state.actions.filter(a => a.action === 'Mode changed');
+            const shocks = state.actions.filter(a => a.action.includes('delivered'));
+            const syncActivated = state.actions.find(a => a.action === 'Sync mode activated');
+            const pacingActions = state.actions.filter(a => a.action.includes('Pacing'));
+            const pulseChecks = state.actions.filter(a => a.action === 'Pulse check performed');
+            
+            if (pulseChecks.length > 0) {
+                goodPoints.push(`✓ Pulse checked ${pulseChecks.length} time(s)`);
+                
+                if (pulseChecks[0].time <= 30) {
+                    goodPoints.push('✓ Early pulse assessment performed');
+                }
+            } else {
+                improvementPoints.push('⚠ No pulse check documented - critical for choosing correct intervention');
+            }
+            
+            if (scenario.category === 'defibrillation') {
+                const defibMode = modeChanges.find(m => m.details === 'DEFIB');
+                if (defibMode) {
+                    goodPoints.push('✓ Defibrillator mode selected correctly');
+                } else {
+                    improvementPoints.push('✗ Should switch to DEFIB mode for cardiac arrest');
+                }
+                
+                if (syncActivated) {
+                    improvementPoints.push('✗ Sync mode should NOT be used for cardiac arrest (no pulse)');
+                } else {
+                    goodPoints.push('✓ Correctly used unsynchronised shocks (no sync)');
+                }
+                
+                if (shocks.length > 0) {
+                    goodPoints.push(`✓ ${shocks.length} shock(s) delivered`);
+                    
+                    const firstShock = shocks[0];
+                    if (firstShock.details.includes(`${scenario.recommendedEnergy}J`) || 
+                        firstShock.details.includes('150J') || 
+                        firstShock.details.includes('200J')) {
+                        goodPoints.push('✓ Appropriate energy level selected');
+                    } else {
+                        improvementPoints.push(`⚠ Recommended energy: ${scenario.recommendedEnergy}J or higher`);
+                    }
+                    
+                    const timeToShock = firstShock.time;
+                    if (timeToShock <= 60) {
+                        goodPoints.push(`✓ Rapid defibrillation (${timeToShock}s) - excellent`);
+                    } else if (timeToShock <= 180) {
+                        goodPoints.push(`✓ Timely defibrillation (${timeToShock}s)`);
+                    } else {
+                        improvementPoints.push(`⚠ Delay to first shock: ${timeToShock}s (aim for <60s in witnessed arrest)`);
+                    }
+                } else {
+                    improvementPoints.push('✗ No shocks delivered - shockable rhythm requires defibrillation');
+                }
+                
+            } else if (scenario.category === 'cardioversion') {
+                if (syncActivated) {
+                    goodPoints.push('✓ Sync mode activated correctly');
+                } else {
+                    improvementPoints.push('✗ CRITICAL: Must use SYNC mode for cardioversion (patient has pulse)');
+                }
+                
+                const defibMode = modeChanges.find(m => m.details === 'DEFIB');
+                if (defibMode) {
+                    goodPoints.push('✓ Defibrillator mode selected');
+                }
+                
+                if (shocks.length > 0) {
+                    goodPoints.push('✓ Cardioversion attempted');
+                    
+                    const firstShock = shocks[0];
+                    const energyUsed = parseInt(firstShock.details.match(/(\d+)J/)?.[1] || '0');
+                    if (Math.abs(energyUsed - scenario.recommendedEnergy) <= 30) {
+                        goodPoints.push(`✓ Appropriate energy used (${energyUsed}J)`);
+                    } else {
+                        improvementPoints.push(`⚠ Recommended energy: ${scenario.recommendedEnergy}J for this rhythm`);
+                    }
+                    
+                    const timeToShock = firstShock.time;
+                    if (timeToShock <= 60) {
+                        goodPoints.push(`✓ Rapid cardioversion (${timeToShock}s)`);
+                    } else {
+                        improvementPoints.push(`⚠ Time to cardioversion: ${timeToShock}s (aim for <60s when unstable)`);
+                    }
+                } else {
+                    improvementPoints.push('✗ No cardioversion attempted - patient has adverse features');
+                }
+                
+            } else if (scenario.category === 'pacing') {
+                const pacerMode = modeChanges.find(m => m.details === 'PACER');
+                if (pacerMode) {
+                    goodPoints.push('✓ Pacing mode selected');
+                } else {
+                    improvementPoints.push('✗ Should switch to PACER mode');
+                }
+                
+                const outputAdjusted = pacingActions.find(a => a.action.includes('output'));
+                if (outputAdjusted) {
+                    goodPoints.push('✓ Pacing output adjusted');
+                    
+                    const captureAchieved = pacingActions.find(a => a.action.includes('capture'));
+                    if (captureAchieved) {
+                        goodPoints.push('✓ Electrical and mechanical capture achieved');
+                    } else {
+                        improvementPoints.push('⚠ Increase output until capture achieved (check for palpable pulse)');
+                    }
+                }
+                
+                const rateAdjusted = pacingActions.find(a => a.action.includes('rate'));
+                if (rateAdjusted) {
+                    goodPoints.push('✓ Pacing rate set appropriately');
+                }
+            }
+            
+            if (goodPoints.length > 0) {
+                html += '<div style="background: rgba(39, 174, 96, 0.1); border-left: 4px solid #27ae60; padding: 15px; margin: 10px 0; border-radius: 5px;">';
+                html += '<strong style="color: #27ae60;">Good Practice:</strong><ul style="margin: 10px 0; padding-left: 20px; color: #ecf0f1;">';
+                goodPoints.forEach(p => html += `<li style="margin: 5px 0;">${p}</li>`);
+                html += '</ul></div>';
+            }
+            
+            if (improvementPoints.length > 0) {
+                html += '<div style="background: rgba(231, 76, 60, 0.1); border-left: 4px solid #e74c3c; padding: 15px; margin: 10px 0; border-radius: 5px;">';
+                html += '<strong style="color: #e74c3c;">Areas for Improvement:</strong><ul style="margin: 10px 0; padding-left: 20px; color: #ecf0f1;">';
+                improvementPoints.forEach(i => html += `<li style="margin: 5px 0;">${i}</li>`);
+                html += '</ul></div>';
+            }
+            
+            if (html === '') {
+                html = '<div style="color: #f39c12;">No device actions performed</div>';
+            }
+            
+            return html;
+        }
+
+        function generateOutcome(scenario) {
+            let html = '';
+            
+            if (scenario.category === 'defibrillation' || scenario.category === 'cardioversion') {
+                const converted = state.rhythm === 'nsr' || state.hr < 100 || state.roscAchieved;
+                if (converted) {
+                    html = `<div style="color: #27ae60; font-size: 18px; font-weight: bold;">✓ RHYTHM CONVERTED</div>
+                        <div style="color: #ecf0f1; margin-top: 10px;">Patient now in sinus rhythm. Vital signs improving.</div>`;
+                } else {
+                    html = `<div style="color: #f39c12; font-size: 18px; font-weight: bold;">⚠ Rhythm not converted</div>
+                        <div style="color: #ecf0f1; margin-top: 10px;">Patient remains in abnormal rhythm. Continue management.</div>`;
+                }
+            } else if (scenario.category === 'pacing') {
+                const captureAchieved = state.actions.find(a => a.action.includes('capture'));
+                if (captureAchieved) {
+                    html = `<div style="color: #27ae60; font-size: 18px; font-weight: bold;">✓ PACING SUCCESSFUL</div>
+                        <div style="color: #ecf0f1; margin-top: 10px;">Electrical and mechanical capture achieved. Patient stabilised.</div>`;
+                } else {
+                    html = `<div style="color: #f39c12; font-size: 18px; font-weight: bold;">⚠ Pacing not successful</div>
+                        <div style="color: #ecf0f1; margin-top: 10px;">Capture not yet achieved. Continue to increase output.</div>`;
+                }
+            }
+            
+            return html;
+        }
+
+        function returnToMenu() {
+            summaryScreen.classList.add('hidden');
+            certificateScreen.classList.add('hidden');
+            scenarioScreen.classList.add('hidden');
+            menuWrapper.classList.add('hidden');
+            simulatorContainer.classList.remove('hidden');
+            // modeSelectScreen.classList.remove('hidden'); // This screen is gone
+            
+            endScenarioBtn.classList.add('hidden');
+            resetScenarioBtn.classList.add('hidden');
+            
+            state.scenarioActive = false;
+            state.syncMode = false;
+            state.pacingActive = false;
+            state.charged = false;
+            state.shockCount = 0;
+            state.selectedMode = null;
+            state.selectedScenario = null;
+            state.actions = [];
+            state.roscAchieved = false;
+            
+            // --- Reset Custom Scenario State ---
+            state.customScenario = [];
+            state.customScenarioActive = false;
+            state.currentScenarioStep = 0;
+            
+            setMode('off'); 
+        }
+
+        function showSplashScreen(callback) {
+            const splash = document.getElementById('splashScreen');
+            const screenEl = document.querySelector('.screen');
+            if (!splash || !screenEl) {
+                callback();
+                return;
+            }
+            
+            screenEl.classList.add('screen-off');
+            splash.style.display = 'flex';
+            
+            setTimeout(() => {
+                splash.style.display = 'none';
+                screenEl.classList.remove('screen-off');
+                callback();
+            }, 1000); 
+        }
+
+        function setMode(mode) {
+            const labels = document.querySelectorAll('.mode-label');
+            labels.forEach(label => {
+                if (label.dataset.mode === mode) {
+                    label.classList.add('active');
+                } else {
+                    label.classList.remove('active');
+                }
+            });
+            
+            const rotations = { monitor: 0, defib: 90, pacer: 180, off: 270 };
+            document.getElementById('modeDial').style.setProperty('--dial-rotation', `${rotations[mode]}deg`);
+
+            const screenEl = document.querySelector('.screen');
+            if (!screenEl) return;
+            
+            const wasOff = state.deviceMode === 'off';
+            state.deviceMode = mode; 
+
+            if (mode === 'off') {
+                if (animationId) {
+                    cancelAnimationFrame(animationId);
+                    animationId = null;
+                }
+                screenEl.classList.add('screen-off');
+                document.getElementById('hrDisplay').textContent = '--';
+                document.getElementById('spo2Display').textContent = '--';
+                document.getElementById('etco2Display').textContent = '--';
+                document.getElementById('bpDisplay').textContent = '--/--';
+                document.getElementById('messageBar').textContent = '';
+                document.getElementById('messageBar').className = 'message-bar';
+                document.getElementById('leadInfo').textContent = 'LEAD: II';
+                document.getElementById('syncIndicator').textContent = '';
+                document.getElementById('modeInfo').textContent = 'MODE: OFF';
+                
+                if (ctx) {
+                    const dpr = window.devicePixelRatio || 1;
+                    ctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);
+                }
+                
+                logAction('Mode changed', 'OFF');
+
+            } else {
+                screenEl.classList.remove('screen-off');
+                
+                if (wasOff) {
+                    showSplashScreen(() => {
+                        logAction('Mode changed', mode.toUpperCase());
+                        updateDisplays();
+                        
+                        if (!animationId) {
+                            lastTimestamp = 0;
+                            waveformX = 0;
+                            animationId = requestAnimationFrame(animate);
+                        }
+                    });
+                } else {
+                    logAction('Mode changed', mode.toUpperCase());
+                    updateDisplays();
+                    
+                    if (!animationId) { 
+                        lastTimestamp = 0;
+                        waveformX = 0;
+                        animationId = requestAnimationFrame(animate);
+                    }
+                }
+            }
+            
+            // --- PACING REFACTOR ---
+            if (mode === 'pacer') {
+                state.pacingActive = true;
+                if (!state.originalRhythm) { // Only store if not already set
+                    state.originalRhythm = state.rhythm;
+                }
+                // Initialize cardiac event timer to current waveform position
+                state.lastCardiacEvent = waveformX;
+            } else {
+                state.pacingActive = false;
+                // If we were captured and now switching mode, restore original rhythm
+                if (state.isCaptured) {
+                    setVitals(state.originalRhythm || 'nsr');
+                    updateDisplays();
+                }
+                state.originalRhythm = null;
+                state.isCaptured = false;
+            }
+            // --- END REFACTOR ---
+
+            if (mode !== 'off' && !wasOff) {
                  updateDisplays();
             }
         }
@@ -2005,7 +2454,6 @@ window.drawECGGrid=drawECGGrid;window.drawCalibrationPulse=drawCalibrationPulse;
     </script>
 </body>
 </html>
-
 
 
 
