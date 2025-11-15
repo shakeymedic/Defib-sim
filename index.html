@@ -1009,8 +1009,129 @@ window.pacingComplex = pacingComplex; // <<< ADD THIS
         display: none !important;
     }
     
+    /* --- Guideline Modal Styles --- */
+    .guideline-hints-panel {
+        background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+        border-radius: 10px;
+        padding: 15px 20px;
+        margin: -10px auto 20px auto; /* Sits flush with panel above */
+        max-width: 1600px;
+        border: 3px solid #1a252f;
+        display: flex;
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 15px;
+    }
+
+    .hint-btn {
+        background: #17a2b8; /* Teal color */
+        color: white;
+        border: 2px solid #138496;
+        padding: 10px 20px;
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: bold;
+        cursor: pointer;
+        transition: all 0.2s;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+    .hint-btn:hover {
+        background: #1ab8d6;
+        transform: translateY(-2px);
+    }
+
+    #modalOverlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.85);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+        padding: 20px;
+    }
+
+    .modal-content {
+        background: linear-gradient(135deg, #34495e 0%, #2c3e50 100%);
+        padding: 30px 35px;
+        border-radius: 15px;
+        max-width: 800px;
+        width: 100%;
+        color: #ecf0f1;
+        border: 3px solid #3498db;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+        position: relative;
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+
+    .modal-header {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        margin-bottom: 25px;
+        padding-bottom: 20px;
+        border-bottom: 2px solid #34495e;
+    }
+    .modal-header img {
+        height: 50px;
+        background: white;
+        padding: 8px;
+        border-radius: 10px;
+    }
+    .modal-content h2 {
+        color: #fff;
+        font-size: 24px;
+        margin: 0;
+    }
+
+    .modal-content ul {
+        list-style-type: none;
+        padding-left: 0;
+        margin: 0;
+    }
+    .modal-content li {
+        background: #34495e;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 12px;
+        font-size: 15px;
+        line-height: 1.6;
+    }
+    .modal-content li strong {
+        color: #3498db; /* Highlight color */
+        font-weight: bold;
+    }
+
+    #closeModalBtn {
+        position: absolute;
+        top: 15px;
+        right: 15px;
+        background: #e74c3c;
+        color: white;
+        border: none;
+        width: 35px;
+        height: 35px;
+        border-radius: 50%;
+        font-size: 18px;
+        font-weight: bold;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        line-height: 1;
+        transition: background 0.2s;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    }
+    #closeModalBtn:hover {
+        background: #c0392b;
+    }
+
+
     /* --- Custom Scenario Creator Styles --- */
-    
     .scenario-cycle {
         display: grid;
         grid-template-columns: 1fr 1fr;
@@ -1326,6 +1447,15 @@ window.pacingComplex = pacingComplex; // <<< ADD THIS
             <button class="rhythm-btn" data-rhythm="idioventricular">IVR</button>
         </div>
     </div>
+
+    <!-- --- NEW GUIDELINE HINTS PANEL --- -->
+    <div class="guideline-hints-panel">
+        <button class="hint-btn" data-guideline="shockable">RCUK Hint: Shockable Arrest</button>
+        <button class="hint-btn" data-guideline="nonshockable">RCUK Hint: Non-Shockable Arrest</button>
+        <button class="hint-btn" data-guideline="tachy">RCUK Hint: Tachycardia</button>
+        <button class="hint-btn" data-guideline="brady">RCUK Hint: Bradycardia</button>
+    </div>
+    <!-- --- END OF NEW PANEL --- -->
 
     <div class="menu-wrapper hidden" id="menuWrapper">
         
@@ -1762,6 +1892,21 @@ window.pacingComplex = pacingComplex; // <<< ADD THIS
         </div>
     </div>
 
+    <!-- --- NEW GUIDELINE MODAL --- -->
+    <div id="modalOverlay" class="hidden">
+        <div class="modal-content">
+            <button id="closeModalBtn">×</button>
+            <div class="modal-header">
+                <img src="images/logo.png" alt="WMEBEM Logo">
+                <h2 id="modalTitle">RCUK 2025 Guideline Hint</h2>
+            </div>
+            <div id="modalBody">
+                <!-- Content will be injected by JS -->
+            </div>
+        </div>
+    </div>
+    <!-- --- END OF NEW MODAL --- -->
+
     <script>
     document.addEventListener('DOMContentLoaded', () => {
 
@@ -1937,6 +2082,109 @@ window.pacingComplex = pacingComplex; // <<< ADD THIS
         const endScenarioBtn = document.getElementById('endScenarioBtn');
         const resetScenarioBtn = document.getElementById('resetScenarioBtn');
         const zollDevice = document.getElementById('zollDevice');
+
+        // --- NEW: Modal DOM Elements ---
+        const modalOverlay = document.getElementById('modalOverlay');
+        const modalTitle = document.getElementById('modalTitle');
+        const modalBody = document.getElementById('modalBody');
+        const closeModalBtn = document.getElementById('closeModalBtn');
+        const hintButtons = document.querySelectorAll('.hint-btn');
+        
+        // --- NEW: Guideline Content ---
+        const guidelineData = {
+            'shockable': {
+                title: 'Shockable Arrest (VF / pVT)',
+                content: `
+                    <ul>
+                        <li><strong>1.</strong> Confirm arrest. Start CPR (30:2) and attach pads.</li>
+                        <li><strong>2.</strong> Analyse rhythm. If shockable (VF/pVT), continue CPR.</li>
+                        <li><strong>3.</strong> Charge and deliver <strong>1 Shock</strong> (e.g., 150J biphasic).</li>
+                        <li><strong>4.</strong> Immediately resume <strong>2 minutes</strong> of CPR. Do not check rhythm.</li>
+                        <li><strong>5.</strong> Repeat cycle (Analyse, Shock, 2 min CPR).</li>
+                        <li><strong>6.</strong> Give <strong>Amiodarone 300mg</strong> after the 3rd shock.</li>
+                    </ul>
+                `
+            },
+            'nonshockable': {
+                title: 'Non-Shockable Arrest (Asystole / PEA)',
+                content: `
+                    <ul>
+                        <li><strong>1.</strong> Confirm arrest. Start CPR (30:2) and attach pads.</li>
+                        <li><strong>2.</strong> Analyse rhythm. If non-shockable (Asystole/PEA), do <strong>NOT</strong> shock.</li>
+                        <li><strong>3.</strong> Immediately resume <strong>2 minutes</strong> of CPR.</li>
+                        <li><strong>4.</strong> Give <strong>Adrenaline 1mg IV/IO</strong> as soon as possible.</li>
+                        <li><strong>5.</strong> Repeat cycle (Analyse, 2 min CPR).</li>
+                        <li><strong>6.</strong> Repeat Adrenaline 1mg every 3-5 minutes (every 2 cycles).</li>
+                        <li><strong>7.</strong> Search for and treat reversible causes (4 H's, 4 T's).</li>
+                    </ul>
+                `
+            },
+            'tachy': {
+                title: 'Tachycardia Algorithm (Pulse)',
+                content: `
+                    <ul>
+                        <li><strong>1.</strong> Assess patient. Check for <strong>Adverse Features</strong>:
+                            <br>(Shock, Syncope, Myocardial Ischaemia, Heart Failure)</li>
+                        <li><strong>2. IF UNSTABLE (Adverse Features):</strong>
+                            <br>• <strong>Synchronised DC Shock</strong> (Cardioversion).
+                            <br>• Start at 100-120J (SVT/AF) or 120-150J (VT).</li>
+                        <li><strong>3. IF STABLE:</strong>
+                            <br>• <strong>Narrow QRS:</strong> Vagal manoeuvres, then Adenosine.
+                            <br>• <strong>Broad QRS:</strong> Treat as VT. Amiodarone 300mg.</li>
+                    </ul>
+                `
+            },
+            'brady': {
+                title: 'Bradycardia Algorithm (Pulse)',
+                content: `
+                    <ul>
+                        <li><strong>1.</strong> Assess patient. Check for <strong>Adverse Features</strong>:
+                            <br>(Shock, Syncope, Myocardial Ischaemia, Heart Failure)</li>
+                        <li><strong>2. IF UNSTABLE (Adverse Features):</strong>
+                            <br>• Give <strong>Atropine 500mcg IV</strong> (repeat up to 3mg).</li>
+                        <li><strong>3. IF ATROPINE FAILS (or high-risk block):</strong>
+                            <br>• Start <strong>Transcutaneous Pacing (TCP)</strong>.
+                            <br>• Set rate to 60-70/min, increase output (mA) until capture.
+                            <br>• Consider interim drugs (e.g., Adrenaline/Dopamine infusion).</li>
+                        <li><strong>4. IF STABLE:</strong> Monitor and investigate.</li>
+                    </ul>
+                `
+            }
+        };
+
+        // --- Keyboard Shortcuts ---
+        document.addEventListener('keydown', (e) => {
+            const key = e.key.toLowerCase();
+
+            if (key === 'c') {
+                e.preventDefault();
+                chargeDefib();
+            } else if (key === 's') {
+                e.preventDefault();
+                deliverShock();
+            } else if (key === 'p') {
+                e.preventDefault();
+                checkPulse();
+            } else if (key === 'm') {
+                e.preventDefault();
+                cycleMode();
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                adjustEnergy(1);
+            } else if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                adjustEnergy(-1);
+            }
+        });
+
+        // --- Timers ---
+        setInterval(() => {
+            const now = new Date();
+            const timeEl = document.getElementById('timeInfo');
+            if (timeEl) {
+                timeEl.textContent = now.toTimeString().split(' ')[0];
+            }
+        }, 1000);
 
         // --- CANVAS RESIZE FUNCTION ---
         function resizeCanvas() {
@@ -3300,7 +3548,7 @@ window.pacingComplex = pacingComplex; // <<< ADD THIS
 
         function backToSummary() {
             certificateScreen.classList.add('hidden');
-            summaryScreen.classList.remov
+            summaryScreen.classList.remove('hidden');
         }
 
         function playSound(type) {
@@ -3371,42 +3619,36 @@ window.pacingComplex = pacingComplex; // <<< ADD THIS
             document.getElementById('cycle_5_postshock').value = 'nsr';
         }
 
-        // --- Keyboard Shortcuts ---
-        document.addEventListener('keydown', (e) => {
-            const key = e.key.toLowerCase();
+        // --- MOVED EVENT LISTENERS BLOCK ---
+        // All functions are defined above this point, so they exist
+        // when these listeners are attached.
 
-            if (key === 'c') {
-                e.preventDefault();
-                chargeDefib();
-            } else if (key === 's') {
-                e.preventDefault();
-                deliverShock();
-            } else if (key === 'p') {
-                e.preventDefault();
-                checkPulse();
-            } else if (key === 'm') {
-                e.preventDefault();
-                cycleMode();
-            } else if (e.key === 'ArrowUp') {
-                e.preventDefault();
-                adjustEnergy(1);
-            } else if (e.key === 'ArrowDown') {
-                e.preventDefault();
-                adjustEnergy(-1);
-            }
+        // --- NEW: Guideline Modal Listeners ---
+        hintButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const guidelineKey = btn.dataset.guideline;
+                const data = guidelineData[guidelineKey];
+                
+                if (data) {
+                    modalTitle.textContent = data.title;
+                    modalBody.innerHTML = data.content;
+                    modalOverlay.classList.remove('hidden');
+                }
+            });
         });
 
-        // --- Timers ---
-        setInterval(() => {
-            const now = new Date();
-            const timeEl = document.getElementById('timeInfo');
-            if (timeEl) {
-                timeEl.textContent = now.toTimeString().split(' ')[0];
-            }
-        }, 1000);
+        closeModalBtn.addEventListener('click', () => {
+            modalOverlay.classList.add('hidden');
+        });
 
-        // --- EVENT LISTENERS ---
-        
+        modalOverlay.addEventListener('click', (e) => {
+            if (e.target === modalOverlay) {
+                modalOverlay.classList.add('hidden');
+            }
+        });
+        // --- End of Modal Listeners ---
+
+
         // Mode Select Screen (No longer exists)
         // document.querySelectorAll('#modeSelectScreen .menu-option').forEach(btn => {
         //     btn.addEventListener('click', () => selectMode(btn.dataset.mode));
@@ -3485,6 +3727,8 @@ window.pacingComplex = pacingComplex; // <<< ADD THIS
         document.querySelectorAll('.pacer-btn').forEach(btn => {
             btn.addEventListener('click', () => adjustPacer(btn.dataset.pacerParam, parseInt(btn.dataset.pacerDir)));
         });
+        // --- END OF MOVED BLOCK ---
+
 
         // --- INITIALISATION ---
         initScenarioCreator(); // New
