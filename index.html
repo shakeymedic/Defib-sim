@@ -132,879 +132,28 @@ window.pacingComplex = pacingComplex; // <<< ADD THIS
     </script>
     
     <style>
-    /* --- START OF CLEANED CSS --- */
-    * {
-        margin: 0;
-        padding: 0;
-        box-sizing: border-box;
-    }
-    
-    body {
-        font-family: Arial, sans-serif;
-        background: #2a2a2a;
-        padding: 20px;
-        min-height: 100vh;
-    }
-    
-    .quick-rhythm-panel {
-        background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
-        border-radius: 10px;
-        padding: 20px;
-        margin: 0 auto 20px auto;
-        max-width: 1600px;
-        border: 3px solid #1a252f;
-    }
-    
-    .quick-rhythm-panel h4 {
-        color: #3498db;
-        font-size: 14px;
-        margin-bottom: 15px;
-        text-transform: uppercase;
-        text-align: center;
-    }
-    
-    .menu-wrapper {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-    }
-    
-    .menu-screen {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
-        border-radius: 15px;
-        padding: 60px;
-        max-width: 800px;
-        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
-    }
-    
-    #modeSelectScreen {
-        display: block;
-        padding: 30px;
-        max-width: 1600px;
-        margin: 0 auto 20px auto;
-        border-radius: 10px;
-    }
-    
-    #modeSelectScreen .menu-title {
-        margin-bottom: 30px;
-    }
-    
-    #modeSelectScreen .menu-option {
-        padding: 25px 20px;
-        font-size: 20px;
-    }
-    
-    .menu-logo {
-        margin-bottom: 30px;
-    }
-    
-    .menu-logo img {
-        height: 80px;
-        background: white;
-        padding: 15px 25px;
-        border-radius: 10px;
-    }
-    
-    .menu-title {
-        text-align: center;
-        margin-bottom: 50px;
-    }
-    
-    .menu-title h1 {
-        color: #ecf0f1;
-        font-size: 36px;
-        margin-bottom: 15px;
-    }
-    
-    .menu-title p {
-        color: #bdc3c7;
-        font-size: 18px;
-    }
-    
-    .menu-options {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 30px;
-        width: 100%;
-    }
-    
-    .menu-option {
-        background: linear-gradient(180deg, #3498db 0%, #2874a6 100%);
-        color: white;
-        border: none;
-        padding: 50px 40px;
-        border-radius: 15px;
-        font-size: 24px;
-        font-weight: bold;
-        cursor: pointer;
-        transition: all 0.3s;
-        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
-        text-align: center;
-    }
-    
-    .menu-option:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
-    }
-    
-    .menu-option.single-column {
-        grid-column: 1 / -1;
-    }
-    
-    .menu-option .subtitle {
-        font-size: 14px;
-        margin-top: 10px;
-        opacity: 0.9;
-        font-weight: normal;
-    }
-    
-    .simulator-container {
-        max-width: 1600px;
-        width: 100%;
-        margin: 0 auto;
-    }
-    
-    .back-button {
-        background: #e74c3c;
-        color: white;
-        border: none;
-        padding: 15px 30px;
-        border-radius: 8px;
-        font-size: 16px;
-        font-weight: bold;
-        cursor: pointer;
-        margin-bottom: 20px;
-        display: inline-flex;
-        align-items: center;
-        gap: 10px;
-        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
-    }
-    
-    .back-button:hover {
-        background: #c0392b;
-    }
-    
-    .reset-button {
-        background: #3498db;
-        margin-left: 10px;
-    }
-    
-    .reset-button:hover {
-        background: #2980b9;
-    }
-    
-    .instructor-panel {
-        background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
-        border-radius: 10px;
-        padding: 25px;
-        margin-bottom: 20px;
-        border: 3px solid #1a252f;
-        transition: all 0.3s ease;
-    }
-    
-    .instructor-panel.minimised {
-        padding: 12px 18px;
-    }
-    
-    .instructor-panel.minimised .control-grid {
-        display: none !important;
-    }
-    
-    .minimise-btn {
-        background: #34495e;
-        color: #ecf0f1;
-        border: 2px solid #2c3e50;
-        padding: 8px 16px;
-        border-radius: 6px;
-        font-size: 12px;
-        cursor: pointer;
-        transition: all 0.3s;
-    }
-    
-    .minimise-btn:hover {
-        background: #3a4f5e;
-    }
-    
-    .instructor-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 15px;
-    }
-    
-    .instructor-logo {
-        display: flex;
-        align-items: center;
-        gap: 15px;
-    }
-    
-    .instructor-logo img {
-        height: 40px;
-        background: white;
-        padding: 6px;
-        border-radius: 8px;
-    }
-    
-    .instructor-title h2 {
-        color: #ecf0f1;
-        font-size: 18px;
-    }
-    
-    .instructor-title p {
-        color: #bdc3c7;
-        font-size: 12px;
-        margin-top: 4px;
-    }
-    
-    .control-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-        gap: 15px;
-        margin-top: 10px;
-    }
-    
-    .control-section {
-        background: #2c3e50;
-        padding: 15px;
-        border-radius: 8px;
-    }
-    
-    .control-section h4 {
-        color: #3498db;
-        font-size: 13px;
-        margin-bottom: 10px;
-        text-transform: uppercase;
-    }
-    
-    .control-row {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 8px;
-        padding: 8px;
-        background: #34495e;
-        border-radius: 6px;
-    }
-    
-    .control-row label {
-        color: #ecf0f1;
-        font-size: 12px;
-        font-weight: bold;
-        display: flex;
-        align-items: center;
-        gap: 6px;
-    }
-    
-    .control-row input,
-    .control-row select {
-        width: 100px;
-        padding: 6px;
-        border-radius: 4px;
-        border: 1px solid #2c3e50;
-        background: #2c3e50;
-        color: #00ff00;
-        font-weight: bold;
-    }
-    
-    .rhythm-buttons {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
-        gap: 6px;
-    }
-    
-    .rhythm-btn {
-        background: #34495e;
-        color: #ecf0f1;
-        border: 2px solid #2c3e50;
-        padding: 8px;
-        border-radius: 6px;
-        font-size: 11px;
-        cursor: pointer;
-        transition: all 0.2s;
-    }
-    
-    .rhythm-btn.active {
-        background: #2980b9;
-        border-color: #1f5f8b;
-    }
-    
-    .zoll-device {
-        background: #c8d0d8;
-        border: 20px solid #2b7bbf;
-        border-radius: 25px;
-        padding: 30px;
-        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
-        position: relative;
-        display: grid;
-        grid-template-columns: 1.2fr 0.8fr;
-        gap: 20px;
-        max-width: 1400px;
-        margin: 0 auto;
-    }
-    
-    .zoll-top-logo {
-        position: absolute;
-        top: 25px;
-        right: 30px;
-        height: 40px;
-        background: white;
-        padding: 6px;
-        border-radius: 8px;
-        z-index: 10;
-    }
-    
-    .device-screen-section {
-        background: #a8b0b8;
-        padding: 25px;
-        border-radius: 15px;
-        box-shadow: inset 0 4px 10px rgba(0, 0, 0, 0.2);
-    }
-    
-    .screen {
-        background: #000;
-        border-radius: 10px;
-        padding: 15px;
-        margin-bottom: 15px;
-        box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.8);
-        position: relative;
-    }
-    
-    .screen-header {
-        display: flex;
-        justify-content: space-between;
-        padding: 8px;
-        background: rgba(0, 0, 0, 0.6);
-        border-radius: 5px;
-        margin-bottom: 10px;
-    }
-    
-    .screen-info {
-        color: #00ffff;
-        font-size: 13px;
-        font-family: 'Courier New', monospace;
-        text-shadow: 0 0 5px rgba(0, 255, 255, 0.5);
-    }
-    
-    .screen-info.sync-indicator {
-        color: #ffff00;
-        font-weight: bold;
-        animation: blink 1s infinite;
-    }
-    
-    .ecg-canvas-container {
-        background: #000;
-        height: 300px;
-        border-radius: 8px;
-        position: relative;
-        overflow: hidden;
-        margin-bottom: 15px;
-    }
-    
-    canvas {
-        width: 100%;
-        height: 100%;
-        display: block;
-    }
-    
-    .vitals-display {
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: 10px;
-        padding: 15px;
-        background: rgba(0, 0, 0, 0.6);
-        border-radius: 8px;
-    }
-    
-    .vital-item {
-        text-align: center;
-    }
-    
-    .vital-label {
-        color: #888;
-        font-size: 10px;
-        margin-bottom: 5px;
-    }
-    
-    .vital-value {
-        color: #00ff00;
-        font-size: 36px;
-        font-weight: bold;
-        font-family: 'Courier New', monospace;
-        text-shadow: 0 0 10px rgba(0, 255, 0, 0.6);
-    }
-    
-    .vital-value.critical {
-        color: #ff0000;
-        animation: blink 1s infinite;
-    }
-    
-    .vital-unit {
-        color: #888;
-        font-size: 11px;
-        margin-top: 3px;
-    }
-    
-    @keyframes blink {
-        0%,
-        50% {
-            opacity: 1
-        }
-        51%,
-        100% {
-            opacity: 0.3
-        }
-    }
-    
-    .message-bar {
-        background: rgba(0, 0, 0, 0.8);
-        color: #ffff00;
-        padding: 12px;
-        text-align: center;
-        border-radius: 6px;
-        font-family: 'Courier New', monospace;
-        font-size: 14px;
-        font-weight: bold;
-        margin-top: 10px;
-        text-shadow: 0 0 5px rgba(255, 255, 0, 0.5);
-    }
-    
-    .message-bar.ready {
-        color: #00ff00;
-        text-shadow: 0 0 5px rgba(0, 255, 0, 0.5);
-    }
-    
-    .message-bar.alert {
-        color: #ff0000;
-        animation: blink 1s infinite;
-        text-shadow: 0 0 5px rgba(255, 0, 0, 0.5);
-    }
-    
-    .softkeys {
-        display: flex;
-        gap: 10px;
-        margin-top: 15px;
-    }
-    
-    .softkey {
-        flex: 1;
-        background: #7a8288;
-        color: #fff;
-        border: 2px solid #6a7278;
-        padding: 12px;
-        border-radius: 6px;
-        font-size: 11px;
-        cursor: pointer;
-        text-align: center;
-        font-weight: bold;
-    }
-    
-    .softkey:hover {
-        background: #8a9298;
-    }
-    
-    .softkey.active {
-        background: #27ae60;
-    }
-    
-    .device-controls-section {
-        display: flex;
-        flex-direction: column;
-        gap: 15px;
-    }
-    
-    .top-buttons {
-        display: grid;
-        grid-template-columns: auto 1fr;
-        gap: 12px;
-        align-items: start;
-    }
-    
-    .btn-teal {
-        background: #17a2b8;
-        color: white;
-        border: 3px solid #138496;
-        padding: 15px 20px;
-        border-radius: 8px;
-        font-size: 13px;
-        font-weight: bold;
-        cursor: pointer;
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-    }
-    
-    .btn-sync {
-        background: #f39c12;
-        color: white;
-        border: 3px solid #d68910;
-        padding: 15px 20px;
-        border-radius: 8px;
-        font-size: 13px;
-        font-weight: bold;
-        cursor: pointer;
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-        transition: all 0.3s;
-    }
-    
-    .btn-sync.active {
-        background: #e67e22;
-        box-shadow: 0 0 15px rgba(230, 126, 34, 0.7);
-    }
-    
-    .btn-shock {
-        background: linear-gradient(135deg, #ff6347 0%, #ff4520 100%);
-        color: white;
-        border: 5px solid #cc4f39;
-        width: 120px;
-        height: 120px;
-        border-radius: 50%;
-        font-size: 20px;
-        font-weight: bold;
-        cursor: pointer;
-        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        position: relative;
-        overflow: hidden;
-    }
-    
-    .btn-shock::before {
-        content: '⚡';
-        position: absolute;
-        font-size: 80px;
-        opacity: 0.15;
-        color: #fff;
-        z-index: 0;
-    }
-    
-    .btn-shock span {
-        position: relative;
-        z-index: 1;
-    }
-    
-    .btn-shock:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-    }
-    
-    .btn-shock .number {
-        position: absolute;
-        bottom: 10px;
-        left: 50%;
-        transform: translateX(-50%);
-        font-size: 18px;
-        color: #fff;
-    }
-    
-    .side-buttons {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 10px;
-    }
-    
-    .side-btn {
-        background: #7a8288;
-        color: #fff;
-        border: 3px solid #6a7278;
-        padding: 12px;
-        border-radius: 8px;
-        font-size: 12px;
-        font-weight: bold;
-        cursor: pointer;
-        box-shadow: 0 3px 6px rgba(0, 0, 0, 0.3);
-    }
-    
-    .side-btn:hover {
-        background: #8a9298;
-    }
-    
-    .action-buttons-group {
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-    }
-    
-    .btn-analyze,
-    .btn-charge {
-        background: linear-gradient(180deg, #ff9933 0%, #ff7700 100%);
-        color: #000;
-        border: 4px solid #cc6600;
-        padding: 16px;
-        border-radius: 10px;
-        font-size: 15px;
-        font-weight: bold;
-        cursor: pointer;
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-    }
-    
-    .btn-number {
-        background: #fff;
-        color: #ff7700;
-        width: 30px;
-        height: 30px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 18px;
-        font-weight: bold;
-    }
-    
-    .energy-selector {
-        background: linear-gradient(180deg, #dc3545 0%, #c82333 100%);
-        color: #fff;
-        border: 4px solid #a71d2a;
-        padding: 16px;
-        border-radius: 10px;
-        cursor: pointer;
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 8px;
-    }
-    
-    .energy-display {
-        font-size: 32px;
-        font-weight: bold;
-        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-    }
-    
-    .energy-arrows {
-        display: flex;
-        gap: 15px;
-    }
-    
-    .energy-arrow {
-        background: #fff;
-        color: #dc3545;
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-        border: none;
-        font-size: 20px;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-    
-    .mode-dial-container {
-        text-align: center;
-        padding: 15px;
-        background: #a8b0b8;
-        border-radius: 12px;
-    }
-    
-    .mode-dial {
-        width: 150px;
-        height: 150px;
-        background: radial-gradient(circle, #2a2a2a 0%, #1a1a1a 100%);
-        border: 6px solid #0a0a0a;
-        border-radius: 50%;
-        margin: 0 auto 15px;
-        position: relative;
-        cursor: pointer;
-        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.5);
-    }
-    
-    .mode-dial::before {
-        content: '';
-        position: absolute;
-        width: 8px;
-        height: 60px;
-        background: #fff;
-        top: 20px;
-        left: 50%;
-        transform: translateX(-50%) rotate(var(--dial-rotation, 0deg));
-        transform-origin: center bottom;
-        border-radius: 4px;
-    }
-    
-    .mode-labels {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 8px;
-        font-size: 11px;
-        font-weight: bold;
-        color: #2a2a2a;
-    }
-    
-    .mode-label {
-        padding: 12px 16px;
-        border-radius: 8px;
-        cursor: pointer;
-        background: #34495e;
-        color: #ecf0f1;
-        border: 3px solid #2c3e50;
-        font-weight: bold;
-        transition: all 0.3s;
-        text-transform: uppercase;
-        font-size: 13px;
-    }
-    
-    .mode-label:hover {
-        background: #3a4f5e;
-        transform: translateY(-2px);
-    }
-    
-    .mode-label.active {
-        background: linear-gradient(180deg, #3498db 0%, #2874a6 100%);
-        color: white;
-        border-color: #1f5f8b;
-        box-shadow: 0 0 15px rgba(52, 152, 219, 0.5);
-    }
-    
-    .pacing-controls {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 12px;
-    }
-    
-    .pacer-dial {
-        background: #2a2a2a;
-        border: 5px solid #0a0a0a;
-        border-radius: 50%;
-        width: 100px;
-        height: 100px;
-        margin: 0 auto;
-        position: relative;
-        cursor: pointer;
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
-    }
-    
-    .pacer-dial::before {
-        content: '';
-        position: absolute;
-        width: 4px;
-        height: 35px;
-        background: #17a2b8;
-        top: 15px;
-        left: 50%;
-        transform: translateX(-50%) rotate(var(--dial-rotation, 0deg));
-        transform-origin: center 35px;
-        border-radius: 2px;
-        transition: transform 0.3s ease;
-    }
-    
-    .pacer-label {
-        text-align: center;
-        color: #2a2a2a;
-        font-size: 11px;
-        font-weight: bold;
-        margin-top: 8px;
-    }
-    
-    .pacer-value {
-        text-align: center;
-        color: #17a2b8;
-        font-size: 20px;
-        font-weight: bold;
-        margin-top: 4px;
-    }
-    
-    .pacer-controls-btn {
-        display: flex;
-        gap: 5px;
-        justify-content: center;
-        margin-top: 8px;
-    }
-    
-    .pacer-btn {
-        background: #7a8288;
-        color: #fff;
-        border: 2px solid #6a7278;
-        width: 35px;
-        height: 35px;
-        border-radius: 5px;
-        font-size: 18px;
-        cursor: pointer;
-    }
-    
-    .zoll-branding {
-        background: linear-gradient(180deg, #e8eef3 0%, #d8dee3 100%);
-        padding: 20px;
-        border-radius: 0 0 15px 15px;
-        margin: -30px -30px 0 -30px;
-        text-align: center;
-        box-shadow: 0 -4px 10px rgba(0, 0, 0, 0.1);
-    }
-    
-    .zoll-logo-text {
-        font-size: 48px;
-        font-weight: bold;
-        color: #9a9a9a;
-        letter-spacing: 8px;
-        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
-    }
-    
-    @media (max-width: 1200px) {
-        .zoll-device {
-            grid-template-columns: 1fr;
-        }
-    }
-    
-    @media print {
-        body {
-            background: white;
-            padding: 0;
-        }
-        .menu-wrapper {
-            min-height: 0;
-        }
-        .menu-screen {
-            display: block !important;
-            box-shadow: none;
-            padding: 0;
-            background: white;
-        }
-        .menu-option {
-            display: none !important;
-        }
-        #certificateContent {
-            box-shadow: none;
-        }
-    }
-    
-    .splash-screen {
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: #1a1a1a;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        z-index: 100;
-    }
-    
-    .splash-screen img {
-        max-width: 50%;
-        height: auto;
-        background: white;
-        padding: 15px 25px;
-        border-radius: 10px;
-    }
-    
+*{margin:0;padding:0;box-sizing:border-box}body{font-family:Arial,sans-serif;background:#2a2a2a;padding:20px;min-height:100vh}.quick-rhythm-panel{background:linear-gradient(135deg,#2c3e50 0%,#34495e 100%);border-radius:10px;padding:20px;margin:0 auto 20px auto;max-width:1600px;border:3px solid #1a252f}.quick-rhythm-panel h4{color:#3498db;font-size:14px;margin-bottom:15px;text-transform:uppercase;text-align:center}.menu-wrapper{display:flex;justify-content:center;align-items:center}
+.menu-screen{
+    display:flex; /* <<< THIS IS THE FIX. Was 'none' */
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    background:linear-gradient(135deg,#2c3e50 0%,#34495e 100%);
+    border-radius:15px;
+    padding:60px;
+    max-width:800px;
+    box-shadow:0 20px 60px rgba(0,0,0,0.5)
+}
+#modeSelectScreen{display:block;padding:30px;max-width:1600px;margin:0 auto 20px auto;border-radius:10px}#modeSelectScreen .menu-title{margin-bottom:30px}#modeSelectScreen .menu-option{padding:25px 20px;font-size:20px}.menu-logo{margin-bottom:30px}.menu-logo img{height:80px;background:white;padding:15px 25px;border-radius:10px}.menu-title{text-align:center;margin-bottom:50px}.menu-title h1{color:#ecf0f1;font-size:36px;margin-bottom:15px}.menu-title p{color:#bdc3c7;font-size:18px}.menu-options{display:grid;grid-template-columns:1fr 1fr;gap:30px;width:100%}.menu-option{background:linear-gradient(180deg,#3498db 0%,#2874a6 100%);color:white;border:none;padding:50px 40px;border-radius:15px;font-size:24px;font-weight:bold;cursor:pointer;transition:all 0.3s;box-shadow:0 10px 25px rgba(0,0,0,0.3);text-align:center}.menu-option:hover{transform:translateY(-5px);box-shadow:0 15px 35px rgba(0,0,0,0.4)}.menu-option.single-column{grid-column:1 / -1}.menu-option .subtitle{font-size:14px;margin-top:10px;opacity:0.9;font-weight:normal}.simulator-container{max-width:1600px;width:100%;margin:0 auto}.back-button{background:#e74c3c;color:white;border:none;padding:15px 30px;border-radius:8px;font-size:16px;font-weight:bold;cursor:pointer;margin-bottom:20px;display:inline-flex;align-items:center;gap:10px;box-shadow:0 4px 10px rgba(0,0,0,0.3)}.back-button:hover{background:#c0392b}.reset-button{background:#3498db;margin-left:10px}.reset-button:hover{background:#2980b9}.instructor-panel{background:linear-gradient(135deg,#2c3e50 0%,#34495e 100%);border-radius:10px;padding:25px;margin-bottom:20px;border:3px solid #1a252f;transition:all 0.3s ease}.instructor-panel.minimised{padding:12px 18px}.instructor-panel.minimised .control-grid{display:none !important}.minimise-btn{background:#34495e;color:#ecf0f1;border:2px solid #2c3e50;padding:8px 16px;border-radius:6px;font-size:12px;cursor:pointer;transition:all 0.3s}.minimise-btn:hover{background:#3a4f5e}.instructor-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:15px}.instructor-logo{display:flex;align-items:center;gap:15px}.instructor-logo img{height:40px;background:white;padding:6px;border-radius:8px}.instructor-title h2{color:#ecf0f1;font-size:18px}.instructor-title p{color:#bdc3c7;font-size:12px;margin-top:4px}.control-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:15px;margin-top:10px}.control-section{background:#2c3e50;padding:15px;border-radius:8px}.control-section h4{color:#3498db;font-size:13px;margin-bottom:10px;text-transform:uppercase}.control-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;padding:8px;background:#34495e;border-radius:6px}.control-row label{color:#ecf0f1;font-size:12px;font-weight:bold;display:flex;align-items:center;gap:6px}.control-row input,.control-row select{width:100px;padding:6px;border-radius:4px;border:1px solid #2c3e50;background:#2c3e50;color:#00ff00;font-weight:bold}.rhythm-buttons{display:grid;grid-template-columns:repeat(auto-fit,minmax(80px,1fr));gap:6px}.rhythm-btn{background:#34495e;color:#ecf0f1;border:2px solid #2c3e50;padding:8px;border-radius:6px;font-size:11px;cursor:pointer;transition:all 0.2s}.rhythm-btn.active{background:#2980b9;border-color:#1f5f8b}.zoll-device{background:#c8d0d8;border:20px solid #2b7bbf;border-radius:25px;padding:30px;box-shadow:0 20px 60px rgba(0,0,0,0.5);position:relative;display:grid;grid-template-columns:1.2fr 0.8fr;gap:20px;max-width:1400px;margin:0 auto}.zoll-top-logo{position:absolute;top:25px;right:30px;height:40px;background:white;padding:6px;border-radius:8px;z-index:10}.device-screen-section{background:#a8b0b8;padding:25px;border-radius:15px;box-shadow:inset 0 4px 10px rgba(0,0,0,0.2)}.screen{background:#000;border-radius:10px;padding:15px;margin-bottom:15px;box-shadow:inset 0 0 20px rgba(0,0,0,0.8);position:relative}.screen-header{display:flex;justify-content:space-between;padding:8px;background:rgba(0,0,0,0.6);border-radius:5px;margin-bottom:10px}.screen-info{color:#00ffff;font-size:13px;font-family:'Courier New',monospace;text-shadow:0 0 5px rgba(0,255,255,0.5)}.screen-info.sync-indicator{color:#ffff00;font-weight:bold;animation:blink 1s infinite}.ecg-canvas-container{background:#000;height:300px;border-radius:8px;position:relative;overflow:hidden;margin-bottom:15px}canvas{width:100%;height:100%;display:block}.vitals-display{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:15px;background:rgba(0,0,0,0.6);border-radius:8px}.vital-item{text-align:center}.vital-label{color:#888;font-size:10px;margin-bottom:5px}.vital-value{color:#00ff00;font-size:36px;font-weight:bold;font-family:'Courier New',monospace;text-shadow:0 0 10px rgba(0,255,0,0.6)}.vital-value.critical{color:#ff0000;animation:blink 1s infinite}.vital-unit{color:#888;font-size:11px;margin-top:3px}@keyframes blink{0%,50%{opacity:1}51%,100%{opacity:0.3}}.message-bar{background:rgba(0,0,0,0.8);color:#ffff00;padding:12px;text-align:center;border-radius:6px;font-family:'Courier New',monospace;font-size:14px;font-weight:bold;margin-top:10px;text-shadow:0 0 5px rgba(255,255,0,0.5)}.message-bar.ready{color:#00ff00;text-shadow:0 0 5px rgba(0,255,0,0.5)}.message-bar.alert{color:#ff0000;animation:blink 1s infinite;text-shadow:0 0 5px rgba(255,0,0,0.5)}.softkeys{display:flex;gap:10px;margin-top:15px}.softkey{flex:1;background:#7a8288;color:#fff;border:2px solid #6a7278;padding:12px;border-radius:6px;font-size:11px;cursor:pointer;text-align:center;font-weight:bold}.softkey:hover{background:#8a9298}.softkey.active{background:#27ae60}.device-controls-section{display:flex;flex-direction:column;gap:15px}.top-buttons{display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:start}.btn-teal{background:#17a2b8;color:white;border:3px solid #138496;padding:15px 20px;border-radius:8px;font-size:13px;font-weight:bold;cursor:pointer;box-shadow:0 4px 8px rgba(0,0,0,0.3)}.btn-sync{background:#f39c12;color:white;border:3px solid #d68910;padding:15px 20px;border-radius:8px;font-size:13px;font-weight:bold;cursor:pointer;box-shadow:0 4px 8px rgba(0,0,0,0.3);transition:all 0.3s}.btn-sync.active{background:#e67e22;box-shadow:0 0 15px rgba(230,126,34,0.7)}.btn-shock{background:linear-gradient(135deg,#ff6347 0%,#ff4520 100%);color:white;border:5px solid #cc4f39;width:120px;height:120px;border-radius:50%;font-size:20px;font-weight:bold;cursor:pointer;box-shadow:0 6px 12px rgba(0,0,0,0.4);display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;overflow:hidden}.btn-shock::before{content:'⚡';position:absolute;font-size:80px;opacity:0.15;color:#fff;z-index:0}.btn-shock span{position:relative;z-index:1}.btn-shock:disabled{opacity:0.5;cursor:not-allowed}.btn-shock .number{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);font-size:18px;color:#fff}.side-buttons{display:grid;grid-template-columns:1fr 1fr;gap:10px}.side-btn{background:#7a8288;color:#fff;border:3px solid #6a7278;padding:12px;border-radius:8px;font-size:12px;font-weight:bold;cursor:pointer;box-shadow:0 3px 6px rgba(0,0,0,0.3)}.side-btn:hover{background:#8a9298}.action-buttons-group{display:flex;flex-direction:column;gap:10px}.btn-analyze,.btn-charge{background:linear-gradient(180deg,#ff9933 0%,#ff7700 100%);color:#000;border:4px solid #cc6600;padding:16px;border-radius:10px;font-size:15px;font-weight:bold;cursor:pointer;box-shadow:0 4px 8px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:space-between}.btn-number{background:#fff;color:#ff7700;width:30px;height:30px;border-radius:50%;display:flex;align:items:center;justify-content:center;font-size:18px;font-weight:bold}.energy-selector{background:linear-gradient(180deg,#dc3545 0%,#c82333 100%);color:#fff;border:4px solid #a71d2a;padding:16px;border-radius:10px;cursor:pointer;box-shadow:0 4px 8px rgba(0,0,0,0.3);display:flex;flex-direction:column;align-items:center;gap:8px}.energy-display{font-size:32px;font-weight:bold;text-shadow:0 2px 4px rgba(0,0,0,0.3)}.energy-arrows{display:flex;gap:15px}.energy-arrow{background:#fff;color:#dc3545;width:40px;height:40px;border-radius:50%;border:none;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center}.mode-dial-container{text-align:center;padding:15px;background:#a8b0b8;border-radius:12px}.mode-dial{width:150px;height:150px;background:radial-gradient(circle,#2a2a2a 0%,#1a1a1a 100%);border:6px solid #0a0a0a;border-radius:50%;margin:0 auto 15px;position:relative;cursor:pointer;box-shadow:0 6px 12px rgba(0,0,0,0.5)}.mode-dial::before{content:'';position:absolute;width:8px;height:60px;background:#fff;top:20px;left:50%;transform:translateX(-50%) rotate(var(--dial-rotation,0deg));transform-origin:center bottom;border-radius:4px}.mode-labels{display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:11px;font-weight:bold;color:#2a2a2a}.mode-label{padding:12px 16px;border-radius:8px;cursor:pointer;background:#34495e;color:#ecf0f1;border:3px solid #2c3e50;font-weight:bold;transition:all 0.3s;text-transform:uppercase;font-size:13px}.mode-label:hover{background:#3a4f5e;transform:translateY(-2px)}.mode-label.active{background:linear-gradient(180deg,#3498db 0%,#2874a6 100%);color:white;border-color:#1f5f8b;box-shadow:0 0 15px rgba(52,152,219,0.5)}.pacing-controls{display:grid;grid-template-columns:1fr 1fr;gap:12px}.pacer-dial{background:#2a2a2a;border:5px solid #0a0a0a;border-radius:50%;width:100px;height:100px;margin:0 auto;position:relative;cursor:pointer;box-shadow:0 4px 8px rgba(0,0,0,0.5)}.pacer-dial::before{content:'';position:absolute;width:4px;height:35px;background:#17a2b8;top:15px;left:50%;transform:translateX(-50%) rotate(var(--dial-rotation,0deg));transform-origin:center 35px;border-radius:2px;transition:transform 0.3s ease}.pacer-label{text-align:center;color:#2a2a2a;font-size:11px;font-weight:bold;margin-top:8px}.pacer-value{text-align:center;color:#17a2b8;font-size:20px;font-weight:bold;margin-top:4px}.pacer-controls-btn{display:flex;gap:5px;justify-content:center;margin-top:8px}.pacer-btn{background:#7a8288;color:#fff;border:2px solid #6a7278;width:35px;height:35px;border-radius:5px;font-size:18px;cursor:pointer}.zoll-branding{background:linear-gradient(180deg,#e8eef3 0%,#d8dee3 100%);padding:20px;border-radius:0 0 15px 15px;margin:-30px -30px 0 -30px;text-align:center;box-shadow:0 -4px 10px rgba(0,0,0,0.1)}.zoll-logo-text{font-size:48px;font-weight:bold;color:#9a9a9a;letter-spacing:8px;text-shadow:2px 2px 4px rgba(0,0,0,0.1)}@media (max-width:1200px){.zoll-device{grid-template-columns:1fr}}@media print{body{background:white;padding:0}.menu-wrapper{min-height:0}.menu-screen{display:block !important;box-shadow:none;padding:0;background:white}.menu-option{display:none !important}#certificateContent{box-shadow:none}}
+    
+    .splash-screen{position:absolute;top:0;left:0;right:0;bottom:0;background:#1a1a1a;display:flex;align-items:center;justify-content:center;z-index:100}
+    .splash-screen img{max-width:50%; height:auto; background:white; padding:15px 25px; border-radius:10px}
     .screen.screen-off .screen-header,
     .screen.screen-off .ecg-canvas-container,
     .screen.screen-off .vitals-display,
-    .screen.screen-off .message-bar {
-        visibility: hidden;
-    }
-    
-    .screen.screen-off {
-        background: #1a1a1a;
-    }
-    
+    .screen.screen-off .message-bar{visibility:hidden}
+    .screen.screen-off{background:#1a1a1a}
+
     .hidden {
         display: none !important;
     }
@@ -1140,19 +289,16 @@ window.pacingComplex = pacingComplex; // <<< ADD THIS
         padding: 20px;
         border-radius: 8px;
     }
-    
     .scenario-cycle > div {
         display: flex;
         flex-direction: column;
         gap: 5px;
     }
-    
-    .scenario-cycle label {
+        .scenario-cycle label {
         color: #bdc3c7;
         font-size: 14px;
         font-weight: bold;
     }
-    
     .scenario-rhythm-select {
         width: 100%;
         padding: 10px 12px;
@@ -1163,254 +309,138 @@ window.pacingComplex = pacingComplex; // <<< ADD THIS
         font-size: 16px;
         font-weight: bold;
     }
-    
+
     /* --- Mobile Usability Enhancements --- */
-    
-    button,
-    .menu-option,
-    .mode-label,
-    .softkey,
-    .side-btn,
-    .energy-arrow,
-    .pacer-btn,
-    .rhythm-btn,
-    .back-button {
-        -webkit-touch-callout: none;
-        /* Disable iOS callout menu */
-        -webkit-user-select: none;
-        /* Disable text selection */
+    button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-btn, .rhythm-btn, .back-button {
+        -webkit-touch-callout: none; /* Disable iOS callout menu */
+        -webkit-user-select: none; /* Disable text selection */
         -moz-user-select: none;
         -ms-user-select: none;
         user-select: none;
-        touch-action: manipulation;
-        /* Prevent double-tap zoom delay */
+        touch-action: manipulation; /* Prevent double-tap zoom delay */
     }
     
     /* --- MOBILE RESPONSIVENESS FIXES --- */
-    
     @media (max-width: 768px) {
-        body {
-            padding: 10px;
+        body { padding: 10px; }
+        .main-header { flex-direction: column; gap: 15px; }
+        .main-header .menu-title h1 { font-size: 24px; }
+        .main-header .menu-option { width: 100%; }
+
+        .quick-rhythm-panel { padding: 10px; }
+        .quick-rhythm-panel .rhythm-btn { 
+            font-size: 10px; 
+            padding: 8px; /* Increased padding */
+            min-height: 40px; /* Ensure tap target height */
         }
-        .main-header {
-            flex-direction: column;
-            gap: 15px;
-        }
-        .main-header .menu-title h1 {
-            font-size: 24px;
-        }
-        .main-header .menu-option {
-            width: 100%;
-        }
-        .quick-rhythm-panel {
-            padding: 10px;
-        }
-        .quick-rhythm-panel .rhythm-btn {
-            font-size: 10px;
-            padding: 8px;
-            /* Increased padding */
-            min-height: 40px;
-            /* Ensure tap target height */
-        }
+        
+        /* --- NEW: Mobile Hint Buttons --- */
+        .guideline-hints-panel { padding: 10px; gap: 8px; }
+        .hint-btn { font-size: 11px; padding: 8px 12px; }
+        /* --- End Mobile --- */
+
+
         .zoll-device {
-            grid-template-columns: 1fr;
-            /* Already set at 1200px, but good to be explicit */
+            grid-template-columns: 1fr; /* Already set at 1200px, but good to be explicit */
             padding: 15px;
             border-width: 10px;
         }
-        .device-screen-section {
-            padding: 15px;
-        }
-        .screen {
-            padding: 10px;
-        }
-        .ecg-canvas-container {
-            height: 250px;
-        }
-        /* Reduce canvas height */
+
+        .device-screen-section { padding: 15px; }
+        .screen { padding: 10px; }
+        .ecg-canvas-container { height: 250px; } /* Reduce canvas height */
         .vitals-display {
-            grid-template-columns: 1fr 1fr;
-            /* 2x2 grid */
+            grid-template-columns: 1fr 1fr; /* 2x2 grid */
             gap: 5px;
             padding: 10px;
         }
-        .vital-value {
-            font-size: 28px;
+        .vital-value { font-size: 28px; }
+        .vital-value.critical { font-size: 28px; }
+        #bpDisplay { font-size: 20px !important; }
+
+        .softkeys { gap: 5px; }
+        .softkey { 
+            padding: 12px 8px; /* Increased padding */
+            font-size: 10px; /* Slightly larger font */
+            min-height: 44px; /* Ensure tap target height */
         }
-        .vital-value.critical {
-            font-size: 28px;
+        
+        .top-buttons { grid-template-columns: 1fr 1fr; } /* Stack sync and shock */
+        .btn-shock { width: 100px; height: 100px; font-size: 16px; }
+        .btn-shock .number { font-size: 14px; bottom: 8px; }
+        .btn-shock::before { font-size: 60px; }
+
+        .side-buttons { grid-template-columns: 1fr 1fr; }
+        .side-btn { 
+            padding: 12px; /* Increased padding */
+            font-size: 11px; /* Slightly larger font */
+            min-height: 44px; /* Ensure tap target height */
         }
-        #bpDisplay {
-            font-size: 20px !important;
-        }
-        .softkeys {
-            gap: 5px;
-        }
-        .softkey {
-            padding: 12px 8px;
-            /* Increased padding */
-            font-size: 10px;
-            /* Slightly larger font */
-            min-height: 44px;
-            /* Ensure tap target height */
-        }
-        .top-buttons {
-            grid-template-columns: 1fr 1fr;
-        }
-        /* Stack sync and shock */
-        .btn-shock {
-            width: 100px;
-            height: 100px;
-            font-size: 16px;
-        }
-        .btn-shock .number {
-            font-size: 14px;
-            bottom: 8px;
-        }
-        .btn-shock::before {
-            font-size: 60px;
-        }
-        .side-buttons {
-            grid-template-columns: 1fr 1fr;
-        }
-        .side-btn {
-            padding: 12px;
-            /* Increased padding */
-            font-size: 11px;
-            /* Slightly larger font */
-            min-height: 44px;
-            /* Ensure tap target height */
-        }
-        .btn-analyze,
-        .btn-charge {
-            padding: 12px;
-            font-size: 13px;
-        }
-        .energy-selector {
-            padding: 12px;
-        }
-        .energy-display {
-            font-size: 28px;
-        }
-        .mode-dial-container {
-            padding: 10px;
-        }
-        .mode-dial {
-            width: 120px;
-            height: 120px;
-        }
-        .mode-label {
-            padding: 10px;
-            font-size: 11px;
-        }
-        .pacing-controls {
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-        }
-        .pacer-dial {
-            width: 80px;
-            height: 80px;
-        }
-        .pacer-dial::before {
-            height: 25px;
-            top: 12px;
-            transform-origin: center 28px;
-        }
-        .pacer-value {
-            font-size: 16px;
-        }
-        .pacer-btn {
-            width: 30px;
-            height: 30px;
-            font-size: 16px;
-        }
-        .control-grid {
-            grid-template-columns: 1fr;
-        }
-        /* Stack instructor controls */
-        .menu-options {
-            grid-template-columns: 1fr;
-            gap: 15px;
-        }
-        .menu-option {
-            padding: 25px 20px;
-            font-size: 18px;
-        }
+
+        .btn-analyze, .btn-charge { padding: 12px; font-size: 13px; }
+        .energy-selector { padding: 12px; }
+        .energy-display { font-size: 28px; }
+
+        .mode-dial-container { padding: 10px; }
+        .mode-dial { width: 120px; height: 120px; }
+        .mode-label { padding: 10px; font-size: 11px; }
+
+        .pacing-controls { grid-template-columns: 1fr 1fr; gap: 10px; }
+        .pacer-dial { width: 80px; height: 80px; }
+        .pacer-dial::before { height: 25px; top: 12px; transform-origin: center 28px; }
+        .pacer-value { font-size: 16px; }
+        .pacer-btn { width: 30px; height: 30px; font-size: 16px; }
+
+        .control-grid { grid-template-columns: 1fr; } /* Stack instructor controls */
+        
+        .menu-options { grid-template-columns: 1fr; gap: 15px; }
+        .menu-option { padding: 25px 20px; font-size: 18px; }
+        
+        /* --- NEW: Mobile Modal --- */
+        .modal-content { padding: 25px; }
+        .modal-header { margin-bottom: 20px; padding-bottom: 15px; }
+        .modal-content h2 { font-size: 20px; }
+        .modal-content li { font-size: 14px; }
+        #closeModalBtn { width: 30px; height: 30px; font-size: 16px; top: 10px; right: 10px;}
+        /* --- End Mobile Modal --- */
+
     }
-    
+
     @media (max-width: 480px) {
-        body {
-            padding: 5px;
+        body { padding: 5px; }
+        .main-header .menu-title h1 { font-size: 20px; }
+        .main-header .menu-title p { font-size: 14px; }
+        .main-header .menu-option { font-size: 14px; padding: 15px 20px; }
+
+        .quick-rhythm-panel { padding: 5px; }
+        .quick-rhythm-panel .rhythm-btn { 
+            font-size: 9px; 
+            padding: 6px; /* Increased padding */
+            min-height: 36px; /* Ensure tap target height */
         }
-        .main-header .menu-title h1 {
-            font-size: 20px;
-        }
-        .main-header .menu-title p {
-            font-size: 14px;
-        }
-        .main-header .menu-option {
-            font-size: 14px;
-            padding: 15px 20px;
-        }
-        .quick-rhythm-panel {
-            padding: 5px;
-        }
-        .quick-rhythm-panel .rhythm-btn {
-            font-size: 9px;
-            padding: 6px;
-            /* Increased padding */
-            min-height: 36px;
-            /* Ensure tap target height */
-        }
-        .zoll-device {
-            padding: 5px;
-            border-width: 5px;
-        }
-        .device-screen-section {
-            padding: 5px;
-        }
-        .screen {
-            padding: 5px;
-        }
-        .ecg-canvas-container {
-            height: 200px;
-        }
-        /* Further reduce canvas height */
-        .vitals-display {
-            padding: 5px;
-        }
-        .vital-value {
-            font-size: 24px;
-        }
-        .vital-value.critical {
-            font-size: 24px;
-        }
-        #bpDisplay {
-            font-size: 18px !important;
-        }
-        .btn-shock {
-            width: 80px;
-            height: 80px;
-            font-size: 14px;
-        }
-        .btn-shock .number {
-            font-size: 12px;
-            bottom: 5px;
-        }
-        .btn-shock::before {
-            font-size: 40px;
-        }
-        .mode-dial {
-            width: 100px;
-            height: 100px;
-        }
-        .pacer-dial {
-            width: 70px;
-            height: 70px;
-        }
+        
+        /* --- NEW: Mobile Hint Buttons --- */
+        .hint-btn { font-size: 10px; padding: 8px; }
+        /* --- End Mobile --- */
+        
+        .zoll-device { padding: 5px; border-width: 5px; }
+        .device-screen-section { padding: 5px; }
+        .screen { padding: 5px; }
+        .ecg-canvas-container { height: 200px; } /* Further reduce canvas height */
+        .vitals-display { padding: 5px; }
+        .vital-value { font-size: 24px; }
+        .vital-value.critical { font-size: 24px; }
+        #bpDisplay { font-size: 18px !important; }
+
+        .btn-shock { width: 80px; height: 80px; font-size: 14px; }
+        .btn-shock .number { font-size: 12px; bottom: 5px; }
+        .btn-shock::before { font-size: 40px; }
+        
+        .mode-dial { width: 100px; height: 100px; }
+        .pacer-dial { width: 70px; height: 70px; }
     }
     /* --- END OF MOBILE FIXES --- */
-    /* --- END OF CLEANED CSS --- */
+    
     </style>
 </head>
 <body>
@@ -2152,40 +1182,6 @@ window.pacingComplex = pacingComplex; // <<< ADD THIS
             }
         };
 
-        // --- Keyboard Shortcuts ---
-        document.addEventListener('keydown', (e) => {
-            const key = e.key.toLowerCase();
-
-            if (key === 'c') {
-                e.preventDefault();
-                chargeDefib();
-            } else if (key === 's') {
-                e.preventDefault();
-                deliverShock();
-            } else if (key === 'p') {
-                e.preventDefault();
-                checkPulse();
-            } else if (key === 'm') {
-                e.preventDefault();
-                cycleMode();
-            } else if (e.key === 'ArrowUp') {
-                e.preventDefault();
-                adjustEnergy(1);
-            } else if (e.key === 'ArrowDown') {
-                e.preventDefault();
-                adjustEnergy(-1);
-            }
-        });
-
-        // --- Timers ---
-        setInterval(() => {
-            const now = new Date();
-            const timeEl = document.getElementById('timeInfo');
-            if (timeEl) {
-                timeEl.textContent = now.toTimeString().split(' ')[0];
-            }
-        }, 1000);
-
         // --- CANVAS RESIZE FUNCTION ---
         function resizeCanvas() {
             if (!canvas || !ctx) return;
@@ -2359,33 +1355,46 @@ window.pacingComplex = pacingComplex; // <<< ADD THIS
                 // 1. Get the base rhythm (which is now correctly set in state, e.g., 'paced' or 'chb')
                  // --- MOBILE ENHANCEMENT: Pass logical height to rhythm function ---
                 let y_underlying_raw = underlyingRhythmFunc(currentX, state.hr, simTimeSeconds, {height: logicalCanvasHeight}) - baselineY;
-                let y_final_raw = y_underlying_raw;
+                
+                // --- THIS IS THE FIX for "Double Beats" ---
+                // If we are captured, IGNORE the underlying rhythm and start from a clean baseline.
+                let y_final_raw;
+                if (state.pacingActive && state.isCaptured) {
+                    y_final_raw = 0; // Start at baseline, suppressing the native rhythm
+                } else {
+                    y_final_raw = y_underlying_raw; // Use the native rhythm
+                }
+                // --- END FIX ---
 
                 // 2. Run sensing logic, to find R-waves from the *original* rhythm
-                let y_sense = getUnderlyingY(currentX);
-                const refractoryPx = ecgSpeed * 0.20; // 200ms refractory
-                
-                if (currentX - state.lastSensedQRS_X > refractoryPx) {
-                    let y_prev = getUnderlyingY(currentX - 1);
-                    let y_next = getUnderlyingY(currentX + 1);
+                // --- THIS IS THE FIX: Only sense when NOT captured ---
+                if (state.pacingActive && !state.isCaptured) {
+                    let y_sense = getUnderlyingY(currentX);
+                    const refractoryPx = ecgSpeed * 0.20; // 200ms refractory
                     
-                    const PX_PER_MV = window.PX_PER_MV || 100;
-                    if (y_sense < y_prev && y_sense < y_next && y_sense < -PX_PER_MV * 0.3) {
-                        state.lastSensedQRS_X = currentX;
+                    if (currentX - state.lastSensedQRS_X > refractoryPx) {
+                        let y_prev = getUnderlyingY(currentX - 1);
+                        let y_next = getUnderlyingY(currentX + 1);
                         
-                        // --- DEMAND PACING LOGIC ---
-                        if (state.pacingActive) {
-                            state.lastCardiacEvent = currentX; // Reset pacer timer on sensed QRS
+                        const PX_PER_MV = window.PX_PER_MV || 100;
+                        if (y_sense < y_prev && y_sense < y_next && y_sense < -PX_PER_MV * 0.3) {
+                            state.lastSensedQRS_X = currentX;
+                            
+                            // --- DEMAND PACING LOGIC ---
+                            // if (state.pacingActive) { // This check is redundant
+                                state.lastCardiacEvent = currentX; // Reset pacer timer on sensed QRS
+                            // }
+                            // --- END DEMAND PACING ---
+                            
+                            // <<< SYNC MARKER FIX: Add marker position on QRS detection
+                            if (state.syncMode) {
+                                state.syncMarkers.push(currentX);
+                            }
+                            // <<< END SYNC MARKER FIX
                         }
-                        // --- END DEMAND PACING ---
-                        
-                        // <<< SYNC MARKER FIX: Add marker position on QRS detection
-                        if (state.syncMode) {
-                            state.syncMarkers.push(currentX);
-                        }
-                        // <<< END SYNC MARKER FIX
                     }
                 }
+                // --- END OF SENSING BLOCK (AND FIX) ---
                 
                 // 3. IF pacer is on AND we are NOT captured, add spikes on top of underlying rhythm
                 // --- NEW DEMAND PACING (FIRING) LOGIC ---
@@ -2413,7 +1422,11 @@ window.pacingComplex = pacingComplex; // <<< ADD THIS
                     
                     // Check if we are near *any* fired spike
                     for (const spikeX of state.firedSpikes) {
-                        const timeSinceFiredSpike = currentX - spikeX;
+                        // --- THIS IS THE FIX for "Spike Jitter" ---
+                        // Floor the time difference to get an integer pixel position.
+                        // This prevents anti-aliasing jitter on the spike's edges.
+                        const timeSinceFiredSpike = Math.floor(currentX - spikeX);
+                        // --- END FIX ---
 
                         if (timeSinceFiredSpike >= 0) {
                             if (state.isCaptured) {
@@ -2445,23 +1458,25 @@ window.pacingComplex = pacingComplex; // <<< ADD THIS
                 if (!isFinite(raw_pixelY)) {
                     pixelY = baselineY; // Reset to baseline if NaN/Infinity
                 } else {
-                    pixelY = raw_pixelY;
+                    // --- JITTER FIX ---
+                    // Round the *final* value before storing/drawing
+                    pixelY = Math.round(raw_pixelY);
                 }
                 
                 yValues[x] = pixelY; 
 
                 if (x === 0) {
-                    if (isFinite(pixelY)) {
+                    // if (isFinite(pixelY)) { // No longer needed, pixelY is always finite now
                         ctx.moveTo(pixelX, pixelY);
-                    } else {
-                        ctx.moveTo(pixelX, baselineY);
-                    }
+                    // } else {
+                    //     ctx.moveTo(pixelX, baselineY);
+                    // }
                 } else {
-                    if (isFinite(pixelY)) {
+                    // if (isFinite(pixelY)) { // No longer needed
                         ctx.lineTo(pixelX, pixelY);
-                    } else {
-                        ctx.moveTo(pixelX, baselineY); // Start new path if bad value
-                    }
+                    // } else {
+                    //     ctx.moveTo(pixelX, baselineY); // Start new path if bad value
+                    // }
                 }
             }
             ctx.stroke(); 
@@ -3619,10 +2634,42 @@ window.pacingComplex = pacingComplex; // <<< ADD THIS
             document.getElementById('cycle_5_postshock').value = 'nsr';
         }
 
-        // --- MOVED EVENT LISTENERS BLOCK ---
-        // All functions are defined above this point, so they exist
-        // when these listeners are attached.
+        // --- Keyboard Shortcuts ---
+        document.addEventListener('keydown', (e) => {
+            const key = e.key.toLowerCase();
 
+            if (key === 'c') {
+                e.preventDefault();
+                chargeDefib();
+            } else if (key === 's') {
+                e.preventDefault();
+                deliverShock();
+            } else if (key === 'p') {
+                e.preventDefault();
+                checkPulse();
+            } else if (key === 'm') {
+                e.preventDefault();
+                cycleMode();
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                adjustEnergy(1);
+            } else if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                adjustEnergy(-1);
+            }
+        });
+
+        // --- Timers ---
+        setInterval(() => {
+            const now = new Date();
+            const timeEl = document.getElementById('timeInfo');
+            if (timeEl) {
+                timeEl.textContent = now.toTimeString().split(' ')[0];
+            }
+        }, 1000);
+
+        // --- EVENT LISTENERS ---
+        
         // --- NEW: Guideline Modal Listeners ---
         hintButtons.forEach(btn => {
             btn.addEventListener('click', () => {
@@ -3656,17 +2703,17 @@ window.pacingComplex = pacingComplex; // <<< ADD THIS
 
         // --- New Scenario Creator Listeners ---
         document.getElementById('openScenarioCreatorBtn').addEventListener('click', () => {
-            simulatorContainer.classList.add('hidden'); // <<< ADD THIS
             menuWrapper.classList.remove('hidden');
             scenarioCreatorScreen.classList.remove('hidden');
             scenarioScreen.classList.add('hidden'); // Hide other menus
             summaryScreen.classList.add('hidden');
             certificateScreen.classList.add('hidden');
+            simulatorContainer.classList.add('hidden'); // <<< THIS IS THE FIX
         });
         document.getElementById('cancelCustomScenarioBtn').addEventListener('click', () => {
             menuWrapper.classList.add('hidden');
             scenarioCreatorScreen.classList.add('hidden');
-            simulatorContainer.classList.remove('hidden'); // <<< ADD THIS
+            simulatorContainer.classList.remove('hidden'); // <<< THIS IS THE FIX
         });
         document.getElementById('startCustomScenarioBtn').addEventListener('click', startCustomScenario);
 
@@ -3727,8 +2774,6 @@ window.pacingComplex = pacingComplex; // <<< ADD THIS
         document.querySelectorAll('.pacer-btn').forEach(btn => {
             btn.addEventListener('click', () => adjustPacer(btn.dataset.pacerParam, parseInt(btn.dataset.pacerDir)));
         });
-        // --- END OF MOVED BLOCK ---
-
 
         // --- INITIALISATION ---
         initScenarioCreator(); // New
