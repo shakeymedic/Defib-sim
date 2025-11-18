@@ -1367,8 +1367,11 @@ window.pacingComplex = pacingComplex; // <<< ADD THIS
                 // --- END FIX ---
 
                 // 2. Run sensing logic, to find R-waves from the *original* rhythm
-                // --- THIS IS THE FIX: Only sense when NOT captured ---
-                if (state.pacingActive && !state.isCaptured) {
+                
+                // --- SENSING FIX: Sense if (Demand Pacing) OR (Sync Mode is On) ---
+                const shouldSense = (state.pacingActive && !state.isCaptured) || state.syncMode;
+
+                if (shouldSense) {
                     let y_sense = getUnderlyingY(currentX);
                     const refractoryPx = ecgSpeed * 0.20; // 200ms refractory
                     
@@ -1381,9 +1384,10 @@ window.pacingComplex = pacingComplex; // <<< ADD THIS
                             state.lastSensedQRS_X = currentX;
                             
                             // --- DEMAND PACING LOGIC ---
-                            // if (state.pacingActive) { // This check is redundant
-                                state.lastCardiacEvent = currentX; // Reset pacer timer on sensed QRS
-                            // }
+                            // Only reset pacer timer if we are in demand pacing mode
+                            if (state.pacingActive && !state.isCaptured) {
+                                state.lastCardiacEvent = currentX; 
+                            }
                             // --- END DEMAND PACING ---
                             
                             // <<< SYNC MARKER FIX: Add marker position on QRS detection
@@ -1394,7 +1398,7 @@ window.pacingComplex = pacingComplex; // <<< ADD THIS
                         }
                     }
                 }
-                // --- END OF SENSING BLOCK (AND FIX) ---
+                // --- END OF SENSING BLOCK ---
                 
                 // 3. IF pacer is on AND we are NOT captured, add spikes on top of underlying rhythm
                 // --- NEW DEMAND PACING (FIRING) LOGIC ---
