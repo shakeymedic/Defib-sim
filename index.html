@@ -1627,6 +1627,8 @@ window.pacingComplex = pacingComplex; // <<< ADD THIS
             state.customScenarioActive = false; // Not a custom scenario
             
             setVitals(scenario.initialRhythm);
+            state.originalRhythm = null;
+            state.isCaptured = false;
             state.hr = scenario.initialVitals.hr;
             state.spo2 = scenario.initialVitals.spo2;
             state.etco2 = scenario.initialVitals.etco2;
@@ -2422,8 +2424,8 @@ window.pacingComplex = pacingComplex; // <<< ADD THIS
             setVitals(rhythm); 
             state.syncMarkers = []; // <<< SYNC MARKER FIX: Clear markers on rhythm change
             // --- FIX: Reset pacing state if rhythm is changed manually ---
-            state.originalRhythm = rhythm;
-            state.isCaptured = false; 
+            state.originalRhythm = null;
+            state.isCaptured = false;
             // ---
             state.roscAchieved = false;
             state.shockCount = 0;
