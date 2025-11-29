@@ -8,66 +8,61 @@
     <script>
 (function(){'use strict';
 
-// --- EXPOSE CONSTANTS GLOBALLY (Fixes Grid Disappearance) ---
+// --- GLOBAL SETTINGS ---
+// Exposed globally to prevent "variable not found" errors
 window.PX_PER_BIG = 25; 
-window.PX_PER_MM = window.PX_PER_BIG / 5; 
-window.PX_PER_MV = window.PX_PER_MM * 10; 
-window.ecgSpeed = window.PX_PER_BIG * 5; // 125 px/sec
+window.PX_PER_MM = 5;   
+window.PX_PER_MV = 50;  // 10mm/mV standard calibration
+window.ecgSpeed = 125;  // 25mm/sec * 5px/mm = 125 px/sec
 
 function setSpeed(pxPerSec){ window.ecgSpeed = pxPerSec; }
 
-// --- MATH HELPERS ---
-// Gaussian Bell Curve: The only way to render smooth lines without jitter
+// --- STABLE MATH HELPERS ---
+// Gaussian Bell Curve: Renders a smooth spike that never "bounces" between pixels
+// t: 0.0 to 1.0 (Phase of the beat)
+// center: 0.0 to 1.0 (Position of peak)
+// width: Spread of the curve (approx duration)
 function gaussian(t, center, width, amp) {
     var x = (t - center);
+    // Optimization: Pre-calculate the exponent parts
     return -amp * Math.exp(-0.5 * (x * x) / (width * width));
 }
 
-// --- ARTEFACTS ---
-function movementArtefact(x, t) { return Math.sin(t * 0.5 + x * 0.005) * (window.PX_PER_MM * 1.5); }
-function leadoffArtefact(t) { return Math.sin(t * 50) * (window.PX_PER_MM * 4.0); } 
-function cprArtefact(x, t) { 
-    return Math.abs(Math.sin(t * Math.PI * 1.8)) * (window.PX_PER_MV * 1.5) * -1; 
-}
+// --- SHAPES ---
+// All widths tuned to 125px/sec (1s = 125px)
 
-// --- SHAPES (Physiologically Accurate Widths) ---
-
-function getP(t) { 
-    // P-wave width ~100ms
-    return gaussian(t, 0.15, 0.06, window.PX_PER_MV * 0.15); 
-}
+function getP(t) { return gaussian(t, 0.15, 0.04, window.PX_PER_MV * 0.15); }
 
 function getQRSNarrow(t) {
-    // QRS Duration ~80-100ms. 
-    // Width 0.06 relative to a standard cycle prevents sub-pixel aliasing.
-    
-    var q = gaussian(t, 0.23, 0.02, -window.PX_PER_MV * 0.15); 
-    var r = gaussian(t, 0.25, 0.03, window.PX_PER_MV * 1.4); // Wider, solid peak
-    var s = gaussian(t, 0.27, 0.02, -window.PX_PER_MV * 0.25); 
+    // A stable, narrow complex (approx 80ms)
+    // Q (tiny dip)
+    var q = gaussian(t, 0.23, 0.008, -window.PX_PER_MV * 0.1); 
+    // R (tall spike) - Width 0.015 ensures it hits multiple pixels (no jitter)
+    var r = gaussian(t, 0.25, 0.015, window.PX_PER_MV * 1.5);   
+    // S (dip)
+    var s = gaussian(t, 0.27, 0.010, -window.PX_PER_MV * 0.3); 
     return q + r + s;
 }
 
 function getQRSWide(t) { 
-    // Wide QRS ~140ms+
-    return gaussian(t, 0.25, 0.08, window.PX_PER_MV * 1.1); 
+    // Wide complex (~140ms)
+    return gaussian(t, 0.25, 0.05, window.PX_PER_MV * 1.2); 
 }
 
-function getT(t) { 
-    return gaussian(t, 0.55, 0.12, window.PX_PER_MV * 0.35); 
-}
+function getT(t) { return gaussian(t, 0.55, 0.09, window.PX_PER_MV * 0.3); }
+function getPacerSpike(t) { return gaussian(t, 0.20, 0.002, window.PX_PER_MV * 2.5); }
 
-function getPacerSpike(t) { 
-    return gaussian(t, 0.20, 0.004, window.PX_PER_MV * 2.5); 
-}
+// --- RHYTHM LOGIC ---
 
-// --- RHYTHM LOGIC (Position Based) ---
-
+// 1. Sinus Rhythms
 function sinusTemplate(x, hr, c, opts) {
     opts = opts || {};
     var baseline = (c.height || 300) / 2;
     var bpm = hr || 75;
+    
+    // Calculate Phase (0 to 1) relative to the beat cycle
     var cyclePx = (60 / bpm) * window.ecgSpeed;
-    var t = (x % cyclePx) / cyclePx;
+    var t = (x % cyclePx) / cyclePx; 
 
     var y = 0;
     if (!opts.hideP) y += getP(t);
@@ -76,71 +71,82 @@ function sinusTemplate(x, hr, c, opts) {
     return baseline + y;
 }
 
+// 2. SVT: Fast, Narrow, No P-wave
 function svt(x, hr, c) {
     var baseline = (c.height || 300) / 2;
-    var bpm = hr || 190;
+    var bpm = 180; // Fixed rate for SVT stability
     var cyclePx = (60 / bpm) * window.ecgSpeed;
     var t = (x % cyclePx) / cyclePx;
 
-    // T-wave merges into next QRS
-    var qrs = gaussian(t, 0.20, 0.035, window.PX_PER_MV * 1.0); 
-    var twave = gaussian(t, 0.60, 0.10, window.PX_PER_MV * 0.25); 
+    // Shift components left to eliminate P-wave gap
+    var qrs = gaussian(t, 0.15, 0.02, window.PX_PER_MV * 1.1); 
+    var twave = gaussian(t, 0.50, 0.08, window.PX_PER_MV * 0.2); 
 
     return baseline + qrs + twave;
 }
 
+// 3. VT: Monomorphic, Broad
 function vtach(x, hr, c) {
     var baseline = (c.height || 300) / 2;
-    var bpm = hr || 160;
+    var bpm = 160;
     var cyclePx = (60 / bpm) * window.ecgSpeed;
     var t = (x % cyclePx) / cyclePx;
 
-    // Smooth monomorphic sine
-    var val = Math.sin(2 * Math.PI * t) - 0.25 * Math.sin(4 * Math.PI * t - 0.5);
+    // Asymmetric Sine for realistic VT shape
+    // Fast upstroke, slower downstroke
+    var val = Math.sin(2 * Math.PI * t) - 0.2 * Math.sin(4 * Math.PI * t - 0.2);
     return baseline - (val * window.PX_PER_MV * 1.4);
 }
 
+// 4. VF: Fine, Chaotic
 function vfib(x, hr, c) {
     var baseline = (c.height || 300) / 2;
+    
+    // Sum of Spatial Sines (Pure Texture) - High frequency for "Fine" VF
     var y = 0;
-    // Spatial sine waves
-    y += Math.sin(x * 0.12) * 3.5;
-    y += Math.sin(x * 0.18) * 2.5;
-    y += Math.sin(x * 0.05) * 1.5;
+    y += Math.sin(x * 0.15) * 3.0;
+    y += Math.sin(x * 0.22) * 2.0;
+    y += Math.sin(x * 0.09) * 1.5;
     
-    // Smooth amplitude modulation
-    var ampWander = (Math.sin(x * 0.003) * 0.3) + 0.7; 
+    // Amplitude Wander
+    var ampWander = (Math.sin(x * 0.002) * 0.2) + 0.6; 
     
-    return baseline + (y * (window.PX_PER_MV/12) * ampWander);
+    return baseline + (y * (window.PX_PER_MV/15) * ampWander);
 }
 
+// 5. AFib: Irregular
 function afib(x, hr, c) {
     var baseline = (c.height || 300) / 2;
     
-    var fWaves = Math.sin(x * 0.12) * 2 + Math.sin(x * 0.2) * 1.0;
+    // F-Waves (Baseline flutter)
+    var fWaves = Math.sin(x * 0.15) * 1.5 + Math.sin(x * 0.08) * 1.0;
     
-    // Irregularity via phase distortion
-    var cyclePx = (60 / 130) * window.ecgSpeed;
-    var phaseNoise = Math.sin(x * 0.005) * cyclePx * 0.8; 
+    // Irregular QRS using distorted time mapping
+    var cyclePx = (60 / 140) * window.ecgSpeed;
+    // This creates "phase noise" to randomize R-R intervals
+    var phaseNoise = Math.sin(x * 0.005) * cyclePx * 0.6; 
     var t = ((x + phaseNoise) % cyclePx) / cyclePx;
     
     var qrs = 0;
     if(t > 0.2 && t < 0.4) {
         var localT = (t - 0.2) / 0.2;
-        // Simple smooth QRS for Afib
+        // Simple smooth QRS
         qrs = -window.PX_PER_MV * 1.0 * Math.exp(-0.5 * Math.pow(localT - 0.5, 2) / 0.005);
     }
 
     return baseline + fWaves + qrs;
 }
 
+// 6. Asystole
 function asystole(x, hr, c) {
     return (c.height/2) + Math.sin(x * 0.002) * 4;
 }
 
+// 7. CHB: Dissociated
 function chb(x, hr, c) {
     var baseline = (c.height || 300) / 2;
-    var aCycle = (60 / 80) * window.ecgSpeed;
+    // Fixed Rates
+    var aCycle = (60 / 75) * window.ecgSpeed;
     var vCycle = (60 / 35) * window.ecgSpeed;
     
     var aT = (x % aCycle) / aCycle;
@@ -149,6 +155,7 @@ function chb(x, hr, c) {
     return baseline + getP(aT) + getQRSWide(vT) + getT(vT);
 }
 
+// 8. Paced
 function paced(x, hr, c) {
     var baseline = (c.height || 300) / 2;
     var bpm = hr || 70;
@@ -157,8 +164,8 @@ function paced(x, hr, c) {
     
     var y = 0;
     y += getPacerSpike(t);
-    y += gaussian(t, 0.28, 0.08, window.PX_PER_MV * 1.1); 
-    y += gaussian(t, 0.55, 0.12, window.PX_PER_MV * 0.3); 
+    y += gaussian(t, 0.28, 0.05, window.PX_PER_MV * 1.1); // Wide QRS
+    y += gaussian(t, 0.55, 0.09, window.PX_PER_MV * 0.3); // T Wave
     return baseline + y;
 }
 
@@ -180,14 +187,15 @@ var rhythms = {
     sinus: function(x,h,t,c){ return sinusTemplate(x, 75, c, {}); }
 };
 
+// Artefact Wrapper
 function withArtefacts(fn){
     return function(x, hr, tSeconds, canvasInfo){
         var y = fn(x, hr, canvasInfo); 
         var st = window.state || {};
         var flags = (st.noise || {});
-        if(flags.movement) y += movementArtefact(x, tSeconds);
-        if(flags.leadoff) y += leadoffArtefact(tSeconds);
-        if(flags.cpr) y += cprArtefact(x, tSeconds);
+        // Only apply artefacts if flags are ON
+        if(flags.movement) y += Math.sin(tSeconds * 0.5 + x * 0.005) * (window.PX_PER_MM * 1.5);
+        if(flags.leadoff) y += Math.sin(tSeconds * 50) * (window.PX_PER_MM * 4.0);
         return y;
     }
 }
@@ -200,22 +208,24 @@ window.cleanRhythms = rhythms;
 window.__setECGSpeed = setSpeed;
 window.pacingSpike = getPacerSpike; 
 window.pacingComplex = function(t){return 0};
+window.PX_PER_MV = window.PX_PER_MV;
 
-// --- GRID DRAWER ---
+// --- GRID DRAWER (High Visibility) ---
 window.drawECGGrid = function(ctx, w, h) {
+    // Force Black Background
     ctx.fillStyle = '#050505'; 
     ctx.fillRect(0, 0, w, h);
 
     ctx.lineWidth = 1;
-    // Use window.PX_PER_MM to ensure variables are found
-    ctx.strokeStyle = 'rgba(0, 255, 50, 0.20)'; 
+    // Brighter Green for Visibility
+    ctx.strokeStyle = 'rgba(0, 255, 50, 0.3)'; 
     ctx.beginPath();
     for (var x=0; x<=w; x+=window.PX_PER_MM) { ctx.moveTo(x+0.5,0); ctx.lineTo(x+0.5,h); }
     for (var y=0; y<=h; y+=window.PX_PER_MM) { ctx.moveTo(0,y+0.5); ctx.lineTo(w,y+0.5); }
     ctx.stroke();
 
     ctx.lineWidth = 1.5;
-    ctx.strokeStyle = 'rgba(0, 255, 50, 0.40)'; 
+    ctx.strokeStyle = 'rgba(0, 255, 50, 0.5)'; 
     ctx.beginPath();
     for (var x=0; x<=w; x+=window.PX_PER_BIG) { ctx.moveTo(x+0.5,0); ctx.lineTo(x+0.5,h); }
     for (var y=0; y<=h; y+=window.PX_PER_BIG) { ctx.moveTo(0,y+0.5); ctx.lineTo(w,y+0.5); }
@@ -1470,7 +1480,6 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
             lastTimestamp = timestamp;
 
             const dpr = window.devicePixelRatio || 1;
-            
             const logicalW = canvas.width / dpr;
             const logicalH = canvas.height / dpr;
 
@@ -1501,11 +1510,12 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
             if (rhythmFn) {
                 if (typeof window.waveformX === 'undefined') window.waveformX = 0;
 
-                // Loop across screen width
-                for (let x = 0; x <= logicalW; x++) {
+                // --- SUPER SAMPLING LOOP ---
+                // Drawing at 0.5px increments guarantees we never "step over" a peak.
+                // This forces the line to draw the full height of the QRS every frame.
+                for (let x = 0; x <= logicalW; x += 0.5) {
                     const globalX = window.waveformX + x; 
                     
-                    // Pass ALL required args: x, hr, time, canvasInfo
                     let yVal = rhythmFn(globalX, state.hr, simTime, {height: logicalH});
                     
                     if (!isFinite(yVal)) yVal = baselineY;
@@ -1517,8 +1527,7 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
             ctx.stroke();
 
             // 3. Move Paper
-            // Use the global window.ecgSpeed we defined in the top script
-            const speed = (typeof window.ecgSpeed !== 'undefined') ? window.ecgSpeed : 125;
+            const speed = window.ecgSpeed || 125;
             const logicalMove = speed * deltaTime;
             
             if (typeof window.waveformX !== 'undefined') {
