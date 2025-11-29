@@ -1509,32 +1509,32 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
             const rhythmFn = window.rhythms && window.rhythms[state.rhythm];
             
             if (rhythmFn) {
+                // Ensure initialization
                 if (typeof window.waveformX === 'undefined') window.waveformX = 0;
 
                 // --- SUPER SAMPLING LOOP (GRID ALIGNED) ---
-// We lock sampling to a fixed grid in "Global Space" (step 0.5).
-// This ensures we sample the math function at the exact same points 
-// every frame, preventing the "shimmering" or "bouncing height" effect 
-// caused by aliasing when the sampling window slides continuously.
-const step = 0.5;
-const startGlobalX = Math.floor(window.waveformX / step) * step;
-const endGlobalX = window.waveformX + logicalW;
-
-let firstPoint = true;
-for (let gx = startGlobalX; gx <= endGlobalX + step; gx += step) {
-    const screenX = gx - window.waveformX;
-    
-    let yVal = rhythmFn(gx, state.hr, simTime, {height: logicalH});
-    
-    if (!isFinite(yVal)) yVal = baselineY;
-    
-    if (firstPoint) {
-        ctx.moveTo(screenX, yVal);
-        firstPoint = false;
-    } else {
-        ctx.lineTo(screenX, yVal);
-    }
-}
+                // We lock sampling to a fixed grid in "Global Space" (step 0.5).
+                // This prevents the "shimmering" or "bouncing height" effect.
+                const step = 0.5;
+                const startGlobalX = Math.floor(window.waveformX / step) * step;
+                const endGlobalX = window.waveformX + logicalW;
+                
+                let firstPoint = true;
+                for (let gx = startGlobalX; gx <= endGlobalX + step; gx += step) {
+                    const screenX = gx - window.waveformX;
+                    
+                    let yVal = rhythmFn(gx, state.hr, simTime, {height: logicalH});
+                    
+                    if (!isFinite(yVal)) yVal = baselineY;
+                    
+                    if (firstPoint) {
+                        ctx.moveTo(screenX, yVal);
+                        firstPoint = false;
+                    } else {
+                        ctx.lineTo(screenX, yVal);
+                    }
+                }
+            }
             ctx.stroke();
 
             // 3. Move Paper
