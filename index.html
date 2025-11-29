@@ -1511,20 +1511,30 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
             if (rhythmFn) {
                 if (typeof window.waveformX === 'undefined') window.waveformX = 0;
 
-                // --- SUPER SAMPLING LOOP ---
-                // Drawing at 0.5px increments guarantees we never "step over" a peak.
-                // This forces the line to draw the full height of the QRS every frame.
-                for (let x = 0; x <= logicalW; x += 0.5) {
-                    const globalX = window.waveformX + x; 
-                    
-                    let yVal = rhythmFn(globalX, state.hr, simTime, {height: logicalH});
-                    
-                    if (!isFinite(yVal)) yVal = baselineY;
-                    
-                    if (x === 0) ctx.moveTo(x, yVal);
-                    else ctx.lineTo(x, yVal);
-                }
-            }
+                // --- SUPER SAMPLING LOOP (GRID ALIGNED) ---
+// We lock sampling to a fixed grid in "Global Space" (step 0.5).
+// This ensures we sample the math function at the exact same points 
+// every frame, preventing the "shimmering" or "bouncing height" effect 
+// caused by aliasing when the sampling window slides continuously.
+const step = 0.5;
+const startGlobalX = Math.floor(window.waveformX / step) * step;
+const endGlobalX = window.waveformX + logicalW;
+
+let firstPoint = true;
+for (let gx = startGlobalX; gx <= endGlobalX + step; gx += step) {
+    const screenX = gx - window.waveformX;
+    
+    let yVal = rhythmFn(gx, state.hr, simTime, {height: logicalH});
+    
+    if (!isFinite(yVal)) yVal = baselineY;
+    
+    if (firstPoint) {
+        ctx.moveTo(screenX, yVal);
+        firstPoint = false;
+    } else {
+        ctx.lineTo(screenX, yVal);
+    }
+}
             ctx.stroke();
 
             // 3. Move Paper
