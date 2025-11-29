@@ -6,16 +6,18 @@
     <title>ZOLL R Series Simulator - WMEBEM | RCUK 2025</title>
     
     <script>
-// --- GLOBAL CONSTANTS (Fixed Scope) ---
+(function(){'use strict';
+
+// --- GLOBAL SETTINGS ---
 var PX_PER_BIG = 25; 
 var PX_PER_MM = PX_PER_BIG / 5; 
 var PX_PER_MV = PX_PER_MM * 10; 
-var ecgSpeed = PX_PER_BIG * 5; // Global variable matching animation loop
+var ecgSpeed = PX_PER_BIG * 5; // Global speed variable
 
 function setSpeed(pxPerSec){ ecgSpeed = pxPerSec; }
 
-// --- MATH HELPERS (Anti-Aliasing) ---
-// Gaussian curves prevent pixel-snapping jitter
+// --- MATH HELPERS ---
+// Gaussian: Creates smooth, non-pixelated curves to stop jitter
 function gaussian(t, center, width, amp) {
     var x = (t - center);
     return -amp * Math.exp(-0.5 * (x * x) / (width * width));
@@ -28,11 +30,11 @@ function cprArtefact(x, t) {
     return Math.abs(Math.sin(t * Math.PI * 1.8)) * (PX_PER_MV * 1.5) * -1; 
 }
 
-// --- COMPONENT SHAPES ---
+// --- SHAPES ---
 function getP(t) { return gaussian(t, 0.15, 0.04, PX_PER_MV * 0.15); }
 
 function getQRSNarrow(t) {
-    // Composite Gaussian: Q-dip, R-spike, S-dip
+    // Smooth composite QRS
     var q = gaussian(t, 0.23, 0.006, -PX_PER_MV * 0.15); 
     var r = gaussian(t, 0.25, 0.012, PX_PER_MV * 1.2);   
     var s = gaussian(t, 0.27, 0.006, -PX_PER_MV * 0.25); 
@@ -43,16 +45,15 @@ function getQRSWide(t) { return gaussian(t, 0.25, 0.045, PX_PER_MV * 1.1); }
 function getT(t) { return gaussian(t, 0.55, 0.08, PX_PER_MV * 0.35); }
 function getPacerSpike(t) { return gaussian(t, 0.20, 0.0015, PX_PER_MV * 2.5); }
 
-// --- RHYTHM GENERATORS ---
+// --- RHYTHM LOGIC ---
 
-// 1. Sinus Rhythms
+// 1. Sinus Template (Basis for NSR, Brady, Tachy)
 function sinusTemplate(x, hr, c, opts) {
     opts = opts || {};
     var baseline = (c.height || 300) / 2;
     var bpm = hr || 75;
     var cyclePx = (60 / bpm) * ecgSpeed;
-    // Space-based phase (x) prevents time-based wiggling
-    var t = (x % cyclePx) / cyclePx; 
+    var t = (x % cyclePx) / cyclePx; // Phase 0..1
 
     var y = 0;
     if (!opts.hideP) y += getP(t);
@@ -61,64 +62,66 @@ function sinusTemplate(x, hr, c, opts) {
     return baseline + y;
 }
 
-// 2. SVT (Fast, Narrow, No P)
+// 2. SVT: Fast, Narrow, No P-wave, merged T
 function svt(x, hr, c) {
     var baseline = (c.height || 300) / 2;
     var bpm = hr || 190;
     var cyclePx = (60 / bpm) * ecgSpeed;
     var t = (x % cyclePx) / cyclePx;
 
+    // Shifted peaks for rapid look
     var qrs = gaussian(t, 0.20, 0.015, PX_PER_MV * 1.0); 
     var twave = gaussian(t, 0.50, 0.07, PX_PER_MV * 0.25); 
 
     return baseline + qrs + twave;
 }
 
-// 3. VT (Monomorphic Sawtooth)
+// 3. VT: Monomorphic, Broad
 function vtach(x, hr, c) {
     var baseline = (c.height || 300) / 2;
     var bpm = hr || 160;
     var cyclePx = (60 / bpm) * ecgSpeed;
     var t = (x % cyclePx) / cyclePx;
 
+    // Smooth sawtooth sine
     var val = Math.sin(2 * Math.PI * t) - 0.25 * Math.sin(4 * Math.PI * t - 0.5);
     return baseline - (val * PX_PER_MV * 1.4);
 }
 
-// 4. VF (Fine & Chaotic)
+// 4. VF: Fine, Chaotic
 function vfib(x, hr, c) {
     var baseline = (c.height || 300) / 2;
-    // Sum of Spatial Sines (Pure Texture)
+    // Sum of spatial sines for chaos
     var y = 0;
     y += Math.sin(x * 0.15) * 4.0;
     y += Math.sin(x * 0.22) * 2.5;
     y += Math.sin(x * 0.08) * 2.0;
     
-    // Spatial Amplitude Modulation
+    // Position-based amplitude wander
     var ampWander = (Math.sin(x * 0.002) * 0.3) + 0.7; 
     
     return baseline + (y * (PX_PER_MV/12) * ampWander);
 }
 
-// 5. AFib (Irregular)
+// 5. AFib: Irregular R-R + F-waves
 function afib(x, hr, c) {
     var baseline = (c.height || 300) / 2;
     
-    // F-Waves
+    // F-Waves (Baseline flutter)
     var fWaves = Math.sin(x * 0.12) * 3 + Math.sin(x * 0.2) * 1.5;
     
-    // Irregular QRS using Phase Noise
+    // Irregular QRS using distorted time
     var cyclePx = (60 / 130) * ecgSpeed;
-    // Distort time spatially to create irregularity
+    // Distort time to create irregularity
     var phaseNoise = Math.sin(x * 0.005) * cyclePx * 0.8; 
     var t = ((x + phaseNoise) % cyclePx) / cyclePx;
     
     var qrs = 0;
-    // Draw QRS only in the "beat" window of the distorted time
+    // Draw QRS only in the "beat" window
     if(t > 0.2 && t < 0.4) {
-        // Map 0.2-0.4 back to 0-1 for the shape
+        // Remap to 0-1 for shape generation
         var localT = (t - 0.2) / 0.2;
-        // Simplified narrow QRS for AFib
+        // Simplified narrow QRS
         qrs = -PX_PER_MV * 1.0 * Math.exp(-0.5 * Math.pow(localT - 0.5, 2) / 0.01);
     }
 
@@ -130,7 +133,7 @@ function asystole(x, hr, c) {
     return (c.height/2) + Math.sin(x * 0.002) * 4;
 }
 
-// 7. CHB (Dissociated)
+// 7. CHB: Dissociated
 function chb(x, hr, c) {
     var baseline = (c.height || 300) / 2;
     var aCycle = (60 / 80) * ecgSpeed;
@@ -156,6 +159,8 @@ function paced(x, hr, c) {
 }
 
 // --- MAPPING ---
+// Note: We ignore 'tSeconds' for the shape logic (to prevent wiggle), 
+// but pass 'c' (canvas info) correctly.
 var rhythms = {
     nsr: function(x,h,t,c){ return sinusTemplate(x, h, c, {}); },
     sinus_brady: function(x,h,t,c){ return sinusTemplate(x, 45, c, {}); },
@@ -173,10 +178,12 @@ var rhythms = {
     sinus: function(x,h,t,c){ return sinusTemplate(x, 75, c, {}); }
 };
 
-// Artefact Wrapper
+// Artefact Wrapper - THIS WAS THE FIX
 function withArtefacts(fn){
     return function(x, hr, tSeconds, canvasInfo){
-        var y = fn(x, hr, canvasInfo); 
+        // We MUST pass x, hr, and canvasInfo to the rhythm function
+        var y = fn(x, hr, tSeconds, canvasInfo); 
+        
         var st = window.state || {};
         var flags = (st.noise || {});
         if(flags.movement) y += movementArtefact(x, tSeconds);
@@ -186,7 +193,7 @@ function withArtefacts(fn){
     }
 }
 
-// Register Global Wrappers
+// Wrap and Export
 var wrapped = {};
 Object.keys(rhythms).forEach(function(k){ wrapped[k] = withArtefacts(rhythms[k]); });
 
@@ -195,23 +202,20 @@ window.cleanRhythms = rhythms;
 window.__setECGSpeed = setSpeed;
 window.pacingSpike = getPacerSpike; 
 window.pacingComplex = function(t){return 0};
+window.PX_PER_MV = PX_PER_MV;
 
-// --- GLOBAL GRID DRAWER ---
+// --- GRID DRAWER ---
 window.drawECGGrid = function(ctx, w, h) {
-    // 1. Force background to ensure visibility
     ctx.fillStyle = '#050505'; 
     ctx.fillRect(0, 0, w, h);
 
-    // 2. Draw Grid
     ctx.lineWidth = 1;
-    // Small Squares (Faint)
     ctx.strokeStyle = 'rgba(0, 255, 50, 0.20)'; 
     ctx.beginPath();
     for (var x=0; x<=w; x+=PX_PER_MM) { ctx.moveTo(x+0.5,0); ctx.lineTo(x+0.5,h); }
     for (var y=0; y<=h; y+=PX_PER_MM) { ctx.moveTo(0,y+0.5); ctx.lineTo(w,y+0.5); }
     ctx.stroke();
 
-    // Big Squares (Brighter)
     ctx.lineWidth = 1.5;
     ctx.strokeStyle = 'rgba(0, 255, 50, 0.40)'; 
     ctx.beginPath();
@@ -219,7 +223,8 @@ window.drawECGGrid = function(ctx, w, h) {
     for (var y=0; y<=h; y+=PX_PER_BIG) { ctx.moveTo(0,y+0.5); ctx.lineTo(w,y+0.5); }
     ctx.stroke();
 };
-    </script>
+})();
+</script>
     
     <style>  /* Import a digital-style font */
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
