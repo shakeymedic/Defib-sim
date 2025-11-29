@@ -1473,13 +1473,11 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
 
             const dpr = window.devicePixelRatio || 1;
             
-            // Calculate Logic Dimensions
             const logicalW = canvas.width / dpr;
             const logicalH = canvas.height / dpr;
 
-            // 1. Draw Grid (Background)
+            // 1. Draw Grid
             if (window.drawECGGrid) {
-                // Reset transform to ensure grid fills the screen
                 ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
                 window.drawECGGrid(ctx, logicalW, logicalH);
             } else {
@@ -1487,11 +1485,11 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
                 ctx.fillRect(0, 0, logicalW, logicalH);
             }
 
-            // 2. Prepare ECG Trace
+            // 2. Draw Trace
             const simTime = state.scenarioStartTime ? (Date.now() - state.scenarioStartTime)/1000 : 0;
             const baselineY = logicalH / 2;
             
-            ctx.strokeStyle = '#39ff14'; // Neon Green
+            ctx.strokeStyle = '#39ff14'; 
             ctx.lineWidth = 2.5;
             ctx.lineJoin = 'round';
             ctx.lineCap = 'round';
@@ -1500,36 +1498,34 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
             
             ctx.beginPath();
 
-            const rhythmFn = window.rhythms[state.rhythm];
+            const rhythmFn = window.rhythms && window.rhythms[state.rhythm];
             
             if (rhythmFn) {
-                // Draw across the whole screen width
-                // We use 'x' as the absolute source of truth for the wave shape
+                if (typeof window.waveformX === 'undefined') window.waveformX = 0;
+
+                // Loop across screen width
                 for (let x = 0; x <= logicalW; x++) {
-                    const globalX = waveformX + x; // Position in infinite scrolling tape
+                    const globalX = window.waveformX + x; 
                     
-                    // Note: We pass simTime only for artefacts, not for the wave shape itself!
+                    // Pass ALL required args: x, hr, time, canvasInfo
                     let yVal = rhythmFn(globalX, state.hr, simTime, {height: logicalH});
                     
-                    // Safety check for NaN
                     if (!isFinite(yVal)) yVal = baselineY;
                     
-                    // Pacing Logic (Visual overlay only for simplicity in this pass)
-                    if (state.pacingActive && state.pacerOutput > 0) {
-                         // Simple visual spike overlay logic could go here
-                         // But for now we rely on the rhythm function 'paced' or 'nsr' 
-                         // handling the capture shape.
-                    }
-
                     if (x === 0) ctx.moveTo(x, yVal);
                     else ctx.lineTo(x, yVal);
                 }
             }
             ctx.stroke();
 
-            // 3. Move the Paper
-            const logicalMove = ecgSpeed * deltaTime;
-            waveformX += logicalMove;
+            // 3. Move Paper
+            // Use the global window.ecgSpeed we defined in the top script
+            const speed = (typeof window.ecgSpeed !== 'undefined') ? window.ecgSpeed : 125;
+            const logicalMove = speed * deltaTime;
+            
+            if (typeof window.waveformX !== 'undefined') {
+                window.waveformX += logicalMove;
+            }
 
             animationId = requestAnimationFrame(animate);
         }
