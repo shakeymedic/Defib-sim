@@ -55,41 +55,24 @@ function svt(x,hr,tSeconds,canvas){const baseline=canvas.height/2;const bpm=hr>0
 return baseline+y}
 function afib(x,hr,tSeconds,canvas){const baseline=canvas.height/2;const baseHr=hr>0?hr:140;const rrVar=1+perlinLikeNoise(x+tSeconds*30,0.0007,0.35);const bpm=Math.max(80,Math.min(190,baseHr*rrVar));const cyclePx=(60/bpm)*ECG_SPEED;const pos=x%cyclePx;const s=pos/cyclePx;let y=0;const qrsDur=0.09*ECG_SPEED/cyclePx;const qrsEnd=qrsDur;if(s<qrsEnd){const beatAmp=0.9;y+=qrsNarrow(s/qrsDur,beatAmp,0.05,0.15)}
 const fBase=Math.sin((x*0.31)+tSeconds*7.1)*(PX_PER_MM*1.0)+Math.sin((x*0.52)+tSeconds*9.3)*(PX_PER_MM*0.8)+Math.sin((x*0.73)+tSeconds*11.7)*(PX_PER_MM*0.7)+Math.sin((x*1.14)+tSeconds*14.2)*(PX_PER_MM*0.5);return baseline+y+fBase*1.0}
-function vtach(x,hr,tSeconds,canvas){const baseline=canvas.height/2;const bpm=hr>0?hr:180;const cyclePx=(60/bpm)*ECG_SPEED;const pos=x%cyclePx;const s=pos/cyclePx;let y=0;const qrsDur=0.14*ECG_SPEED/cyclePx;if(s<qrsDur){y+=qrsWide(s/qrsDur,0.9)}
-return baseline+y}
-function idioventricular(x,hr,tSeconds,canvas){const baseline=canvas.height/2;const bpm=hr>0?hr:38;const cyclePx=(60/bpm)*ECG_SPEED;const pos=x%cyclePx;const s=pos/cyclePx;let y=0;const qrsDur=0.16*ECG_SPEED/cyclePx;if(s<qrsDur){y+=qrsWide(s/qrsDur,0.8)}
-return baseline+y}
-function vfib(x,_hr,tSeconds,canvas){const baseline=canvas.height/2;const coarse=PX_PER_MV*0.9;const fine=PX_PER_MV*0.25;const k=Math.max(0,Math.min(1,tSeconds/120));const amp=lerp(coarse,fine,k);const y=Math.sin(x*0.22+tSeconds*1.1)*(amp*0.6)+Math.sin(x*0.33+tSeconds*1.5)*(amp*0.45)+Math.sin(x*0.55+tSeconds*0.9)*(amp*0.35)+Math.sin(x*0.88+tSeconds*1.7)*(amp*0.25)+Math.sin(x*1.40+tSeconds*2.2)*(amp*0.15)+perlinLikeNoise(x+tSeconds*30,0.02,amp*0.15);return baseline+y}
-function chb(x,hr,tSeconds,canvas){const baseline=canvas.height/2;const vBpm=hr>0?hr:32;const pBpm=80;const vCycle=(60/vBpm)*ECG_SPEED;const pCycle=(60/pBpm)*ECG_SPEED;const vPos=x%vCycle;const pPos=x%pCycle;let y=0;const pDurPx=0.08*ECG_SPEED;if(pPos<pDurPx){y+=pWave(pPos/pDurPx,0.12)}
-const qrsDurPx=0.16*ECG_SPEED;if(vPos<qrsDurPx){y+=qrsWide(vPos/qrsDurPx,0.85)}
-return baseline+y}
-function paced(x,hr,tSeconds,canvas){
-    // --- THIS FUNCTION IS NO LONGER USED FOR LIVE PACING ---
-    // --- IT'S ONLY A RHYTHM FOR THE QUICK SELECT PANEL ---
-    const baseline=canvas.height/2;
-    const bpm = (window.state && window.state.pacerRate > 0) ? window.state.pacerRate : 70;
-    const cyclePx=(60/bpm)*ECG_SPEED;
+function vtach(x, hr, tSeconds, canvas) {
+    const baseline = canvas.height / 2;
+    const bpm = hr > 0 ? hr : 160;
+    // Calculate cycle length based on current speed
+    const cyclePx = (60 / bpm) * ECG_SPEED;
+    
+    // Normalized position 0.0 to 1.0
+    const t = (x % cyclePx) / cyclePx; 
 
-    // Use a stable 'x' reference, not the moving pacerStartTime
-    const pos = x % cyclePx;
+    // VT Amplitude (Large)
+    const amp = PX_PER_MV * 1.8; 
     
-    let y = 0;
-    y += pacingComplex(pos); // Use the new function
+    // Create a continuous "sawtooth" sine wave
+    // We combine a fundamental sine with a secondary sine to give it that "cardiac" shape
+    // rather than a perfect mathematical sine wave.
+    const val = Math.sin(2 * Math.PI * t) - 0.2 * Math.sin(4 * Math.PI * t + 0.5);
     
-    /*
-    let y=0;
-    y+=pacingSpike(pos);
-    const qrsStart=3;
-    const qrsDurPx=0.14*ECG_SPEED;
-    if(pos>=qrsStart&&pos<(qrsStart+qrsDurPx)){
-        const s=(pos-qrsStart)/qrsDurPx;
-        y+=qrsWide(s,0.9)
-    } else if(pos>=(qrsStart+qrsDurPx)&&pos<(qrsStart+qrsDurPx+0.16*ECG_SPEED)){
-        const t=(pos-(qrsStart+qrsDurPx))/(0.16*ECG_SPEED);
-        y+=tWave(t,0.25)
-    }
-    */
-    return baseline+y
+    return baseline - (val * amp);
 }
 function brady(x,hr,tSeconds,canvas){return sinusTemplate(x,hr||38,canvas.height,tSeconds,{rAmp:0.9,tAmp:0.25})}
 function asystole(x,_hr,tSeconds,canvas){const baseline=canvas.height/2;const wander=Math.sin(tSeconds*0.2)*(PX_PER_MM*0.2);return baseline+wander}
@@ -1390,17 +1373,15 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
 
         function animate(timestamp) {
             if (!canvas || !ctx) {
-                console.error('Canvas or context missing in animate!');
+                requestAnimationFrame(animate);
                 return;
             }
             
-            if (lastTimestamp === 0) {
-                lastTimestamp = timestamp;
-            }
+            if (lastTimestamp === 0) lastTimestamp = timestamp;
             const deltaTime = (timestamp - lastTimestamp) / 1000;
             lastTimestamp = timestamp;
 
-            // --- MOBILE ENHANCEMENT: Scale pixel movement by DPR ---
+            // Scale pixel movement by device pixel ratio for sharpness
             const dpr = window.devicePixelRatio || 1;
             const logicalPixelsToMove = ecgSpeed * deltaTime;
             
@@ -1408,86 +1389,73 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
                 ? (Date.now() - state.scenarioStartTime) / 1000
                 : 0;
             
-            // Get logical canvas dimensions
             const logicalCanvasWidth = canvas.width / dpr;
             const logicalCanvasHeight = canvas.height / dpr;
 
+            // Clear Screen
             if (window.drawECGGrid) {
-                // drawECGGrid expects logical coordinates
                 window.drawECGGrid(ctx, logicalCanvasWidth, logicalCanvasHeight);
             } else {
                 ctx.fillStyle = '#000';
                 ctx.fillRect(0, 0, logicalCanvasWidth, logicalCanvasHeight);
             }
             
-            // Safety check
-            if (!window.rhythms || !window.cleanRhythms || !window.rhythms[state.rhythm] || !window.cleanRhythms[state.rhythm]) {
-                console.error(`Rhythm "${state.rhythm}" not found.`);
+            if (!window.rhythms || !window.rhythms[state.rhythm]) {
                 animationId = requestAnimationFrame(animate);
                 return;
             }
 
             const underlyingRhythmFunc = window.rhythms[state.rhythm];
-            
-            const baselineY = logicalCanvasHeight / 2; // Use logical height
+            const baselineY = logicalCanvasHeight / 2;
             const pacerSpikeFn = window.pacingSpike;
             const pacerComplexFn = window.pacingComplex;
 
-            // --- NEW: ECG GLOW EFFECTS ---
+            // --- ECG LINE STYLING ---
             ctx.strokeStyle = '#39ff14'; // Neon Green
-            ctx.lineWidth = 2.5;         // Slightly thicker line
-            ctx.lineJoin = 'round';      // Smooth corners
+            ctx.lineWidth = 2.0;         // Standard width (sharp)
+            ctx.lineJoin = 'round';
             ctx.lineCap = 'round';
             
-            // This creates the "bloom" effect
-            ctx.shadowBlur = 12;         
-            ctx.shadowColor = 'rgba(57, 255, 20, 0.8)'; 
+            // Reduced shadow for better performance (less jitter)
+            ctx.shadowBlur = 6;         
+            ctx.shadowColor = 'rgba(57, 255, 20, 0.6)'; 
             
             ctx.beginPath();
 
-            let yValues = [];
-            // lastMarkerX is now correctly defined outside animate()
+            // Cache for sensing logic
             let y_underlying_cache = {}; 
-
-            // --- PACING BUG FIX ---
             const getUnderlyingY = (x_pos) => {
                 if (y_underlying_cache[x_pos]) return y_underlying_cache[x_pos];
-                
                 let senseRhythm = state.originalRhythm || state.rhythm;
-                if (senseRhythm === 'sinus') senseRhythm = 'nsr'; 
+                if (senseRhythm === 'sinus') senseRhythm = 'nsr';
                 
-                if (!window.cleanRhythms[senseRhythm]) {
-                     y_underlying_cache[x_pos] = 0;
-                     return 0;
-                }
+                if (!window.cleanRhythms[senseRhythm]) return 0;
                 
                 const vitals = rhythmVitals[senseRhythm];
-                if (!vitals) {
-                     y_underlying_cache[x_pos] = 0;
-                     return 0;
-                }
+                if (!vitals) return 0;
+                
                 const y = window.cleanRhythms[senseRhythm](x_pos, vitals.hr, simTimeSeconds, {height: logicalCanvasHeight}) - baselineY;
                 y_underlying_cache[x_pos] = y;
                 return y;
             };
 
-            for (let x = 0; x < logicalCanvasWidth; x++) {
+            // --- DRAWING LOOP ---
+            // We draw slightly past the width to ensure the line connects off-screen
+            for (let x = 0; x <= logicalCanvasWidth; x++) {
                 const currentX = waveformX + x;
                 
-                // 1. Get the base rhythm
-                let y_underlying_raw = underlyingRhythmFunc(currentX, state.hr, simTimeSeconds, {height: logicalCanvasHeight}) - baselineY;
-                
-                // --- FIX for "Double Beats" ---
                 let y_final_raw;
+                let y_underlying_raw = underlyingRhythmFunc(currentX, state.hr, simTimeSeconds, {height: logicalCanvasHeight}) - baselineY;
+
+                // 1. Pacing Capture Logic
                 if (state.pacingActive && state.isCaptured) {
-                    y_final_raw = 0; 
+                    y_final_raw = 0; // Flat baseline if captured (spikes added later)
                 } else {
-                    y_final_raw = y_underlying_raw; 
+                    y_final_raw = y_underlying_raw;
                 }
 
-                // 2. Run sensing logic
+                // 2. Sensing Logic (Demand Pacing / Sync)
                 const shouldSense = (state.pacingActive && !state.isCaptured) || state.syncMode;
-
                 if (shouldSense) {
                     let y_sense = getUnderlyingY(currentX);
                     const refractoryPx = ecgSpeed * 0.20; 
@@ -1495,23 +1463,18 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
                     if (currentX - state.lastSensedQRS_X > refractoryPx) {
                         let y_prev = getUnderlyingY(currentX - 1);
                         let y_next = getUnderlyingY(currentX + 1);
-                        
                         const PX_PER_MV = window.PX_PER_MV || 100;
+                        
+                        // Simple peak detection (negative because Y goes down)
                         if (y_sense < y_prev && y_sense < y_next && y_sense < -PX_PER_MV * 0.3) {
                             state.lastSensedQRS_X = currentX;
-                            
-                            if (state.pacingActive && !state.isCaptured) {
-                                state.lastCardiacEvent = currentX; 
-                            }
-                            
-                            if (state.syncMode) {
-                                state.syncMarkers.push(currentX);
-                            }
+                            if (state.pacingActive && !state.isCaptured) state.lastCardiacEvent = currentX; 
+                            if (state.syncMode) state.syncMarkers.push(currentX);
                         }
                     }
                 }
                 
-                // 3. Pacing Logic
+                // 3. Pacing Spikes Logic
                 const pacerCyclePx = (60 / state.pacerRate) * ecgSpeed;
                 const timeSinceLastEvent = currentX - state.lastCardiacEvent;
                 
@@ -1519,6 +1482,7 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
                     state.lastCardiacEvent = currentX;
                     state.firedSpikes.push(currentX);
                     
+                    // Cleanup old spikes
                     const pruneThreshold = waveformX - (logicalCanvasWidth * 2);
                     while(state.firedSpikes.length > 0 && state.firedSpikes[0] < pruneThreshold) {
                         state.firedSpikes.shift();
@@ -1530,7 +1494,7 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
                     const captureComplexDurationPx = (0.14 + 0.16) * ecgSpeed + 3; 
                     
                     for (const spikeX of state.firedSpikes) {
-                        const timeSinceFiredSpike = Math.floor(currentX - spikeX);
+                        const timeSinceFiredSpike = currentX - spikeX; // Float math is fine here
 
                         if (timeSinceFiredSpike >= 0) {
                             if (state.isCaptured) {
@@ -1548,38 +1512,29 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
                     }
                 }
                 
-                // 4. Drawing
-                const pixelX = x; 
-                const raw_pixelY = baselineY + y_final_raw;
-                let pixelY;
-
-                if (!isFinite(raw_pixelY)) {
-                    pixelY = baselineY; 
-                } else {
-                    pixelY = Math.round(raw_pixelY);
-                }
+                // 4. Draw Point
+                // JITTER FIX: Do NOT use Math.round(). Let canvas anti-alias the float coordinates.
+                const pixelY = baselineY + y_final_raw;
                 
-                yValues[x] = pixelY; 
-
                 if (x === 0) {
-                    ctx.moveTo(pixelX, pixelY);
+                    ctx.moveTo(x, pixelY);
                 } else {
-                    ctx.lineTo(pixelX, pixelY);
+                    ctx.lineTo(x, pixelY);
                 }
             }
             ctx.stroke(); 
             
-            // SYNC MARKER DRAWING
+            // Draw Sync Markers (Overlay)
             if (state.syncMode) {
                 ctx.save();
                 ctx.strokeStyle = '#FFFFFF'; 
                 ctx.lineWidth = 2; 
-                ctx.shadowBlur = 0; // No glow for markers
+                ctx.shadowBlur = 0; 
                 
                 let stillVisibleMarkers = [];
                 for (const markerX of state.syncMarkers) {
                     const pixelX = markerX - waveformX;
-                    if (pixelX >= 0 && pixelX < logicalCanvasWidth) {
+                    if (pixelX >= -5 && pixelX < logicalCanvasWidth + 5) {
                         ctx.beginPath();
                         ctx.moveTo(pixelX, 5);
                         ctx.lineTo(pixelX, 15);
