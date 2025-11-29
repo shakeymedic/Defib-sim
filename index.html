@@ -6,130 +6,142 @@
     <title>ZOLL R Series Simulator - WMEBEM | RCUK 2025</title>
     
     <script>
-(function(){'use strict';const PX_PER_BIG=25;const PX_PER_MM=PX_PER_BIG/5;const PX_PER_MV=PX_PER_MM*10;let ECG_SPEED=PX_PER_BIG*5;function setSpeed(pxPerSec){ECG_SPEED=pxPerSec}
-const lerp=(a,b,t)=>a+(b-a)*t;function perlinLikeNoise(x,freq,amp){const a=Math.sin(x*freq*0.71)*0.5+0.5;const b=Math.sin(x*freq*1.33+1.7)*0.5+0.5;return(a*0.6+b*0.4-0.5)*2*amp}
-function baselineWander(tSeconds){return Math.sin(tSeconds*0.25)*(PX_PER_MM*0.6)}
+(function(){'use strict';
+const PX_PER_BIG=25;const PX_PER_MM=PX_PER_BIG/5;const PX_PER_MV=PX_PER_MM*10;let ECG_SPEED=PX_PER_BIG*5;
+function setSpeed(pxPerSec){ECG_SPEED=pxPerSec}
+const lerp=(a,b,t)=>a+(b-a)*t;
+function perlinLikeNoise(x,freq,amp){const a=Math.sin(x*freq*0.71)*0.5+0.5;const b=Math.sin(x*freq*1.33+1.7)*0.5+0.5;return(a*0.6+b*0.4-0.5)*2*amp}
+
+// Artefacts
 function movementArtefact(x,tSeconds){return Math.sin((x+tSeconds*120)*0.05)*(PX_PER_MM*1.0)}
 function leadoffArtefact(tSeconds){return Math.sin(tSeconds*1.2)*(PX_PER_MM*1.5)}
 function cprArtefact(x,tSeconds){const f=2.0;return Math.sin(2*Math.PI*f*tSeconds)*(PX_PER_MV*0.6)+perlinLikeNoise(x+tSeconds*60,0.03,PX_PER_MM*2.0)}
+
+// Waveforms
 function pWave(s,amp=0.1){const a=Math.max(0,Math.min(1,Math.sin(Math.PI*s)));return-a*(PX_PER_MV*amp)}
 function qrsNarrow(s,rAmp=1.0,qAmp=0.15,sAmp=0.25){if(s<0.22){const t=s/0.22;return PX_PER_MV*qAmp*(t*0.4)}else if(s<0.55){const t=(s-0.22)/0.33;return-PX_PER_MV*rAmp*(Math.sin(t*Math.PI))}else{const t=(s-0.55)/0.45;return PX_PER_MV*sAmp*(Math.sin(t*Math.PI))}}
 function qrsWide(s,rAmp=0.9){return-PX_PER_MV*rAmp*(Math.sin(s*Math.PI))}
-function tWave(s,amp=0.3){
-    // s is 0 to 1. Use a single sine wave that starts and ends at 0.
-    // This fixes the bug where the baseline would jump after a T-wave.
-    return -PX_PER_MV * amp * Math.sin(s * Math.PI);
-}
-function pacingSpike(pxPosInCycle){return pxPosInCycle<5?-PX_PER_MV*2.0:0} // Spike is negative (draws UP), 5 pixels wide
+function tWave(s,amp=0.3){return -PX_PER_MV * amp * Math.sin(s * Math.PI);}
 
-// --- NEW PACING FUNCTION ---
-// This draws a complete "spike + QRS + T" complex.
-// The 'pos' is the number of pixels since the pacer fired.
+// Pacing
+function pacingSpike(pxPosInCycle){return pxPosInCycle<5?-PX_PER_MV*2.0:0} 
 function pacingComplex(pos) {
     let y = 0;
-    y += pacingSpike(pos); // Add the spike at the beginning
-
-    const qrsStart = 3; // Start QRS 3px after spike
-    const qrsDurPx = 0.14 * ECG_SPEED; // ~140ms QRS
-    const tDurPx = 0.16 * ECG_SPEED; // ~160ms T-wave
+    y += pacingSpike(pos);
+    const qrsStart = 3; 
+    const qrsDurPx = 0.14 * ECG_SPEED; 
+    const tDurPx = 0.16 * ECG_SPEED; 
     const qrsEnd = qrsStart + qrsDurPx;
     const tEnd = qrsEnd + tDurPx;
-
     if (pos >= qrsStart && pos < qrsEnd) {
         const s = (pos - qrsStart) / qrsDurPx;
-        y += qrsWide(s, 0.9); // Draw the wide QRS
+        y += qrsWide(s, 0.9); 
     } else if (pos >= qrsEnd && pos < tEnd) {
         const s = (pos - qrsEnd) / tDurPx;
-        y += tWave(s, 0.25); // Draw the T-wave
+        y += tWave(s, 0.25); 
     }
     return y;
 }
-// --- END NEW PACING FUNCTION ---
 
-function sinusTemplate(x,hr,canvasHeight,tSeconds,opts={}){const baseline=canvasHeight/2;const bpm=hr>0?hr:75;const cyclePx=(60/bpm)*ECG_SPEED;const pos=x%cyclePx;const s=pos/cyclePx;let y=0;const pDur=0.08*ECG_SPEED/cyclePx;const prEnd=pDur+0.10*ECG_SPEED/cyclePx;const qrsDur=0.09*ECG_SPEED/cyclePx;const qrsStart=prEnd;const qrsEnd=qrsStart+qrsDur;const tEnd=qrsEnd+0.16*ECG_SPEED/cyclePx;if(s<pDur){y+=pWave(s/pDur,opts.pAmp??0.1)}else if(s<prEnd){}else if(s<qrsEnd){const qrsPhase=(s-qrsStart)/(qrsDur);y+=qrsNarrow(qrsPhase,opts.rAmp??1.0,opts.qAmp??0.15,opts.sAmp??0.25)}else if(s<tEnd){const tPhase=(s-qrsEnd)/(tEnd-qrsEnd);y+=tWave(tPhase,opts.tAmp??0.3)}
-return baseline+y}
+// Rhythms
+function sinusTemplate(x,hr,canvasHeight,tSeconds,opts={}){
+    // Fallback if canvasHeight is missing
+    const h = canvasHeight || 300; 
+    const baseline=h/2;
+    const bpm=hr>0?hr:75;const cyclePx=(60/bpm)*ECG_SPEED;const pos=x%cyclePx;const s=pos/cyclePx;let y=0;const pDur=0.08*ECG_SPEED/cyclePx;const prEnd=pDur+0.10*ECG_SPEED/cyclePx;const qrsDur=0.09*ECG_SPEED/cyclePx;const qrsStart=prEnd;const qrsEnd=qrsStart+qrsDur;const tEnd=qrsEnd+0.16*ECG_SPEED/cyclePx;if(s<pDur){y+=pWave(s/pDur,opts.pAmp??0.1)}else if(s<prEnd){}else if(s<qrsEnd){const qrsPhase=(s-qrsStart)/(qrsDur);y+=qrsNarrow(qrsPhase,opts.rAmp??1.0,opts.qAmp??0.15,opts.sAmp??0.25)}else if(s<tEnd){const tPhase=(s-qrsEnd)/(tEnd-qrsEnd);y+=tWave(tPhase,opts.tAmp??0.3)}
+    return baseline+y;
+}
+
 function nsr(x,hr,tSeconds,canvas){return sinusTemplate(x,hr||75,canvas.height,tSeconds,{})}
 function sinusBrady(x,hr,tSeconds,canvas){return sinusTemplate(x,hr||45,canvas.height,tSeconds,{rAmp:0.9,tAmp:0.25})}
 function sinusTach(x,hr,tSeconds,canvas){return sinusTemplate(x,hr||120,canvas.height,tSeconds,{rAmp:1.1,tAmp:0.35})}
-function svt(x,hr,tSeconds,canvas){const baseline=canvas.height/2;const bpm=hr>0?hr:190;const cyclePx=(60/bpm)*ECG_SPEED;const pos=x%cyclePx;const s=pos/cyclePx;let y=0;const prShort=0.06*ECG_SPEED/cyclePx;const qrsDur=0.08*ECG_SPEED/cyclePx;const qrsStart=prShort;const qrsEnd=qrsStart+qrsDur;const tEnd=qrsEnd+0.14*ECG_SPEED/cyclePx;if(s<prShort){y+=pWave(s/prShort,0.05)}else if(s<qrsEnd){y+=qrsNarrow((s-qrsStart)/qrsDur,0.95,0.1,0.2)}else if(s<tEnd){y+=tWave((s-qrsEnd)/(tEnd-qrsEnd),0.25)}
-return baseline+y}
-function afib(x,hr,tSeconds,canvas){const baseline=canvas.height/2;const baseHr=hr>0?hr:140;const rrVar=1+perlinLikeNoise(x+tSeconds*30,0.0007,0.35);const bpm=Math.max(80,Math.min(190,baseHr*rrVar));const cyclePx=(60/bpm)*ECG_SPEED;const pos=x%cyclePx;const s=pos/cyclePx;let y=0;const qrsDur=0.09*ECG_SPEED/cyclePx;const qrsEnd=qrsDur;if(s<qrsEnd){const beatAmp=0.9;y+=qrsNarrow(s/qrsDur,beatAmp,0.05,0.15)}
-const fBase=Math.sin((x*0.31)+tSeconds*7.1)*(PX_PER_MM*1.0)+Math.sin((x*0.52)+tSeconds*9.3)*(PX_PER_MM*0.8)+Math.sin((x*0.73)+tSeconds*11.7)*(PX_PER_MM*0.7)+Math.sin((x*1.14)+tSeconds*14.2)*(PX_PER_MM*0.5);return baseline+y+fBase*1.0}
-function vtach(x, hr, tSeconds, canvas) {
-    const baseline = canvas.height / 2;
-    const bpm = hr > 0 ? hr : 160;
-    // Calculate cycle length based on current speed
-    const cyclePx = (60 / bpm) * ECG_SPEED;
-    
-    // Normalized position 0.0 to 1.0
-    const t = (x % cyclePx) / cyclePx; 
+function svt(x,hr,tSeconds,canvas){const baseline=canvas.height/2;const bpm=hr>0?hr:190;const cyclePx=(60/bpm)*ECG_SPEED;const pos=x%cyclePx;const s=pos/cyclePx;let y=0;const prShort=0.06*ECG_SPEED/cyclePx;const qrsDur=0.08*ECG_SPEED/cyclePx;const qrsStart=prShort;const qrsEnd=qrsStart+qrsDur;const tEnd=qrsEnd+0.14*ECG_SPEED/cyclePx;if(s<prShort){y+=pWave(s/prShort,0.05)}else if(s<qrsEnd){y+=qrsNarrow((s-qrsStart)/qrsDur,0.95,0.1,0.2)}else if(s<tEnd){y+=tWave((s-qrsEnd)/(tEnd-qrsEnd),0.25)}return baseline+y}
+function afib(x,hr,tSeconds,canvas){const baseline=canvas.height/2;const baseHr=hr>0?hr:140;const rrVar=1+perlinLikeNoise(x+tSeconds*30,0.0007,0.35);const bpm=Math.max(80,Math.min(190,baseHr*rrVar));const cyclePx=(60/bpm)*ECG_SPEED;const pos=x%cyclePx;const s=pos/cyclePx;let y=0;const qrsDur=0.09*ECG_SPEED/cyclePx;const qrsEnd=qrsDur;if(s<qrsEnd){const beatAmp=0.9;y+=qrsNarrow(s/qrsDur,beatAmp,0.05,0.15)}const fBase=Math.sin((x*0.31)+tSeconds*7.1)*(PX_PER_MM*1.0)+Math.sin((x*0.52)+tSeconds*9.3)*(PX_PER_MM*0.8)+Math.sin((x*0.73)+tSeconds*11.7)*(PX_PER_MM*0.7)+Math.sin((x*1.14)+tSeconds*14.2)*(PX_PER_MM*0.5);return baseline+y+fBase*1.0}
 
-    // VT Amplitude (Large)
+// --- UPDATED VTACH (Livelike) ---
+function vtach(x, hr, tSeconds, canvas) {
+    const h = canvas ? canvas.height : 300;
+    const baseline = h / 2;
+    const bpm = hr > 0 ? hr : 160;
+    const cyclePx = (60 / bpm) * ECG_SPEED;
+    const t = (x % cyclePx) / cyclePx; 
     const amp = PX_PER_MV * 1.8; 
-    
-    // Create a continuous "sawtooth" sine wave
-    // We combine a fundamental sine with a secondary sine to give it that "cardiac" shape
-    // rather than a perfect mathematical sine wave.
     const val = Math.sin(2 * Math.PI * t) - 0.2 * Math.sin(4 * Math.PI * t + 0.5);
-    
     return baseline - (val * amp);
 }
+
 function brady(x,hr,tSeconds,canvas){return sinusTemplate(x,hr||38,canvas.height,tSeconds,{rAmp:0.9,tAmp:0.25})}
 function asystole(x,_hr,tSeconds,canvas){const baseline=canvas.height/2;const wander=Math.sin(tSeconds*0.2)*(PX_PER_MM*0.2);return baseline+wander}
+function vfib(x,hr,tSeconds,canvas){const baseline=canvas.height/2;const t=tSeconds;const n=perlinLikeNoise(x*0.01+t,0.1,PX_PER_MV*0.5)+Math.sin(x*0.02+t*5)*PX_PER_MV*0.3+Math.sin(x*0.05+t*2)*PX_PER_MV*0.1;return baseline+n}
+function chb(x,hr,tSeconds,canvas){const baseline=canvas.height/2;const atrRate=75;const ventRate=35;const atrCycle=(60/atrRate)*ECG_SPEED;const ventCycle=(60/ventRate)*ECG_SPEED;const pPos=(x+tSeconds*10)%atrCycle;const qrsPos=x%ventCycle;let y=0;if(pPos/atrCycle<0.10)y+=pWave((pPos/atrCycle)/0.10);if(qrsPos/ventCycle<0.12)y+=qrsWide((qrsPos/ventCycle)/0.12);return baseline+y}
+function paced(x,hr,tSeconds,canvas){const baseline=canvas.height/2;const bpm=hr||70;const cycle=(60/bpm)*ECG_SPEED;const pos=x%cycle;return baseline + pacingComplex(pos)}
+function idioventricular(x,hr,tSeconds,canvas){const baseline=canvas.height/2;const bpm=hr||40;const cycle=(60/bpm)*ECG_SPEED;const pos=x%cycle;let y=0;if(pos/cycle<0.15)y+=qrsWide((pos/cycle)/0.15,0.8);return baseline+y}
 
-// --- THIS IS THE FIX ---
-// The functions below now correctly pass the 'canvasInfo' object (which contains the logical height)
-// instead of hard-coding 'window.__ecgCanvas' (which has the physical height).
 const rhythms = {
-    nsr: function(x, hr, tSeconds, canvasInfo) { return nsr(x, hr, tSeconds, canvasInfo) },
-    sinus_brady: function(x, hr, tSeconds, canvasInfo) { return sinusBrady(x, hr, tSeconds, canvasInfo) },
-    sinus_tach: function(x, hr, tSeconds, canvasInfo) { return sinusTach(x, hr, tSeconds, canvasInfo) },
-    svt: function(x, hr, tSeconds, canvasInfo) { return svt(x, hr, tSeconds, canvasInfo) },
-    afib: function(x, hr, tSeconds, canvasInfo) { return afib(x, hr, tSeconds, canvasInfo) },
-    vtach: function(x, hr, tSeconds, canvasInfo) { return vtach(x, hr, tSeconds, canvasInfo) },
-    vt_pulseless: function(x, hr, tSeconds, canvasInfo) { return vtach(x, 180, tSeconds, canvasInfo) },
-    vfib: function(x, hr, tSeconds, canvasInfo) { return vfib(x, hr, tSeconds, canvasInfo) },
-    brady: function(x, hr, tSeconds, canvasInfo) { return brady(x, hr, tSeconds, canvasInfo) },
-    chb: function(x, hr, tSeconds, canvasInfo) { return chb(x, hr, tSeconds, canvasInfo) },
-    paced: function(x, hr, tSeconds, canvasInfo) { return paced(x, hr, tSeconds, canvasInfo) },
-    idioventricular: function(x, hr, tSeconds, canvasInfo) { return idioventricular(x, hr, tSeconds, canvasInfo) },
-    asystole: function(x, hr, tSeconds, canvasInfo) { return asystole(x, hr, tSeconds, canvasInfo) },
-    sinus: function(x, hr, tSeconds, canvasInfo) { return nsr(x, hr, tSeconds, canvasInfo) },
+    nsr: (x,h,t,c) => nsr(x,h,t,c),
+    sinus_brady: (x,h,t,c) => sinusBrady(x,h,t,c),
+    sinus_tach: (x,h,t,c) => sinusTach(x,h,t,c),
+    svt: (x,h,t,c) => svt(x,h,t,c),
+    afib: (x,h,t,c) => afib(x,h,t,c),
+    vtach: (x,h,t,c) => vtach(x,h,t,c),
+    vt_pulseless: (x,h,t,c) => vtach(x, 180, t, c),
+    vfib: (x,h,t,c) => vfib(x,h,t,c),
+    brady: (x,h,t,c) => brady(x,h,t,c),
+    chb: (x,h,t,c) => chb(x,h,t,c),
+    paced: (x,h,t,c) => paced(x,h,t,c),
+    idioventricular: (x,h,t,c) => idioventricular(x,h,t,c),
+    asystole: (x,h,t,c) => asystole(x,h,t,c),
+    sinus: (x,h,t,c) => nsr(x,h,t,c),
 };
-// --- END OF FIX ---
 
 function drawECGGrid(ctx, w, h) {
     ctx.save();
     ctx.clearRect(0, 0, w, h);
-    
-    // Faint green grid instead of white
     ctx.strokeStyle = 'rgba(0, 255, 50, 0.15)'; 
     ctx.lineWidth = 1;
-    
     ctx.beginPath();
-    // Small squares (mm)
     for (let x = 0; x <= w; x += PX_PER_MM) { ctx.moveTo(x + 0.5, 0); ctx.lineTo(x + 0.5, h); }
     for (let y = 0; y <= h; y += PX_PER_MM) { ctx.moveTo(0, y + 0.5); ctx.lineTo(w, y + 0.5); }
     ctx.stroke();
-
-    // Large squares
     ctx.strokeStyle = 'rgba(0, 255, 50, 0.25)'; 
     ctx.lineWidth = 1.5;
     ctx.beginPath();
     for (let x = 0; x <= w; x += PX_PER_BIG) { ctx.moveTo(x + 0.5, 0); ctx.lineTo(x + 0.5, h); }
     for (let y = 0; y <= h; y += PX_PER_BIG) { ctx.moveTo(0, y + 0.5); ctx.lineTo(w, y + 0.5); }
     ctx.stroke();
-    
     ctx.restore();
 }
-function drawCalibrationPulse(ctx){const startX=12;const startY=Math.floor(ctx.canvas.height*0.75);const height=PX_PER_MV;const width=PX_PER_BIG;ctx.save();ctx.strokeStyle='#0f0';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(startX,startY);ctx.lineTo(startX,startY-height);ctx.lineTo(startX+width,startY-height);ctx.lineTo(startX+width,startY);ctx.stroke();ctx.restore()}
-function withArtefacts(fn){return function(x,hr,tSeconds){const canvas=window.__ecgCanvas||document.getElementById('ecgCanvas');let y=fn.apply(null, arguments); // <-- IMPORTANT: Pass ALL arguments
-const st=window.state||{};const flags=(st.noise||{});if(flags.movement)y+=movementArtefact(x,tSeconds);if(flags.leadoff)y+=leadoffArtefact(tSeconds);if(flags.cpr)y+=cprArtefact(x,tSeconds);return y}}
-const wrapped={};Object.keys(rhythms).forEach(k=>wrapped[k]=withArtefacts(rhythms[k]));
-window.rhythms=wrapped; // This is the wrapped one (with artefacts)
-window.cleanRhythms = rhythms; // <<< This is the important fix for pacing/sync
-window.drawECGGrid=drawECGGrid;window.drawCalibrationPulse=drawCalibrationPulse;window.__setECGSpeed=setSpeed;window.pacingSpike=pacingSpike;window.qrsWide=qrsWide;window.tWave=tWave;window.PX_PER_MV=PX_PER_MV;
-window.pacingComplex = pacingComplex; // <<< ADD THIS
+
+// --- ARTEFACT WRAPPER FIX ---
+// Explicitly pass canvasInfo (the 4th argument) to the inner function
+function withArtefacts(fn){
+    return function(x, hr, tSeconds, canvasInfo){
+        const canvas = window.__ecgCanvas || document.getElementById('ecgCanvas');
+        
+        // Pass all 4 arguments explicitly to the rhythm function
+        let y = fn(x, hr, tSeconds, canvasInfo); 
+
+        const st = window.state || {};
+        const flags = (st.noise || {});
+        if(flags.movement) y += movementArtefact(x, tSeconds);
+        if(flags.leadoff) y += leadoffArtefact(tSeconds);
+        if(flags.cpr) y += cprArtefact(x, tSeconds);
+        return y;
+    }
+}
+
+const wrapped={};
+Object.keys(rhythms).forEach(k=>wrapped[k]=withArtefacts(rhythms[k]));
+
+window.rhythms=wrapped; 
+window.cleanRhythms = rhythms; 
+window.drawECGGrid=drawECGGrid;
+window.__setECGSpeed=setSpeed;
+window.pacingSpike=pacingSpike;
+window.qrsWide=qrsWide;
+window.tWave=tWave;
+window.PX_PER_MV=PX_PER_MV;
+window.pacingComplex = pacingComplex;
 })();
     </script>
     
