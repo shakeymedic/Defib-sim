@@ -19,7 +19,25 @@ function cprArtefact(x,tSeconds){const f=2.0;return Math.sin(2*Math.PI*f*tSecond
 
 // Waveforms
 function pWave(s,amp=0.1){const a=Math.max(0,Math.min(1,Math.sin(Math.PI*s)));return-a*(PX_PER_MV*amp)}
-function qrsNarrow(s,rAmp=1.0,qAmp=0.15,sAmp=0.25){if(s<0.22){const t=s/0.22;return PX_PER_MV*qAmp*(t*0.4)}else if(s<0.55){const t=(s-0.22)/0.33;return-PX_PER_MV*rAmp*(Math.sin(t*Math.PI))}else{const t=(s-0.55)/0.45;return PX_PER_MV*sAmp*(Math.sin(t*Math.PI))}}
+
+// --- JITTER FIX: Softened QRS Peak ---
+function qrsNarrow(s,rAmp=1.0,qAmp=0.15,sAmp=0.25){
+    if(s<0.20){ // Q Wave
+        const t=s/0.20;
+        return PX_PER_MV*qAmp*(t*0.4);
+    }else if(s<0.60){ // R Wave (Main Spike)
+        const t=(s-0.20)/0.40;
+        // We use Math.pow(..., 0.5) to "fatten" the sine wave peak. 
+        // This prevents the "bounce" when the sharp 1-pixel peak falls between screen pixels.
+        const sinePulse = Math.sin(t*Math.PI);
+        const softenedPeak = Math.pow(sinePulse, 0.5); 
+        return -PX_PER_MV*rAmp*softenedPeak;
+    }else{ // S Wave
+        const t=(s-0.60)/0.40;
+        return PX_PER_MV*sAmp*(Math.sin(t*Math.PI));
+    }
+}
+
 function qrsWide(s,rAmp=0.9){return-PX_PER_MV*rAmp*(Math.sin(s*Math.PI))}
 function tWave(s,amp=0.3){return -PX_PER_MV * amp * Math.sin(s * Math.PI);}
 
@@ -45,10 +63,32 @@ function pacingComplex(pos) {
 
 // Rhythms
 function sinusTemplate(x,hr,canvasHeight,tSeconds,opts={}){
-    // Fallback if canvasHeight is missing
     const h = canvasHeight || 300; 
     const baseline=h/2;
-    const bpm=hr>0?hr:75;const cyclePx=(60/bpm)*ECG_SPEED;const pos=x%cyclePx;const s=pos/cyclePx;let y=0;const pDur=0.08*ECG_SPEED/cyclePx;const prEnd=pDur+0.10*ECG_SPEED/cyclePx;const qrsDur=0.09*ECG_SPEED/cyclePx;const qrsStart=prEnd;const qrsEnd=qrsStart+qrsDur;const tEnd=qrsEnd+0.16*ECG_SPEED/cyclePx;if(s<pDur){y+=pWave(s/pDur,opts.pAmp??0.1)}else if(s<prEnd){}else if(s<qrsEnd){const qrsPhase=(s-qrsStart)/(qrsDur);y+=qrsNarrow(qrsPhase,opts.rAmp??1.0,opts.qAmp??0.15,opts.sAmp??0.25)}else if(s<tEnd){const tPhase=(s-qrsEnd)/(tEnd-qrsEnd);y+=tWave(tPhase,opts.tAmp??0.3)}
+    const bpm=hr>0?hr:75;
+    const cyclePx=(60/bpm)*ECG_SPEED;
+    const pos=x%cyclePx;
+    const s=pos/cyclePx;
+    let y=0;
+    
+    // Increased Durations slightly to improve sampling stability
+    const pDur=0.09*ECG_SPEED/cyclePx; 
+    const prEnd=pDur+0.08*ECG_SPEED/cyclePx;
+    const qrsDur=0.11*ECG_SPEED/cyclePx; // Wider QRS = Less Jitter
+    const qrsStart=prEnd;
+    const qrsEnd=qrsStart+qrsDur;
+    const tEnd=qrsEnd+0.18*ECG_SPEED/cyclePx;
+    
+    if(s<pDur){y+=pWave(s/pDur,opts.pAmp??0.1)}
+    else if(s<prEnd){}
+    else if(s<qrsEnd){
+        const qrsPhase=(s-qrsStart)/(qrsDur);
+        y+=qrsNarrow(qrsPhase,opts.rAmp??1.0,opts.qAmp??0.15,opts.sAmp??0.25)
+    }
+    else if(s<tEnd){
+        const tPhase=(s-qrsEnd)/(tEnd-qrsEnd);
+        y+=tWave(tPhase,opts.tAmp??0.3)
+    }
     return baseline+y;
 }
 
@@ -58,7 +98,6 @@ function sinusTach(x,hr,tSeconds,canvas){return sinusTemplate(x,hr||120,canvas.h
 function svt(x,hr,tSeconds,canvas){const baseline=canvas.height/2;const bpm=hr>0?hr:190;const cyclePx=(60/bpm)*ECG_SPEED;const pos=x%cyclePx;const s=pos/cyclePx;let y=0;const prShort=0.06*ECG_SPEED/cyclePx;const qrsDur=0.08*ECG_SPEED/cyclePx;const qrsStart=prShort;const qrsEnd=qrsStart+qrsDur;const tEnd=qrsEnd+0.14*ECG_SPEED/cyclePx;if(s<prShort){y+=pWave(s/prShort,0.05)}else if(s<qrsEnd){y+=qrsNarrow((s-qrsStart)/qrsDur,0.95,0.1,0.2)}else if(s<tEnd){y+=tWave((s-qrsEnd)/(tEnd-qrsEnd),0.25)}return baseline+y}
 function afib(x,hr,tSeconds,canvas){const baseline=canvas.height/2;const baseHr=hr>0?hr:140;const rrVar=1+perlinLikeNoise(x+tSeconds*30,0.0007,0.35);const bpm=Math.max(80,Math.min(190,baseHr*rrVar));const cyclePx=(60/bpm)*ECG_SPEED;const pos=x%cyclePx;const s=pos/cyclePx;let y=0;const qrsDur=0.09*ECG_SPEED/cyclePx;const qrsEnd=qrsDur;if(s<qrsEnd){const beatAmp=0.9;y+=qrsNarrow(s/qrsDur,beatAmp,0.05,0.15)}const fBase=Math.sin((x*0.31)+tSeconds*7.1)*(PX_PER_MM*1.0)+Math.sin((x*0.52)+tSeconds*9.3)*(PX_PER_MM*0.8)+Math.sin((x*0.73)+tSeconds*11.7)*(PX_PER_MM*0.7)+Math.sin((x*1.14)+tSeconds*14.2)*(PX_PER_MM*0.5);return baseline+y+fBase*1.0}
 
-// --- UPDATED VTACH (Livelike) ---
 function vtach(x, hr, tSeconds, canvas) {
     const h = canvas ? canvas.height : 300;
     const baseline = h / 2;
@@ -66,13 +105,35 @@ function vtach(x, hr, tSeconds, canvas) {
     const cyclePx = (60 / bpm) * ECG_SPEED;
     const t = (x % cyclePx) / cyclePx; 
     const amp = PX_PER_MV * 1.8; 
+    // Sawtooth Monomorphic VT
     const val = Math.sin(2 * Math.PI * t) - 0.2 * Math.sin(4 * Math.PI * t + 0.5);
     return baseline - (val * amp);
 }
 
+// --- NEW REALISTIC VFIB (Sum of Sines) ---
+function vfib(x, hr, tSeconds, canvas) {
+    const h = canvas ? canvas.height : 300;
+    const baseline = h / 2;
+    
+    // We sum 3 sine waves with non-harmonic frequencies to create chaos
+    // x * 0.XX controls the spatial shape (texture)
+    // tSeconds * XX controls how fast it morphs (movement)
+    let val = 0;
+    val += Math.sin(x * 0.03 + tSeconds * 4.0) * 10;
+    val += Math.sin(x * 0.041 + tSeconds * 3.2) * 8;
+    val += Math.sin(x * 0.057 + tSeconds * 2.1) * 6;
+
+    // Amplitude modulation to make it "Course" then "Fine" randomly
+    const ampWander = Math.sin(tSeconds * 0.5) * 0.3 + 1.0; 
+    
+    // Scale to appropriate mV size
+    const finalAmp = val * (PX_PER_MV / 12) * ampWander;
+
+    return baseline + finalAmp;
+}
+
 function brady(x,hr,tSeconds,canvas){return sinusTemplate(x,hr||38,canvas.height,tSeconds,{rAmp:0.9,tAmp:0.25})}
 function asystole(x,_hr,tSeconds,canvas){const baseline=canvas.height/2;const wander=Math.sin(tSeconds*0.2)*(PX_PER_MM*0.2);return baseline+wander}
-function vfib(x,hr,tSeconds,canvas){const baseline=canvas.height/2;const t=tSeconds;const n=perlinLikeNoise(x*0.01+t,0.1,PX_PER_MV*0.5)+Math.sin(x*0.02+t*5)*PX_PER_MV*0.3+Math.sin(x*0.05+t*2)*PX_PER_MV*0.1;return baseline+n}
 function chb(x,hr,tSeconds,canvas){const baseline=canvas.height/2;const atrRate=75;const ventRate=35;const atrCycle=(60/atrRate)*ECG_SPEED;const ventCycle=(60/ventRate)*ECG_SPEED;const pPos=(x+tSeconds*10)%atrCycle;const qrsPos=x%ventCycle;let y=0;if(pPos/atrCycle<0.10)y+=pWave((pPos/atrCycle)/0.10);if(qrsPos/ventCycle<0.12)y+=qrsWide((qrsPos/ventCycle)/0.12);return baseline+y}
 function paced(x,hr,tSeconds,canvas){const baseline=canvas.height/2;const bpm=hr||70;const cycle=(60/bpm)*ECG_SPEED;const pos=x%cycle;return baseline + pacingComplex(pos)}
 function idioventricular(x,hr,tSeconds,canvas){const baseline=canvas.height/2;const bpm=hr||40;const cycle=(60/bpm)*ECG_SPEED;const pos=x%cycle;let y=0;if(pos/cycle<0.15)y+=qrsWide((pos/cycle)/0.15,0.8);return baseline+y}
@@ -112,15 +173,10 @@ function drawECGGrid(ctx, w, h) {
     ctx.restore();
 }
 
-// --- ARTEFACT WRAPPER FIX ---
-// Explicitly pass canvasInfo (the 4th argument) to the inner function
 function withArtefacts(fn){
     return function(x, hr, tSeconds, canvasInfo){
         const canvas = window.__ecgCanvas || document.getElementById('ecgCanvas');
-        
-        // Pass all 4 arguments explicitly to the rhythm function
         let y = fn(x, hr, tSeconds, canvasInfo); 
-
         const st = window.state || {};
         const flags = (st.noise || {});
         if(flags.movement) y += movementArtefact(x, tSeconds);
@@ -132,7 +188,6 @@ function withArtefacts(fn){
 
 const wrapped={};
 Object.keys(rhythms).forEach(k=>wrapped[k]=withArtefacts(rhythms[k]));
-
 window.rhythms=wrapped; 
 window.cleanRhythms = rhythms; 
 window.drawECGGrid=drawECGGrid;
