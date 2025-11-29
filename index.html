@@ -115,11 +115,30 @@ const rhythms = {
 };
 // --- END OF FIX ---
 
-function drawECGGrid(ctx,w,h){ctx.save();ctx.clearRect(0,0,w,h);ctx.strokeStyle='rgba(255,255,255,0.06)';ctx.lineWidth=1;ctx.beginPath();for(let x=0;x<=w;x+=PX_PER_MM){ctx.moveTo(x+0.5,0);ctx.lineTo(x+0.5,h)}
-for(let y=0;y<=h;y+=PX_PER_MM){ctx.moveTo(0,y+0.5);ctx.lineTo(w,y+0.5)}
-ctx.stroke();ctx.strokeStyle='rgba(255,255,255,0.12)';ctx.lineWidth=1.2;ctx.beginPath();for(let x=0;x<=w;x+=PX_PER_BIG){ctx.moveTo(x+0.5,0);ctx.lineTo(x+0.5,h)}
-for(let y=0;y<=h;y+=PX_PER_BIG){ctx.moveTo(0,y+0.5);ctx.lineTo(w,y+0.5)}
-ctx.stroke();ctx.restore()}
+function drawECGGrid(ctx, w, h) {
+    ctx.save();
+    ctx.clearRect(0, 0, w, h);
+    
+    // Faint green grid instead of white
+    ctx.strokeStyle = 'rgba(0, 255, 50, 0.15)'; 
+    ctx.lineWidth = 1;
+    
+    ctx.beginPath();
+    // Small squares (mm)
+    for (let x = 0; x <= w; x += PX_PER_MM) { ctx.moveTo(x + 0.5, 0); ctx.lineTo(x + 0.5, h); }
+    for (let y = 0; y <= h; y += PX_PER_MM) { ctx.moveTo(0, y + 0.5); ctx.lineTo(w, y + 0.5); }
+    ctx.stroke();
+
+    // Large squares
+    ctx.strokeStyle = 'rgba(0, 255, 50, 0.25)'; 
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    for (let x = 0; x <= w; x += PX_PER_BIG) { ctx.moveTo(x + 0.5, 0); ctx.lineTo(x + 0.5, h); }
+    for (let y = 0; y <= h; y += PX_PER_BIG) { ctx.moveTo(0, y + 0.5); ctx.lineTo(w, y + 0.5); }
+    ctx.stroke();
+    
+    ctx.restore();
+}
 function drawCalibrationPulse(ctx){const startX=12;const startY=Math.floor(ctx.canvas.height*0.75);const height=PX_PER_MV;const width=PX_PER_BIG;ctx.save();ctx.strokeStyle='#0f0';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(startX,startY);ctx.lineTo(startX,startY-height);ctx.lineTo(startX+width,startY-height);ctx.lineTo(startX+width,startY);ctx.stroke();ctx.restore()}
 function withArtefacts(fn){return function(x,hr,tSeconds){const canvas=window.__ecgCanvas||document.getElementById('ecgCanvas');let y=fn.apply(null, arguments); // <-- IMPORTANT: Pass ALL arguments
 const st=window.state||{};const flags=(st.noise||{});if(flags.movement)y+=movementArtefact(x,tSeconds);if(flags.leadoff)y+=leadoffArtefact(tSeconds);if(flags.cpr)y+=cprArtefact(x,tSeconds);return y}}
@@ -1311,7 +1330,25 @@ window.pacingComplex = pacingComplex; // <<< ADD THIS
             const pacerSpikeFn = window.pacingSpike;
             const pacerComplexFn = window.pacingComplex; // <<< ADD THIS
  
-            ctx.strokeStyle = '#00ff00';
+            // ... inside animate(timestamp) ...
+
+            const pacerSpikeFn = window.pacingSpike;
+            const pacerComplexFn = window.pacingComplex;
+ 
+            // --- NEW: ECG GLOW EFFECTS ---
+            ctx.strokeStyle = '#39ff14'; // Neon Green
+            ctx.lineWidth = 2.5;         // Slightly thicker line
+            ctx.lineJoin = 'round';      // Smooth corners
+            ctx.lineCap = 'round';
+            
+            // This creates the "bloom" effect
+            ctx.shadowBlur = 12;         
+            ctx.shadowColor = 'rgba(57, 255, 20, 0.8)'; 
+            
+            ctx.beginPath();
+
+            let yValues = [];
+            // ... continue with loop ...
             ctx.lineWidth = 2; // This line width is now in logical pixels, scaled by ctx.scale()
             ctx.shadowBlur = 0;
             ctx.shadowColor = 'transparent';
