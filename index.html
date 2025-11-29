@@ -1403,8 +1403,7 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
             // --- MOBILE ENHANCEMENT: Scale pixel movement by DPR ---
             const dpr = window.devicePixelRatio || 1;
             const logicalPixelsToMove = ecgSpeed * deltaTime;
-            const physicalPixelsToMove = logicalPixelsToMove * dpr;
-
+            
             const simTimeSeconds = state.scenarioStartTime
                 ? (Date.now() - state.scenarioStartTime) / 1000
                 : 0;
@@ -1429,17 +1428,11 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
             }
 
             const underlyingRhythmFunc = window.rhythms[state.rhythm];
-            const scenario = scenarios[state.selectedScenario];
             
             const baselineY = logicalCanvasHeight / 2; // Use logical height
             const pacerSpikeFn = window.pacingSpike;
-            const pacerComplexFn = window.pacingComplex; // <<< ADD THIS
- 
-            // ... inside animate(timestamp) ...
-
-            const pacerSpikeFn = window.pacingSpike;
             const pacerComplexFn = window.pacingComplex;
- 
+
             // --- NEW: ECG GLOW EFFECTS ---
             ctx.strokeStyle = '#39ff14'; // Neon Green
             ctx.lineWidth = 2.5;         // Slightly thicker line
@@ -1453,24 +1446,15 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
             ctx.beginPath();
 
             let yValues = [];
-            // ... continue with loop ...
-            ctx.lineWidth = 2; // This line width is now in logical pixels, scaled by ctx.scale()
-            ctx.shadowBlur = 0;
-            ctx.shadowColor = 'transparent';
-            ctx.beginPath();
-
-            let yValues = [];
             // lastMarkerX is now correctly defined outside animate()
             let y_underlying_cache = {}; 
 
             // --- PACING BUG FIX ---
-            // This function was crashing the animate loop if state.originalRhythm was 'sinus'
-            // because rhythmVitals['sinus'] does not exist.
             const getUnderlyingY = (x_pos) => {
                 if (y_underlying_cache[x_pos]) return y_underlying_cache[x_pos];
                 
                 let senseRhythm = state.originalRhythm || state.rhythm;
-                if (senseRhythm === 'sinus') senseRhythm = 'nsr'; // FIX: Map 'sinus' to 'nsr'
+                if (senseRhythm === 'sinus') senseRhythm = 'nsr'; 
                 
                 if (!window.cleanRhythms[senseRhythm]) {
                      y_underlying_cache[x_pos] = 0;
@@ -1479,43 +1463,34 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
                 
                 const vitals = rhythmVitals[senseRhythm];
                 if (!vitals) {
-                     console.error("No vitals for", senseRhythm);
                      y_underlying_cache[x_pos] = 0;
                      return 0;
                 }
-                // --- MOBILE ENHANCEMENT: Pass logical height to rhythm function ---
                 const y = window.cleanRhythms[senseRhythm](x_pos, vitals.hr, simTimeSeconds, {height: logicalCanvasHeight}) - baselineY;
                 y_underlying_cache[x_pos] = y;
                 return y;
             };
-            // --- END OF BUG FIX ---
 
             for (let x = 0; x < logicalCanvasWidth; x++) {
-                // We calculate position based on logical pixels
                 const currentX = waveformX + x;
                 
-                // 1. Get the base rhythm (which is now correctly set in state, e.g., 'paced' or 'chb')
-                 // --- MOBILE ENHANCEMENT: Pass logical height to rhythm function ---
+                // 1. Get the base rhythm
                 let y_underlying_raw = underlyingRhythmFunc(currentX, state.hr, simTimeSeconds, {height: logicalCanvasHeight}) - baselineY;
                 
-                // --- THIS IS THE FIX for "Double Beats" ---
-                // If we are captured, IGNORE the underlying rhythm and start from a clean baseline.
+                // --- FIX for "Double Beats" ---
                 let y_final_raw;
                 if (state.pacingActive && state.isCaptured) {
-                    y_final_raw = 0; // Start at baseline, suppressing the native rhythm
+                    y_final_raw = 0; 
                 } else {
-                    y_final_raw = y_underlying_raw; // Use the native rhythm
+                    y_final_raw = y_underlying_raw; 
                 }
-                // --- END FIX ---
 
-                // 2. Run sensing logic, to find R-waves from the *original* rhythm
-                
-                // --- SENSING FIX: Sense if (Demand Pacing) OR (Sync Mode is On) ---
+                // 2. Run sensing logic
                 const shouldSense = (state.pacingActive && !state.isCaptured) || state.syncMode;
 
                 if (shouldSense) {
                     let y_sense = getUnderlyingY(currentX);
-                    const refractoryPx = ecgSpeed * 0.20; // 200ms refractory
+                    const refractoryPx = ecgSpeed * 0.20; 
                     
                     if (currentX - state.lastSensedQRS_X > refractoryPx) {
                         let y_prev = getUnderlyingY(currentX - 1);
@@ -1525,136 +1500,99 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
                         if (y_sense < y_prev && y_sense < y_next && y_sense < -PX_PER_MV * 0.3) {
                             state.lastSensedQRS_X = currentX;
                             
-                            // --- DEMAND PACING LOGIC ---
-                            // Only reset pacer timer if we are in demand pacing mode
                             if (state.pacingActive && !state.isCaptured) {
                                 state.lastCardiacEvent = currentX; 
                             }
-                            // --- END DEMAND PACING ---
                             
-                            // <<< SYNC MARKER FIX: Add marker position on QRS detection
                             if (state.syncMode) {
                                 state.syncMarkers.push(currentX);
                             }
-                            // <<< END SYNC MARKER FIX
                         }
                     }
                 }
-                // --- END OF SENSING BLOCK ---
                 
-                // 3. IF pacer is on AND we are NOT captured, add spikes on top of underlying rhythm
-                // --- NEW DEMAND PACING (FIRING) LOGIC ---
-                
+                // 3. Pacing Logic
                 const pacerCyclePx = (60 / state.pacerRate) * ecgSpeed;
                 const timeSinceLastEvent = currentX - state.lastCardiacEvent;
                 
-                // --- FIRING LOGIC ---
                 if (state.pacingActive && timeSinceLastEvent >= pacerCyclePx) {
-                    // Time to fire
                     state.lastCardiacEvent = currentX;
                     state.firedSpikes.push(currentX);
                     
-                    // Prune spikes that are way off-screen (e.g., 2x canvas width)
                     const pruneThreshold = waveformX - (logicalCanvasWidth * 2);
                     while(state.firedSpikes.length > 0 && state.firedSpikes[0] < pruneThreshold) {
                         state.firedSpikes.shift();
                     }
                 }
 
-                // --- DRAWING LOGIC ---
                 if (state.pacingActive && state.pacerOutput > 0) {
-                    const spikeDurationPx = 5; // Duration of spike itself
-                    const captureComplexDurationPx = (0.14 + 0.16) * ecgSpeed + 3; // Duration of spike+qrs+t
+                    const spikeDurationPx = 5; 
+                    const captureComplexDurationPx = (0.14 + 0.16) * ecgSpeed + 3; 
                     
-                    // Check if we are near *any* fired spike
                     for (const spikeX of state.firedSpikes) {
-                        // --- THIS IS THE FIX for "Spike Jitter" ---
-                        // Floor the time difference to get an integer pixel position.
-                        // This prevents anti-aliasing jitter on the spike's edges.
                         const timeSinceFiredSpike = Math.floor(currentX - spikeX);
-                        // --- END FIX ---
 
                         if (timeSinceFiredSpike >= 0) {
                             if (state.isCaptured) {
-                                // --- CAPTURED ---
                                 if (timeSinceFiredSpike < captureComplexDurationPx) {
                                     y_final_raw = pacerComplexFn(timeSinceFiredSpike);
-                                    break; // Found our spike, stop checking
+                                    break; 
                                 }
                             } else {
-                                // --- UNCAPTURED ---
                                 if (timeSinceFiredSpike < spikeDurationPx) {
                                     y_final_raw += pacerSpikeFn(timeSinceFiredSpike);
-                                    break; // Found our spike, stop checking
+                                    break; 
                                 }
                             }
                         }
                     }
                 }
-                // --- END OF NEW DEMAND PACING ---
                 
-                // 4. (If state.isCaptured is true, the underlyingRhythmFunc is 'paced' anyway)
-                
-                // --- JITTER FIX: Removed Math.round() ---
-                const pixelX = x; // Use logical x for drawing
+                // 4. Drawing
+                const pixelX = x; 
                 const raw_pixelY = baselineY + y_final_raw;
                 let pixelY;
 
-                // --- ROBUSTNESS CHECK ---
                 if (!isFinite(raw_pixelY)) {
-                    pixelY = baselineY; // Reset to baseline if NaN/Infinity
+                    pixelY = baselineY; 
                 } else {
-                    // --- JITTER FIX ---
-                    // Round the *final* value before storing/drawing
                     pixelY = Math.round(raw_pixelY);
                 }
                 
                 yValues[x] = pixelY; 
 
                 if (x === 0) {
-                    // if (isFinite(pixelY)) { // No longer needed, pixelY is always finite now
-                        ctx.moveTo(pixelX, pixelY);
-                    // } else {
-                    //     ctx.moveTo(pixelX, baselineY);
-                    // }
+                    ctx.moveTo(pixelX, pixelY);
                 } else {
-                    // if (isFinite(pixelY)) { // No longer needed
-                        ctx.lineTo(pixelX, pixelY);
-                    // } else {
-                    //     ctx.moveTo(pixelX, baselineY); // Start new path if bad value
-                    // }
+                    ctx.lineTo(pixelX, pixelY);
                 }
             }
             ctx.stroke(); 
             
-            // <<< SYNC MARKER FIX: New drawing logic (removed rhythm whitelist)
+            // SYNC MARKER DRAWING
             if (state.syncMode) {
                 ctx.save();
                 ctx.strokeStyle = '#FFFFFF'; 
-                ctx.lineWidth = 2; // Logical pixels
+                ctx.lineWidth = 2; 
+                ctx.shadowBlur = 0; // No glow for markers
                 
                 let stillVisibleMarkers = [];
                 for (const markerX of state.syncMarkers) {
-                    // Calculate the marker's current position on screen (in logical pixels)
                     const pixelX = markerX - waveformX;
-                    
-                    // If it's visible on the screen
                     if (pixelX >= 0 && pixelX < logicalCanvasWidth) {
                         ctx.beginPath();
                         ctx.moveTo(pixelX, 5);
                         ctx.lineTo(pixelX, 15);
                         ctx.stroke();
-                        stillVisibleMarkers.push(markerX); // Keep it
+                        stillVisibleMarkers.push(markerX); 
                     }
                 }
-                state.syncMarkers = stillVisibleMarkers; // Prune old markers that have scrolled off-screen
+                state.syncMarkers = stillVisibleMarkers; 
                 ctx.restore();
             } else {
-                state.syncMarkers = []; // Clear markers if sync is turned off
+                state.syncMarkers = []; 
             }
-            // <<< END SYNC MARKER FIX
  
-            // Move waveformX by logical pixels
             waveformX += logicalPixelsToMove;
             animationId = requestAnimationFrame(animate);
         }
