@@ -190,7 +190,8 @@ var rhythms = {
 // Artefact Wrapper
 function withArtefacts(fn){
     return function(x, hr, tSeconds, canvasInfo){
-        var y = fn(x, hr, canvasInfo); 
+        // FIX: Pass 'tSeconds' so that 'canvasInfo' arrives as the 4th argument
+        var y = fn(x, hr, tSeconds, canvasInfo); 
         var st = window.state || {};
         var flags = (st.noise || {});
         // Only apply artefacts if flags are ON
