@@ -6,27 +6,24 @@
     <title>ZOLL R Series Simulator - WMEBEM | RCUK 2025</title>
     
     <script>
-(function(){'use strict';
+// --- GLOBAL CONSTANTS (Fixed Scope) ---
+var PX_PER_BIG = 25; 
+var PX_PER_MM = PX_PER_BIG / 5; 
+var PX_PER_MV = PX_PER_MM * 10; 
+var ecgSpeed = PX_PER_BIG * 5; // Global variable matching animation loop
 
-// --- CONFIGURATION ---
-const PX_PER_BIG = 25; 
-const PX_PER_MM = PX_PER_BIG / 5; 
-const PX_PER_MV = PX_PER_MM * 10; 
-let ECG_SPEED = PX_PER_BIG * 5; // 25mm/sec
+function setSpeed(pxPerSec){ ecgSpeed = pxPerSec; }
 
-function setSpeed(pxPerSec){ ECG_SPEED = pxPerSec; }
-
-// --- MATH HELPERS (Anti-Jitter) ---
-// Gaussian function creates smooth curves that never "bounce" between pixels
+// --- MATH HELPERS (Anti-Aliasing) ---
+// Gaussian curves prevent pixel-snapping jitter
 function gaussian(t, center, width, amp) {
-    const x = (t - center);
+    var x = (t - center);
     return -amp * Math.exp(-0.5 * (x * x) / (width * width));
 }
 
 // --- ARTEFACTS ---
-// These are the ONLY things allowed to use 'tSeconds' (Live Time)
 function movementArtefact(x, t) { return Math.sin(t * 0.5 + x * 0.005) * (PX_PER_MM * 1.5); }
-function leadoffArtefact(t) { return Math.sin(t * 50) * (PX_PER_MM * 4.0); } // 50Hz hum
+function leadoffArtefact(t) { return Math.sin(t * 50) * (PX_PER_MM * 4.0); } 
 function cprArtefact(x, t) { 
     return Math.abs(Math.sin(t * Math.PI * 1.8)) * (PX_PER_MV * 1.5) * -1; 
 }
@@ -36,10 +33,9 @@ function getP(t) { return gaussian(t, 0.15, 0.04, PX_PER_MV * 0.15); }
 
 function getQRSNarrow(t) {
     // Composite Gaussian: Q-dip, R-spike, S-dip
-    // Smooth transitions = No jitter
-    const q = gaussian(t, 0.23, 0.006, -PX_PER_MV * 0.15); 
-    const r = gaussian(t, 0.25, 0.012, PX_PER_MV * 1.2);   
-    const s = gaussian(t, 0.27, 0.006, -PX_PER_MV * 0.25); 
+    var q = gaussian(t, 0.23, 0.006, -PX_PER_MV * 0.15); 
+    var r = gaussian(t, 0.25, 0.012, PX_PER_MV * 1.2);   
+    var s = gaussian(t, 0.27, 0.006, -PX_PER_MV * 0.25); 
     return q + r + s;
 }
 
@@ -47,131 +43,112 @@ function getQRSWide(t) { return gaussian(t, 0.25, 0.045, PX_PER_MV * 1.1); }
 function getT(t) { return gaussian(t, 0.55, 0.08, PX_PER_MV * 0.35); }
 function getPacerSpike(t) { return gaussian(t, 0.20, 0.0015, PX_PER_MV * 2.5); }
 
-// --- RHYTHM GENERATORS (Stateless) ---
+// --- RHYTHM GENERATORS ---
 
-function sinusTemplate(x, hr, c, opts={}) {
-    const baseline = (c.height || 300) / 2;
-    const bpm = hr || 75;
-    const cyclePx = (60 / bpm) * ECG_SPEED;
-    // CRITICAL FIX: Use position (x) for phase, NOT time.
-    const t = (x % cyclePx) / cyclePx; 
+// 1. Sinus Rhythms
+function sinusTemplate(x, hr, c, opts) {
+    opts = opts || {};
+    var baseline = (c.height || 300) / 2;
+    var bpm = hr || 75;
+    var cyclePx = (60 / bpm) * ecgSpeed;
+    // Space-based phase (x) prevents time-based wiggling
+    var t = (x % cyclePx) / cyclePx; 
 
-    let y = 0;
+    var y = 0;
     if (!opts.hideP) y += getP(t);
     y += getQRSNarrow(t);
     y += getT(t);
     return baseline + y;
 }
 
-// SVT: Fast, Narrow, No P-wave, Merged T-wave
+// 2. SVT (Fast, Narrow, No P)
 function svt(x, hr, c) {
-    const baseline = (c.height || 300) / 2;
-    const bpm = hr || 190;
-    const cyclePx = (60 / bpm) * ECG_SPEED;
-    const t = (x % cyclePx) / cyclePx;
+    var baseline = (c.height || 300) / 2;
+    var bpm = hr || 190;
+    var cyclePx = (60 / bpm) * ecgSpeed;
+    var t = (x % cyclePx) / cyclePx;
 
-    // Peaks shifted to align correctly
-    const qrs = gaussian(t, 0.20, 0.015, PX_PER_MV * 1.0); 
-    const twave = gaussian(t, 0.50, 0.07, PX_PER_MV * 0.25); 
+    var qrs = gaussian(t, 0.20, 0.015, PX_PER_MV * 1.0); 
+    var twave = gaussian(t, 0.50, 0.07, PX_PER_MV * 0.25); 
 
     return baseline + qrs + twave;
 }
 
-// VT: Monomorphic, Broad Sine-like loops
+// 3. VT (Monomorphic Sawtooth)
 function vtach(x, hr, c) {
-    const baseline = (c.height || 300) / 2;
-    const bpm = hr || 160;
-    const cyclePx = (60 / bpm) * ECG_SPEED;
-    const t = (x % cyclePx) / cyclePx;
+    var baseline = (c.height || 300) / 2;
+    var bpm = hr || 160;
+    var cyclePx = (60 / bpm) * ecgSpeed;
+    var t = (x % cyclePx) / cyclePx;
 
-    // Smooth sawtooth shape
-    const val = Math.sin(2 * Math.PI * t) - 0.25 * Math.sin(4 * Math.PI * t - 0.5);
+    var val = Math.sin(2 * Math.PI * t) - 0.25 * Math.sin(4 * Math.PI * t - 0.5);
     return baseline - (val * PX_PER_MV * 1.4);
 }
 
-// VF: Fine, Chaotic, Fast
+// 4. VF (Fine & Chaotic)
 function vfib(x, hr, c) {
-    const baseline = (c.height || 300) / 2;
-    
-    // Sum of Spatial Sines (No 't' variable prevents wiggle)
-    // We use 'x' directly to create the texture
-    let y = 0;
+    var baseline = (c.height || 300) / 2;
+    // Sum of Spatial Sines (Pure Texture)
+    var y = 0;
     y += Math.sin(x * 0.15) * 4.0;
     y += Math.sin(x * 0.22) * 2.5;
     y += Math.sin(x * 0.08) * 2.0;
     
-    // Amplitude modulation based on position (not time)
-    const ampWander = (Math.sin(x * 0.002) * 0.3) + 0.7; 
+    // Spatial Amplitude Modulation
+    var ampWander = (Math.sin(x * 0.002) * 0.3) + 0.7; 
     
     return baseline + (y * (PX_PER_MV/12) * ampWander);
 }
 
-// AFib: Irregular spacing + F-waves
+// 5. AFib (Irregular)
 function afib(x, hr, c) {
-    const baseline = (c.height || 300) / 2;
+    var baseline = (c.height || 300) / 2;
     
-    // 1. F-Waves (Baseline flutter) - Position based
-    const fWaves = Math.sin(x * 0.12) * 3 + Math.sin(x * 0.2) * 1.5;
+    // F-Waves
+    var fWaves = Math.sin(x * 0.12) * 3 + Math.sin(x * 0.2) * 1.5;
     
-    // 2. Irregular QRS
-    // We create a deterministic "random" beat map based on x position
-    // Average cycle ~100px (depends on speed)
-    const seed = Math.sin(x * 0.01); // Slow wander
-    const trigger = Math.sin(x * 0.03 + seed * 5); // Irregular peaks
+    // Irregular QRS using Phase Noise
+    var cyclePx = (60 / 130) * ecgSpeed;
+    // Distort time spatially to create irregularity
+    var phaseNoise = Math.sin(x * 0.005) * cyclePx * 0.8; 
+    var t = ((x + phaseNoise) % cyclePx) / cyclePx;
     
-    let qrs = 0;
-    // Threshold the trigger to create sharp QRS events
-    if (trigger > 0.95) {
-        // Map the tip of the sine wave to a 0-1 progress for the QRS
-        // This is a visual approximation that looks correct for scrolling
-        const t = (trigger - 0.95) / 0.05; 
-        qrs = getQRSNarrow(0.5, 1.0) * t; // Scale amplitude by peak
-        // Note: Full QRS shape is hard in stateless, this is a simplified spike
-        // Switching to a pure spacing approach:
+    var qrs = 0;
+    // Draw QRS only in the "beat" window of the distorted time
+    if(t > 0.2 && t < 0.4) {
+        // Map 0.2-0.4 back to 0-1 for the shape
+        var localT = (t - 0.2) / 0.2;
+        // Simplified narrow QRS for AFib
+        qrs = -PX_PER_MV * 1.0 * Math.exp(-0.5 * Math.pow(localT - 0.5, 2) / 0.01);
     }
-    
-    // BETTER STATELESS APPROACH for AFIB:
-    // Superimpose a regular rhythm that has "phase noise"
-    const cyclePx = (60 / 130) * ECG_SPEED;
-    const phaseNoise = Math.sin(x * 0.005) * cyclePx * 0.8; 
-    const t = ((x + phaseNoise) % cyclePx) / cyclePx;
-    
-    if(t > 0.2 && t < 0.4) qrs = getQRSNarrow((t-0.2)/0.2);
 
     return baseline + fWaves + qrs;
 }
 
-// Asystole: Flat with drift
+// 6. Asystole
 function asystole(x, hr, c) {
     return (c.height/2) + Math.sin(x * 0.002) * 4;
 }
 
-// CHB: Dissociated P and QRS
+// 7. CHB (Dissociated)
 function chb(x, hr, c) {
-    const baseline = (c.height || 300) / 2;
+    var baseline = (c.height || 300) / 2;
+    var aCycle = (60 / 80) * ecgSpeed;
+    var vCycle = (60 / 35) * ecgSpeed;
     
-    // Atrial (80 bpm)
-    const aCycle = (60 / 80) * ECG_SPEED;
-    const aT = (x % aCycle) / aCycle;
+    var aT = (x % aCycle) / aCycle;
+    var vT = (x % vCycle) / vCycle;
     
-    // Ventricular (35 bpm)
-    const vCycle = (60 / 35) * ECG_SPEED;
-    const vT = (x % vCycle) / vCycle;
-    
-    const p = getP(aT);
-    const qrs = getQRSWide(vT);
-    const t = getT(vT);
-    
-    return baseline + p + qrs + t;
+    return baseline + getP(aT) + getQRSWide(vT) + getT(vT);
 }
 
 function paced(x, hr, c) {
-    const baseline = (c.height || 300) / 2;
-    const bpm = hr || 70;
-    const cyclePx = (60 / bpm) * ECG_SPEED;
-    const t = (x % cyclePx) / cyclePx;
+    var baseline = (c.height || 300) / 2;
+    var bpm = hr || 70;
+    var cyclePx = (60 / bpm) * ecgSpeed;
+    var t = (x % cyclePx) / cyclePx;
     
-    let y = 0;
+    var y = 0;
     y += getPacerSpike(t);
     y += gaussian(t, 0.28, 0.05, PX_PER_MV * 1.1); // Wide QRS
     y += gaussian(t, 0.55, 0.09, PX_PER_MV * 0.3); // T Wave
@@ -179,32 +156,29 @@ function paced(x, hr, c) {
 }
 
 // --- MAPPING ---
-// Note: We ignore the 'tSeconds' argument for the shapes now!
-// We only pass it to 'withArtefacts'
-const rhythms = {
-    nsr: (x,h,t,c) => sinusTemplate(x, h, c, {}),
-    sinus_brady: (x,h,t,c) => sinusTemplate(x, 45, c, {}),
-    sinus_tach: (x,h,t,c) => sinusTemplate(x, 120, c, {hideP:true}), // P buries in T at high rates
-    svt: (x,h,t,c) => svt(x, h, c),
-    vtach: (x,h,t,c) => vtach(x, h, c),
-    vt_pulseless: (x,h,t,c) => vtach(x, 180, c),
-    vfib: (x,h,t,c) => vfib(x, h, c),
-    afib: (x,h,t,c) => afib(x, h, c),
-    chb: (x,h,t,c) => chb(x, h, c),
-    paced: (x,h,t,c) => paced(x, h, c),
-    asystole: (x,h,t,c) => asystole(x, h, c),
-    brady: (x,h,t,c) => sinusTemplate(x, 40, c, {}),
-    idioventricular: (x,h,t,c) => sinusTemplate(x, 30, c, {hideP:true, rAmp:0.8}), // Lazy implementation using sinus
-    sinus: (x,h,t,c) => sinusTemplate(x, 75, c, {})
+var rhythms = {
+    nsr: function(x,h,t,c){ return sinusTemplate(x, h, c, {}); },
+    sinus_brady: function(x,h,t,c){ return sinusTemplate(x, 45, c, {}); },
+    sinus_tach: function(x,h,t,c){ return sinusTemplate(x, 120, c, {hideP:true}); },
+    svt: function(x,h,t,c){ return svt(x, h, c); },
+    vtach: function(x,h,t,c){ return vtach(x, h, c); },
+    vt_pulseless: function(x,h,t,c){ return vtach(x, 180, c); },
+    vfib: function(x,h,t,c){ return vfib(x, h, c); },
+    afib: function(x,h,t,c){ return afib(x, h, c); },
+    chb: function(x,h,t,c){ return chb(x, h, c); },
+    paced: function(x,h,t,c){ return paced(x, h, c); },
+    asystole: function(x,h,t,c){ return asystole(x, h, c); },
+    brady: function(x,h,t,c){ return sinusTemplate(x, 40, c, {}); },
+    idioventricular: function(x,h,t,c){ return sinusTemplate(x, 30, c, {hideP:true, rAmp:0.8}); },
+    sinus: function(x,h,t,c){ return sinusTemplate(x, 75, c, {}); }
 };
 
 // Artefact Wrapper
 function withArtefacts(fn){
     return function(x, hr, tSeconds, canvasInfo){
-        let y = fn(x, hr, canvasInfo); // Pass only x, hr, canvas
-        const st = window.state || {};
-        const flags = (st.noise || {});
-        // Add time-based artefacts on top
+        var y = fn(x, hr, canvasInfo); 
+        var st = window.state || {};
+        var flags = (st.noise || {});
         if(flags.movement) y += movementArtefact(x, tSeconds);
         if(flags.leadoff) y += leadoffArtefact(tSeconds);
         if(flags.cpr) y += cprArtefact(x, tSeconds);
@@ -212,18 +186,17 @@ function withArtefacts(fn){
     }
 }
 
-const wrapped={};
-Object.keys(rhythms).forEach(k => wrapped[k] = withArtefacts(rhythms[k]));
+// Register Global Wrappers
+var wrapped = {};
+Object.keys(rhythms).forEach(function(k){ wrapped[k] = withArtefacts(rhythms[k]); });
 
-// --- EXPORTS ---
 window.rhythms = wrapped;
 window.cleanRhythms = rhythms; 
 window.__setECGSpeed = setSpeed;
 window.pacingSpike = getPacerSpike; 
-window.pacingComplex = function(t){return 0}; // Legacy stub
-window.PX_PER_MV = PX_PER_MV;
+window.pacingComplex = function(t){return 0};
 
-// --- GRID DRAWER (Fixed) ---
+// --- GLOBAL GRID DRAWER ---
 window.drawECGGrid = function(ctx, w, h) {
     // 1. Force background to ensure visibility
     ctx.fillStyle = '#050505'; 
@@ -231,24 +204,22 @@ window.drawECGGrid = function(ctx, w, h) {
 
     // 2. Draw Grid
     ctx.lineWidth = 1;
-    // Small Squares - Brighter Green (0.25)
-    ctx.strokeStyle = 'rgba(0, 255, 50, 0.25)'; 
+    // Small Squares (Faint)
+    ctx.strokeStyle = 'rgba(0, 255, 50, 0.20)'; 
     ctx.beginPath();
-    for (let x=0; x<=w; x+=PX_PER_MM) { ctx.moveTo(x+0.5,0); ctx.lineTo(x+0.5,h); }
-    for (let y=0; y<=h; y+=PX_PER_MM) { ctx.moveTo(0,y+0.5); ctx.lineTo(w,y+0.5); }
+    for (var x=0; x<=w; x+=PX_PER_MM) { ctx.moveTo(x+0.5,0); ctx.lineTo(x+0.5,h); }
+    for (var y=0; y<=h; y+=PX_PER_MM) { ctx.moveTo(0,y+0.5); ctx.lineTo(w,y+0.5); }
     ctx.stroke();
 
-    // Big Squares - Strong Green (0.40)
+    // Big Squares (Brighter)
     ctx.lineWidth = 1.5;
     ctx.strokeStyle = 'rgba(0, 255, 50, 0.40)'; 
     ctx.beginPath();
-    for (let x=0; x<=w; x+=PX_PER_BIG) { ctx.moveTo(x+0.5,0); ctx.lineTo(x+0.5,h); }
-    for (let y=0; y<=h; y+=PX_PER_BIG) { ctx.moveTo(0,y+0.5); ctx.lineTo(w,y+0.5); }
+    for (var x=0; x<=w; x+=PX_PER_BIG) { ctx.moveTo(x+0.5,0); ctx.lineTo(x+0.5,h); }
+    for (var y=0; y<=h; y+=PX_PER_BIG) { ctx.moveTo(0,y+0.5); ctx.lineTo(w,y+0.5); }
     ctx.stroke();
 };
-
-})();
-</script>
+    </script>
     
     <style>  /* Import a digital-style font */
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
