@@ -14,6 +14,7 @@ window.PX_PER_BIG = 25;
 window.PX_PER_MM = 5;   
 window.PX_PER_MV = 50;  // 10mm/mV standard calibration
 window.ecgSpeed = 125;  // 25mm/sec * 5px/mm = 125 px/sec
+window.waveformX = 0;   // GLOBAL X POSITION
 
 function setSpeed(pxPerSec){ window.ecgSpeed = pxPerSec; }
 
@@ -40,7 +41,6 @@ function getQRSWide(t) {
 }
 
 function getT(t) { return gaussian(t, 0.55, 0.09, window.PX_PER_MV * 0.3); }
-function getPacerSpike(t) { return gaussian(t, 0.20, 0.002, window.PX_PER_MV * 2.5); }
 
 // --- RHYTHM LOGIC ---
 
@@ -134,10 +134,10 @@ function paced(x, hr, c) {
     var t = (x % cyclePx) / cyclePx;
     
     var y = 0;
-    // Note: We handle spikes in the main animate loop now for better visibility
-    // but we keep the capture complex here
-    y += gaussian(t, 0.28, 0.05, window.PX_PER_MV * 1.1); // Wide QRS
-    y += gaussian(t, 0.55, 0.09, window.PX_PER_MV * 0.3); // T Wave
+    // FIXED: Shifted QRS closer to t=0 to align with pacer spike drawn in animate loop
+    // Spike is at t=0. QRS starts at t=0.08 (simulating 80ms latency)
+    y += gaussian(t, 0.12, 0.05, window.PX_PER_MV * 1.1); // Wide QRS
+    y += gaussian(t, 0.40, 0.09, window.PX_PER_MV * 0.3); // T Wave
     return baseline + y;
 }
 
@@ -186,7 +186,6 @@ window.drawECGGrid = function(ctx, w, h) {
     ctx.fillRect(0, 0, w, h);
 
     ctx.lineWidth = 1;
-    // --- FIX: Reduced opacity for background grid ---
     ctx.strokeStyle = 'rgba(0, 255, 50, 0.15)'; 
     ctx.beginPath();
     for (var x=0; x<=w; x+=window.PX_PER_MM) { ctx.moveTo(x+0.5,0); ctx.lineTo(x+0.5,h); }
@@ -194,7 +193,6 @@ window.drawECGGrid = function(ctx, w, h) {
     ctx.stroke();
 
     ctx.lineWidth = 1.5;
-    // --- FIX: Reduced opacity for major grid lines ---
     ctx.strokeStyle = 'rgba(0, 255, 50, 0.25)'; 
     ctx.beginPath();
     for (var x=0; x<=w; x+=window.PX_PER_BIG) { ctx.moveTo(x+0.5,0); ctx.lineTo(x+0.5,h); }
@@ -481,7 +479,7 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
 <body>
     <div class="main-header" style="display: flex; justify-content: space-between; align-items: center; max-width: 1600px; margin: 0 auto 20px auto; padding: 10px 20px; background: linear-gradient(135deg,#2c3e50 0%,#34495e 100%); border-radius: 10px; border: 3px solid #1a252f;">
         <div style="display: flex; align-items: center; justify-content: center; gap: 20px;">
-            <img src="images/logo.png" alt="WMEBEM Logo" style="height: 60px; background: white; padding: 10px; border-radius: 10px;">
+            <img src="https://iili.io/KGQOvkl.md.png" alt="WMEBEM Logo" style="height: 60px; background: white; padding: 10px; border-radius: 10px;">
             <div class="menu-title" style="margin-bottom: 0; text-align: left;">
                 <h1 style="margin-bottom: 5px; font-size: 32px;">ZOLL R Series Simulator</h1>
                 <p style="color: #bdc3c7; font-size: 16px;">RCUK 2025 Guidelines Simulator</p>
@@ -589,7 +587,7 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
 
         <div class="menu-screen hidden" id="scenarioScreen">
             <div style="display: flex; align-items: center; justify-content: center; gap: 20px; margin-bottom: 30px;">
-                <img src="images/logo.png" alt="WMEBEM Logo" style="height: 60px; background: white; padding: 10px; border-radius: 10px;">
+                <img src="https://iili.io/KGQOvkl.md.png" alt="WMEBEM Logo" style="height: 60px; background: white; padding: 10px; border-radius: 10px;">
                 <div class="menu-title" style="margin-bottom: 0; text-align: left;">
                     <h1 id="modeTitle" style="margin-bottom: 5px; font-size: 32px;">Education Mode</h1>
                     <p>Select a clinical scenario</p>
@@ -649,7 +647,7 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
         
         <div class="menu-screen hidden" id="summaryScreen">
             <div style="display: flex; align-items: center; justify-content: center; gap: 20px; margin-bottom: 30px;">
-                <img src="images/logo.png" alt="WMEBEM Logo" style="height: 60px; background: white; padding: 10px; border-radius: 10px;">
+                <img src="https://iili.io/KGQOvkl.md.png" alt="WMEBEM Logo" style="height: 60px; background: white; padding: 10px; border-radius: 10px;">
                 <div class="menu-title" style="margin-bottom: 0; text-align: left;">
                     <h1 style="margin-bottom: 5px; font-size: 32px;">Scenario Complete</h1>
                     <p>Defibrillator Performance Summary</p>
@@ -694,7 +692,7 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
             <div id="certificateContent" style="background: white; padding: 60px; border-radius: 15px; color: #2c3e50; position: relative;">
                 <div style="border: 8px solid #3498db; padding: 40px; border-radius: 10px;">
                     <div style="text-align: center; margin-bottom: 30px;">
-                        <img src="images/logo.png" alt="WMEBEM Logo" style="height: 60px; margin-bottom: 20px;">
+                        <img src="https://iili.io/KGQOvkl.md.png" alt="WMEBEM Logo" style="height: 60px; margin-bottom: 20px;">
                         <h1 style="color: #2c3e50; font-size: 42px; margin-bottom: 10px;">Certificate of Completion</h1>
                         <div style="width: 100px; height: 3px; background: #3498db; margin: 20px auto;"></div>
                     </div>
@@ -758,7 +756,7 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
         <div class="instructor-panel hidden" id="instructorPanel">
             <div class="instructor-header">
                 <div class="instructor-logo">
-                    <img src="images/logo.png" alt="WMEBEM Logo">
+                    <img src="https://iili.io/KGQOvkl.md.png" alt="WMEBEM Logo">
                     <div class="instructor-title">
                         <h2>Instructor Controls</h2>
                         <p id="instructorSubtitle">Scenario in Progress</p>
@@ -820,12 +818,12 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
         </div>
 
         <div class="zoll-device" id="zollDevice" style="display: grid;">
-            <img src="images/logo.png" alt="WMEBEM Logo" class="zoll-top-logo">
+            <img src="https://iili.io/KGQOvkl.md.png" alt="WMEBEM Logo" class="zoll-top-logo">
             
             <div class="device-screen-section">
                 <div class="screen">
                     <div class="splash-screen" id="splashScreen" style="display: none;">
-                        <img src="images/logo.png" alt="WMEBEM Logo">
+                        <img src="https://iili.io/KGQOvkl.md.png" alt="WMEBEM Logo">
                     </div>
 
                     <div class="screen-header">
@@ -954,7 +952,7 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
         <div class="modal-content">
             <button id="closeModalBtn">×</button>
             <div class="modal-header">
-                <img src="images/logo.png" alt="WMEBEM Logo">
+                <img src="https://iili.io/KGQOvkl.md.png" alt="WMEBEM Logo">
                 <h2 id="modalTitle">RCUK 2025 Guideline Hint</h2>
             </div>
             <div id="modalBody"></div>
@@ -1111,7 +1109,7 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
         };
         window.state = state; 
 
-        let canvas, ctx, waveformX = 0, animationId;
+        let canvas, ctx, animationId; // Removed local waveformX to fix scope bug
         let lastTimestamp = 0;
         const ecgSpeed = 125; 
 
@@ -1229,7 +1227,7 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
                 animationId = null;
             }
             lastTimestamp = 0;
-            waveformX = 0;
+            window.waveformX = 0; // Use global
         }
 
         const rhythmVitals = {
@@ -1288,7 +1286,7 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
             ctx.lineWidth = 2.5;
             ctx.lineJoin = 'round';
             ctx.lineCap = 'round';
-            ctx.shadowBlur = 10;         
+            ctx.shadowBlur = 10;          
             ctx.shadowColor = 'rgba(57, 255, 20, 0.8)'; 
             
             ctx.beginPath();
@@ -1322,7 +1320,6 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
                 // --- PASS 2: OVERLAYS (Pacer Spikes & Sync Markers) ---
                 for (let gx = startGlobalX; gx <= endGlobalX + step; gx += step) {
                     const screenX = gx - window.waveformX;
-                    const simTime = state.scenarioStartTime ? (Date.now() - state.scenarioStartTime)/1000 : 0;
                     // Recalculate Y for positioning overlays
                     let yVal = rhythmFn(gx, state.hr, simTime, {height: logicalH});
                     if (!isFinite(yVal)) yVal = baselineY;
@@ -1889,7 +1886,7 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
                         
                         if (!animationId) {
                             lastTimestamp = 0;
-                            waveformX = 0;
+                            window.waveformX = 0;
                             animationId = requestAnimationFrame(animate);
                         }
                     });
@@ -1899,7 +1896,7 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
                     
                     if (!animationId) { 
                         lastTimestamp = 0;
-                        waveformX = 0;
+                        window.waveformX = 0;
                         animationId = requestAnimationFrame(animate);
                     }
                 }
@@ -1910,8 +1907,8 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
                 if (!state.originalRhythm) { 
                     state.originalRhythm = state.rhythm;
                 }
-                state.lastCardiacEvent = waveformX;
-                state.pacerStartTime = waveformX; 
+                state.lastCardiacEvent = window.waveformX;
+                state.pacerStartTime = window.waveformX; 
                 state.firedSpikes = []; 
             } else {
                 state.pacingActive = false;
@@ -2192,7 +2189,6 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
                         const successVitals = (scenario && scenario.requiresPacing) ? scenario.successVitals : rhythmVitals['paced'];
                         
                         logAction('Pacing capture achieved', `at ${state.pacerOutput}mA`);
-                        // --- FIX: RESTORED PACING RHYTHM SWITCH ---
                         state.rhythm = 'paced'; 
                         
                         state.hr = state.pacerRate; 
@@ -2530,11 +2526,6 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
         });
         // --- End of Modal Listeners ---
 
-
-        // Mode Select Screen (No longer exists)
-        // document.querySelectorAll('#modeSelectScreen .menu-option').forEach(btn => {
-        //     btn.addEventListener('click', () => selectMode(btn.dataset.mode));
-        // });
 
         // --- New Scenario Creator Listeners ---
         document.getElementById('openScenarioCreatorBtn').addEventListener('click', () => {
