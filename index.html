@@ -1357,9 +1357,10 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
                 const endGlobalX = window.waveformX + logicalW;
                 
                 let firstPoint = true;
+                
+                // --- PASS 1: DRAW GREEN TRACE ---
                 for (let gx = startGlobalX; gx <= endGlobalX + step; gx += step) {
                     const screenX = gx - window.waveformX;
-                    
                     let yVal = rhythmFn(gx, state.hr, simTime, {height: logicalH});
                     
                     if (!isFinite(yVal)) yVal = baselineY;
@@ -1371,9 +1372,9 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
                         ctx.lineTo(screenX, yVal);
                     }
                 }
-                ctx.stroke(); // Draw the Green ECG Trace FIRST
+                ctx.stroke(); 
 
-                // --- PASS 2: OVERLAYS (Pacer Spikes & Sync Markers) ---
+                // --- PASS 2: OVERLAYS (Pacer & Sync) ---
                 for (let gx = startGlobalX; gx <= endGlobalX + step; gx += step) {
                     const screenX = gx - window.waveformX;
                     // Recalculate Y for positioning overlays
@@ -1406,30 +1407,23 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
 
                         const hr = state.hr || 75;
                         const cycle = (60 / hr) * window.ecgSpeed;
+                        const t = (gx % cycle) / cycle;
                         
-                        // Scan to find exact peak phase
-                        for (let gx = startGlobalX; gx <= endGlobalX + step; gx += step) {
-                            const t = (gx % cycle) / cycle;
-                            // Draw marker if we are exactly at the peak phase
-                            if (t >= peakT && (t - (step/cycle)) < peakT) {
-                                const screenX = gx - window.waveformX;
-                                let yVal = rhythmFn(gx, state.hr, simTime, {height: logicalH});
-                                if (!isFinite(yVal)) yVal = baselineY;
-
-                                ctx.save();
-                                ctx.fillStyle = '#00cccc'; 
-                                ctx.beginPath();
-                                ctx.moveTo(screenX - 6, yVal - 20);
-                                ctx.lineTo(screenX + 6, yVal - 20);
-                                ctx.lineTo(screenX, yVal - 6);
-                                ctx.closePath();
-                                ctx.fill();
-                                ctx.restore();
-                            }
+                        // Check if we are at the peak phase in this specific step
+                        if (t >= peakT && (t - (step/cycle)) < peakT) {
+                            ctx.save();
+                            ctx.fillStyle = '#00cccc'; 
+                            ctx.beginPath();
+                            ctx.moveTo(screenX - 6, yVal - 20);
+                            ctx.lineTo(screenX + 6, yVal - 20);
+                            ctx.lineTo(screenX, yVal - 6);
+                            ctx.closePath();
+                            ctx.fill();
+                            ctx.restore();
                         }
                     }
+                }
             }
-            // End of the drawing loop
             
             // 3. Move Paper
             const speed = window.ecgSpeed || 125;
