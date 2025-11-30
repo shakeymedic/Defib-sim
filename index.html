@@ -722,6 +722,13 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
     </div>
 
     <div class="simulator-container" id="simulatorContainer">
+        <div id="cprPanel" class="hidden">
+            <div class="cpr-header">CPR CYCLE <span id="cprCycleCount">1</span></div>
+            <div class="cpr-timer" id="cprTimerDisplay">02:00</div>
+            <button id="skipCprBtn">SKIP 2 MIN ▶</button>
+        </div>
+        <button class="back-button hidden" id="endScenarioBtn">
+        
         <button class="back-button hidden" id="endScenarioBtn">
             ◀ End Scenario
         </button>
@@ -1290,11 +1297,60 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
                     } else {
                         ctx.lineTo(screenX, yVal);
                     }
-                    
-                    // --- FIX: VISUAL PACER SPIKE OVERLAY ---
-                    // Draws a spike every cycle based on pacer rate, regardless of capture
+                }
+                ctx.stroke(); // Draw the Green ECG Trace FIRST
+
+                // --- PASS 2: OVERLAYS (Pacer Spikes & Sync Markers) ---
+                for (let gx = startGlobalX; gx <= endGlobalX + step; gx += step) {
+                    const screenX = gx - window.waveformX;
+                    const simTime = state.scenarioStartTime ? (Date.now() - state.scenarioStartTime)/1000 : 0;
+                    // Recalculate Y for positioning overlays
+                    let yVal = rhythmFn(gx, state.hr, simTime, {height: logicalH});
+                    if (!isFinite(yVal)) yVal = baselineY;
+
+                    // 1. Pacer Spikes (Pink Line)
                     if (state.pacingActive) {
                         const pacerCycle = (60 / state.pacerRate) * window.ecgSpeed;
+                        const pacerPhase = (gx % pacerCycle) / pacerCycle;
+                        
+                        if (pacerPhase < (step/pacerCycle)) {
+                            ctx.save();
+                            ctx.strokeStyle = '#ff00ff'; 
+                            ctx.lineWidth = 2;
+                            ctx.beginPath();
+                            ctx.moveTo(screenX, baselineY - 60); // Taller spike
+                            ctx.lineTo(screenX, baselineY + 60);
+                            ctx.stroke();
+                            ctx.restore();
+                        }
+                    }
+
+                    // 2. Sync Markers (White Line ABOVE R-wave)
+                    if (state.syncMode && state.hasPulse && state.rhythm !== 'vfib' && state.rhythm !== 'asystole') {
+                        const hr = state.hr || 75;
+                        const cycle = (60 / hr) * window.ecgSpeed;
+                        const t = (gx % cycle) / cycle;
+                        
+                        // Approximate R-wave peak phase
+                        let peakPhase = 0.25; 
+                        if (state.rhythm === 'svt') peakPhase = 0.15; 
+                        
+                        if (Math.abs(t - peakPhase) < (step/cycle)) {
+                            ctx.save();
+                            ctx.strokeStyle = 'white';
+                            ctx.lineWidth = 2;
+                            ctx.beginPath();
+                            // Draw a small vertical line ABOVE the complex
+                            // yVal is the trace height. We go up (negative Y) from there.
+                            ctx.moveTo(screenX, yVal - 25); 
+                            ctx.lineTo(screenX, yVal - 45); 
+                            ctx.stroke();
+                            ctx.restore();
+                        }
+                    }
+                }
+            }
+            // ctx.stroke(); // Removed from here as we stroked earlier
                         const pacerPhase = (gx % pacerCycle) / pacerCycle;
                         // Draw spike near phase 0
                         if (pacerPhase < (step/pacerCycle)) {
@@ -1967,6 +2023,9 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
             
             setMessage(`SHOCK ${state.shockCount} DELIVERED - ${shockEnergy}J`, 'alert');
             
+            // --- TRIGGER CPR TIMER ---
+            startCPRTimer();
+
             setTimeout(() => {
                 if (state.customScenarioActive) {
                     const currentRhythm = state.rhythm;
@@ -2412,6 +2471,26 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
             document.getElementById('cycle_4_postshock').value = 'nsr';
             document.getElementById('cycle_5_initial').value = 'nsr';
             document.getElementById('cycle_5_postshock').value = 'nsr';
+
+            // --- LINK CYCLES LOGIC ---
+            const linkCycles = (fromId, toId) => {
+                const fromEl = document.getElementById(fromId);
+                const toEl = document.getElementById(toId);
+                
+                // Disable the 'next' initial cycle so users can't break the chain
+                toEl.disabled = true;
+                toEl.style.opacity = "0.7";
+                toEl.value = fromEl.value; // Set initial value
+
+                fromEl.addEventListener('change', () => {
+                    toEl.value = fromEl.value;
+                });
+            };
+
+            linkCycles('cycle_1_postshock', 'cycle_2_initial');
+            linkCycles('cycle_2_postshock', 'cycle_3_initial');
+            linkCycles('cycle_3_postshock', 'cycle_4_initial');
+            linkCycles('cycle_4_postshock', 'cycle_5_initial');
         }
 
         // --- Keyboard Shortcuts ---
@@ -2562,6 +2641,54 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
 
         // --- MOBILE ENHANCEMENT: Add window resize listener ---
         window.addEventListener('resize', resizeCanvas);
+        // --- CPR TIMER LOGIC ---
+        let cprInterval;
+        let cprSeconds = 120;
+        let cprCycle = 0;
+
+        function startCPRTimer() {
+            const panel = document.getElementById('cprPanel');
+            const timerDisplay = document.getElementById('cprTimerDisplay');
+            const cycleDisplay = document.getElementById('cprCycleCount');
+            
+            // Only show if we are in an arrest situation (Defib mode or shockable rhythm)
+            if(state.deviceMode !== 'defib' && state.rhythm !== 'vfib' && state.rhythm !== 'vt_pulseless') return;
+
+            cprCycle++;
+            cycleDisplay.textContent = cprCycle;
+            panel.classList.remove('hidden');
+            setTimeout(() => panel.classList.add('active'), 100);
+
+            cprSeconds = 120;
+            clearInterval(cprInterval);
+            
+            cprInterval = setInterval(() => {
+                cprSeconds--;
+                const mins = Math.floor(cprSeconds / 60);
+                const secs = cprSeconds % 60;
+                timerDisplay.textContent = `0${mins}:${String(secs).padStart(2, '0')}`;
+
+                if (cprSeconds <= 0) {
+                    clearInterval(cprInterval);
+                    panel.classList.remove('active'); // Hide panel
+                    setMessage('CPR CYCLE COMPLETE - ANALYSE RHYTHM', 'ready');
+                    playSound('charged'); // Audio cue
+                }
+            }, 1000);
+        }
+
+        document.getElementById('skipCprBtn').addEventListener('click', () => {
+            cprSeconds = 1; // Fast forward to end
+        });
+        
+        // Reset timer on scenario end
+        const originalReturnToMenu = returnToMenu;
+        returnToMenu = function() {
+            clearInterval(cprInterval);
+            document.getElementById('cprPanel').classList.remove('active');
+            cprCycle = 0;
+            originalReturnToMenu();
+        };
     
     }); // End of DOMContentLoaded
     </script>
