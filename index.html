@@ -165,6 +165,16 @@ function withArtefacts(fn){
         var y = fn(x, hr, tSeconds, canvasInfo); 
         var st = window.state || {};
         var flags = (st.noise || {});
+        
+        // CPR Artefact: Large, regular compressions (approx 110/min)
+        if (st.cprActive) {
+            // Create a compression wave (~1.8Hz)
+            var cprWave = Math.sin(tSeconds * 11) * (window.PX_PER_MV * 2.5);
+            // Add some high-frequency noise to simulate muscle artifact
+            var cprNoise = Math.random() * 5; 
+            y += (cprWave + cprNoise);
+        }
+
         if(flags.movement) y += Math.sin(tSeconds * 0.5 + x * 0.005) * (window.PX_PER_MM * 1.5);
         if(flags.leadoff) y += Math.sin(tSeconds * 50) * (window.PX_PER_MM * 4.0);
         return y;
@@ -772,27 +782,32 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
 
     <div class="simulator-container" id="simulatorContainer">
         <div id="cprPanel" class="hidden">
-    <div class="cpr-header">CARDIAC ARREST MANAGEMENT</div>
-    <div class="cpr-timer" id="cprTimerDisplay">00:00</div>
-    
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 15px;">
-        <button class="cpr-action-btn" data-action="cpr-cycle">
-            <span>CPR 2m</span>
-            <div class="btn-subtext">START CYCLE</div>
-        </button>
-        <button class="cpr-action-btn" data-action="adrenaline">
-            <span>ADRENALINE</span>
-            <div class="btn-subtext">1mg IV/IO</div>
-        </button>
-        <button class="cpr-action-btn" data-action="amiodarone">
-            <span>AMIODARONE</span>
-            <div class="btn-subtext">300mg IV/IO</div>
-        </button>
-        <button class="cpr-action-btn" data-action="shock">
-             <span>CHARGE</span>
-             <div class="btn-subtext">PREPARE</div>
-        </button>
-    </div>
+            <div class="cpr-header">CARDIAC ARREST MANAGEMENT</div>
+            <div class="cpr-timer" id="cprTimerDisplay">00:00</div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 15px;">
+                <button class="cpr-action-btn" id="cprToggleBtn" data-action="cpr-toggle">
+                    <span>START CPR</span>
+                    <div class="btn-subtext">COMPRESSIONS</div>
+                </button>
+                <button class="cpr-action-btn" data-action="adrenaline">
+                    <span>ADRENALINE</span>
+                    <div class="btn-subtext">1mg IV/IO</div>
+                </button>
+                <button class="cpr-action-btn" data-action="amiodarone">
+                    <span>AMIODARONE</span>
+                    <div class="btn-subtext">300mg IV/IO</div>
+                </button>
+                <button class="cpr-action-btn" data-action="next-cycle">
+                     <span>NEXT CYCLE</span>
+                     <div class="btn-subtext">RESET TIMER</div>
+                </button>
+            </div>
+
+            <button id="roscBtn" class="rosc-btn">
+                ❤️ PATIENT ROSC
+            </button>
+        </div>
 
     <button id="roscBtn" class="rosc-btn">
         ❤️ PATIENT ROSC
@@ -1377,10 +1392,7 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
                 // --- PASS 2: OVERLAYS (Pacer & Sync) ---
                 for (let gx = startGlobalX; gx <= endGlobalX + step; gx += step) {
                     const screenX = gx - window.waveformX;
-                    // Recalculate Y for positioning overlays
-                    let yVal = rhythmFn(gx, state.hr, simTime, {height: logicalH});
-                    if (!isFinite(yVal)) yVal = baselineY;
-
+                    
                     // 1. Pacer Spikes (Pink Line)
                     if (state.pacingActive) {
                         const pacerCycle = (60 / state.pacerRate) * window.ecgSpeed;
@@ -1398,27 +1410,28 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
                         }
                     }
 
-                    // 2. Sync Markers (Cyan Triangle ON R-wave)
+                    // 2. Sync Markers (White Bar at Top of Screen)
                     if (state.syncMode && state.hasPulse && state.rhythm !== 'vfib' && state.rhythm !== 'asystole') {
-                        let peakT = 0.25; // Default center for NSR/VT
+                        // Precise peak timing for alignment
+                        let peakT = 0.25; 
                         if (state.rhythm === 'svt') peakT = 0.15; 
                         if (state.rhythm === 'paced') peakT = 0.12; 
-                        if (state.rhythm === 'afib') peakT = 0.30; 
+                        if (state.rhythm === 'afib') peakT = 0.25; // Variable
 
                         const hr = state.hr || 75;
                         const cycle = (60 / hr) * window.ecgSpeed;
                         const t = (gx % cycle) / cycle;
                         
-                        // Check if we are at the peak phase in this specific step
+                        // Check if we are at the peak phase
                         if (t >= peakT && (t - (step/cycle)) < peakT) {
                             ctx.save();
-                            ctx.fillStyle = '#00cccc'; 
+                            ctx.fillStyle = '#ffffff'; // Pure White
+                            ctx.shadowBlur = 5;
+                            ctx.shadowColor = 'white';
+                            
+                            // Draw Rect at TOP of screen (y=30), centered on X
                             ctx.beginPath();
-                            ctx.moveTo(screenX - 6, yVal - 20);
-                            ctx.lineTo(screenX + 6, yVal - 20);
-                            ctx.lineTo(screenX, yVal - 6);
-                            ctx.closePath();
-                            ctx.fill();
+                            ctx.fillRect(screenX - 3, 30, 6, 20); 
                             ctx.restore();
                         }
                     }
@@ -2670,12 +2683,14 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
         window.addEventListener('resize', resizeCanvas);
         // --- UPDATED CARDIAC ARREST LOGIC ---
         
+        // Ensure cprActive is tracked
+        state.cprActive = false;
+
         // 1. Check for Arrest on Rhythm Change
         function updateArrestPanel() {
             const currentRhythm = state.rhythm;
             const vitals = rhythmVitals[currentRhythm];
             
-            // It is an arrest if hasPulse is false AND we haven't achieved ROSC yet
             const isArrest = vitals && vitals.hasPulse === false;
             const panel = document.getElementById('cprPanel');
             
@@ -2688,6 +2703,8 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
                 }
             } else {
                 panel.classList.remove('active');
+                state.cprActive = false; // Stop CPR if panel closes
+                updateCprButton();
             }
         }
 
@@ -2706,29 +2723,53 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
             }, 1000);
         }
 
+        function updateCprButton() {
+            const btn = document.getElementById('cprToggleBtn');
+            const span = btn.querySelector('span');
+            if (state.cprActive) {
+                btn.style.background = "#e74c3c"; // Red for STOP
+                btn.style.borderColor = "#c0392b";
+                span.textContent = "STOP CPR";
+            } else {
+                btn.style.background = ""; // Default
+                btn.style.borderColor = "";
+                span.textContent = "START CPR";
+            }
+        }
+
         // 3. New Listeners for Panel Buttons
         document.querySelectorAll('.cpr-action-btn').forEach(btn => {
             btn.addEventListener('click', function() {
                 const action = this.dataset.action;
                 const time = document.getElementById('cprTimerDisplay').textContent;
                 
-                // Visual click feedback
+                if (action === 'cpr-toggle') {
+                    state.cprActive = !state.cprActive;
+                    updateCprButton();
+                    const status = state.cprActive ? "Started" : "Stopped";
+                    logAction(`CPR ${status}`, `Time: ${time}`);
+                    return; // Don't do the visual flash for toggle
+                }
+
+                // Visual click feedback for momentary buttons
                 const originalSpan = this.querySelector('span').textContent;
+                const originalBg = this.style.background;
                 this.querySelector('span').textContent = "DONE";
-                this.style.background = "#27ae60"; // Green
+                this.style.background = "#27ae60"; 
                 setTimeout(() => {
                     this.querySelector('span').textContent = originalSpan;
-                    this.style.background = "";
+                    this.style.background = originalBg;
                 }, 800);
 
-                if (action === 'cpr-cycle') {
-                    logAction(`CPR Cycle Started`, `Time: ${time}`);
-                } else if (action === 'adrenaline') {
+                if (action === 'adrenaline') {
                     logAction(`Adrenaline 1mg Given`, `Time: ${time}`);
                 } else if (action === 'amiodarone') {
                     logAction(`Amiodarone 300mg Given`, `Time: ${time}`);
-                } else if (action === 'shock') {
-                    chargeDefib(); 
+                } else if (action === 'next-cycle') {
+                    // Reset Timer Logic
+                    if (window.arrestTimerInterval) clearInterval(window.arrestTimerInterval);
+                    startArrestTimer(); // Restart from 0
+                    logAction(`Cycle Advanced`, `Timer Reset`);
                 }
             });
         });
@@ -2736,8 +2777,13 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
         document.getElementById('roscBtn').addEventListener('click', () => {
             state.roscAchieved = true;
             state.hasPulse = true;
+            state.cprActive = false; // Stop CPR visuals
+            updateCprButton();
             
-            // Restore "Post-ROSC" vitals
+            // FORCE RHYTHM TO NSR IMMEDIATELY
+            quickSetRhythm('nsr'); 
+
+            // Restore "Post-ROSC" vitals just in case
             state.hr = 80;
             state.spo2 = 96;
             state.etco2 = 4.5;
@@ -2755,12 +2801,11 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
         });
 
         // 4. Overwrite quickSetRhythm to trigger the panel
-        // This ensures the panel pops out immediately when you click "VF" or "Asystole"
         const originalSetRhythm = quickSetRhythm;
         quickSetRhythm = function(rhythm) {
             originalSetRhythm(rhythm); 
-            // Reset ROSC if we manually change rhythm, unless it's to a pulse rhythm
             const vitals = rhythmVitals[rhythm];
+            // If switching to an arrest rhythm manually, assume arrest (reset ROSC)
             if (vitals && !vitals.hasPulse) {
                 state.roscAchieved = false; 
             }
