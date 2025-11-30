@@ -747,7 +747,6 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
             <div class="cpr-timer" id="cprTimerDisplay">02:00</div>
             <button id="skipCprBtn">SKIP 2 MIN ▶</button>
         </div>
-        <button class="back-button hidden" id="endScenarioBtn">
         
         <button class="back-button hidden" id="endScenarioBtn">
             ◀ End Scenario
@@ -1338,7 +1337,7 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
                             ctx.strokeStyle = '#ff00ff'; 
                             ctx.lineWidth = 2;
                             ctx.beginPath();
-                            ctx.moveTo(screenX, baselineY - 60); // Taller spike
+                            ctx.moveTo(screenX, baselineY - 60); 
                             ctx.lineTo(screenX, baselineY + 60);
                             ctx.stroke();
                             ctx.restore();
@@ -1351,7 +1350,6 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
                         const cycle = (60 / hr) * window.ecgSpeed;
                         const t = (gx % cycle) / cycle;
                         
-                        // Approximate R-wave peak phase
                         let peakPhase = 0.25; 
                         if (state.rhythm === 'svt') peakPhase = 0.15; 
                         
@@ -1360,8 +1358,6 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
                             ctx.strokeStyle = 'white';
                             ctx.lineWidth = 2;
                             ctx.beginPath();
-                            // Draw a small vertical line ABOVE the complex
-                            // yVal is the trace height. We go up (negative Y) from there.
                             ctx.moveTo(screenX, yVal - 25); 
                             ctx.lineTo(screenX, yVal - 45); 
                             ctx.stroke();
@@ -1370,48 +1366,8 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
                     }
                 }
             }
-            // ctx.stroke(); // Removed from here as we stroked earlier
-                        const pacerPhase = (gx % pacerCycle) / pacerCycle;
-                        // Draw spike near phase 0
-                        if (pacerPhase < (step/pacerCycle)) {
-                            ctx.save();
-                            ctx.strokeStyle = '#ff00ff'; // Magenta Pacer Spike
-                            ctx.lineWidth = 2;
-                            ctx.beginPath();
-                            ctx.moveTo(screenX, baselineY - 40);
-                            ctx.lineTo(screenX, baselineY + 40);
-                            ctx.stroke();
-                            ctx.restore();
-                            // Reset trace path so the spike doesn't connect to the ECG
-                            ctx.beginPath();
-                            ctx.moveTo(screenX, yVal); 
-                        }
-                    }
-
-                    // --- FIX: RESTORED SYNC MARKERS ---
-                    // Draws a white marker on the R-wave peak if Sync is active
-                    if (state.syncMode && state.hasPulse && state.rhythm !== 'vfib' && state.rhythm !== 'asystole') {
-                        const hr = state.hr || 75;
-                        const cycle = (60 / hr) * window.ecgSpeed;
-                        const t = (gx % cycle) / cycle;
-                        
-                        // Approximate R-wave peak phase
-                        let peakPhase = 0.25; 
-                        if (state.rhythm === 'svt') peakPhase = 0.15; // SVT peak is earlier
-                        
-                        if (Math.abs(t - peakPhase) < (step/cycle)) {
-                            ctx.save();
-                            ctx.fillStyle = 'white';
-                            ctx.shadowBlur = 0;
-                            // Draw marker slightly above the trace
-                            ctx.fillRect(screenX - 3, yVal - 30, 6, 6);
-                            ctx.restore();
-                        }
-                    }
-                }
-            }
-            ctx.stroke();
-
+            // End of the drawing loop
+            
             // 3. Move Paper
             const speed = window.ecgSpeed || 125;
             const logicalMove = speed * deltaTime;
