@@ -4,6 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ZOLL R Series Simulator - WMEBEM | RCUK 2025</title>
+    <link rel="manifest" href="manifest.json">
+    <script>
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('sw.js')
+          .then(() => console.log('Service Worker Registered'));
+      }
+    </script>
     
     <script>
 (function(){'use strict';
@@ -1162,7 +1169,18 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
             }
         };
 
+        const APP_STATES = {
+            IDLE: 'IDLE',           // Off or Monitor Mode
+            ANALYSING: 'ANALYSING', // Hands off
+            CHARGING: 'CHARGING',   // Building energy
+            READY: 'READY',         // Shock button active
+            PACING: 'PACING'        // Pacer active
+        };
+
         const state = {
+            // --- NEW STATE MACHINE ---
+            machineState: APP_STATES.IDLE, 
+
             selectedMode: null,
             selectedScenario: null,
             scenarioActive: false,
@@ -1202,6 +1220,31 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
             currentScenarioStep: 0,
         };
         window.state = state; 
+        // --- STATE MACHINE LOGIC ---
+        function transitionTo(newState) {
+            console.log(`State Transition: ${state.machineState} -> ${newState}`);
+            
+            // Exit Logic (Clean up old state)
+            if (state.machineState === APP_STATES.READY) {
+                document.getElementById('shockBtn').disabled = true;
+                state.charged = false;
+            }
+
+            state.machineState = newState;
+
+            // Entry Logic (Setup new state)
+            if (newState === APP_STATES.READY) {
+                document.getElementById('shockBtn').disabled = false;
+                playSound('charged');
+                setMessage(`${state.energy}J READY - ${state.syncMode ? 'SYNC' : 'UNSYNC'}`, 'alert');
+            }
+            
+            if (newState === APP_STATES.IDLE) {
+                setMessage('SIMULATOR READY', 'ready');
+                state.charged = false;
+                document.getElementById('shockBtn').disabled = true;
+            }
+        }
 
         let canvas, ctx, animationId; // Removed local waveformX to fix scope bug
         let lastTimestamp = 0;
@@ -2080,52 +2123,47 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
 
         function chargeDefib() {
             if (state.deviceMode !== 'defib') {
-                setMessage('SWITCH TO DEFIB MODE TO CHARGE', '');
+                setMessage('SWITCH TO DEFIB MODE', '');
                 return;
             }
+            if (state.machineState === APP_STATES.CHARGING || state.machineState === APP_STATES.READY) return;
             
-            setMessage('CHARGING...', '');
+            transitionTo(APP_STATES.CHARGING);
+            setMessage('CHARGING...', 'alert');
             logAction('Charge initiated', `${state.energy}J`);
             playSound('charging');
             
             setTimeout(() => {
-                state.charged = true;
-                document.getElementById('shockBtn').disabled = false;
-                setMessage(`${state.energy}J READY - ${state.syncMode ? 'SYNC' : 'UNSYNC'}`, 'alert');
+                state.charged = true; 
+                transitionTo(APP_STATES.READY);
                 logAction('Charged', `${state.energy}J ready`);
-                playSound('charged');
             }, 2000);
         }
 
         function deliverShock() {
-            if (!state.charged) return;
+            if (state.machineState !== APP_STATES.READY) return;
             
             const scenario = scenarios[state.selectedScenario];
             state.shockCount++;
             const shockEnergy = state.energy;
-            const shockType = state.syncMode ? 'synchronised' : 'unsynchronised';
-            state.charged = false;
-            document.getElementById('shockBtn').disabled = true;
             
             playSound('shock');
-            
-            logAction(`Shock ${state.shockCount} delivered`, `${shockEnergy}J ${shockType}`);
+            logAction(`Shock ${state.shockCount} delivered`, `${shockEnergy}J`);
             
             if (canvas) {
                 canvas.style.background = '#fff';
                 setTimeout(() => canvas.style.background = '#000', 100);
             }
             
-            setMessage(`SHOCK ${state.shockCount} DELIVERED - ${shockEnergy}J`, 'alert');
-            
-            // --- TRIGGER CPR TIMER ---
+            setMessage(`SHOCK DELIVERED`, 'alert');
+            transitionTo(APP_STATES.IDLE);
             startCPRTimer();
-
+            
+            // Re-use your existing logic for outcomes...
             setTimeout(() => {
                 if (state.customScenarioActive) {
                     const currentRhythm = state.rhythm;
                     const vitals = rhythmVitals[currentRhythm];
-                    
                     if (vitals.hasPulse === false || currentRhythm === 'vtach' || currentRhythm === 'svt' || currentRhythm === 'afib') {
                         const step = state.customScenario[state.currentScenarioStep];
                         setVitals(step.postshock);
@@ -2136,98 +2174,50 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
                         setMessage('INAPPROPRIATE SHOCK - NO CHANGE', 'alert');
                     }
                     updateDisplays();
-                
                 } else if (scenario && state.scenarioActive) {
                     let shouldConvert = false;
-                    
                     if (scenario.category === 'defibrillation') {
-                        if (state.shockCount >= scenario.shockToConvert && 
-                            shockEnergy >= scenario.successEnergy) {
-                            shouldConvert = true;
-                        }
+                        if (state.shockCount >= scenario.shockToConvert && shockEnergy >= scenario.successEnergy) shouldConvert = true;
                     } else if (scenario.category === 'cardioversion') {
-                        if (state.syncMode && shockEnergy >= scenario.successEnergy - 30) {
-                            shouldConvert = true;
-                        }
+                        if (state.syncMode && shockEnergy >= scenario.successEnergy - 30) shouldConvert = true;
                     }
 
                     if (shouldConvert) {
-                        const successVitals = scenario.successVitals;
-                        const successRhythm = scenario.successRhythm;
-
-                        setVitals(successRhythm);
-                        state.hr = successVitals.hr;
-                        state.spo2 = successVitals.spo2;
-                        state.etco2 = successVitals.etco2;
-                        state.bpSys = successVitals.bpSys;
-                        state.bpDia = successVitals.bpDia;
+                        setVitals(scenario.successRhythm);
+                        state.hr = scenario.successVitals.hr;
+                        state.spo2 = scenario.successVitals.spo2;
+                        state.etco2 = scenario.successVitals.etco2;
+                        state.bpSys = scenario.successVitals.bpSys;
+                        state.bpDia = scenario.successVitals.bpDia;
                         state.hasPulse = true;
                         state.roscAchieved = true;
-                        
-                        if (scenario.category === 'defibrillation') {
-                            setMessage('RHYTHM CONVERTED - CHECK PULSE', 'ready');
-                            logAction('ROSC achieved', 'Return of spontaneous circulation');
-                        } else {
-                            setMessage('RHYTHM CONVERTED TO SINUS', 'ready');
-                            logAction('Rhythm converted', 'Converted to sinus rhythm');
-                        }
-                        
+                        setMessage('RHYTHM CONVERTED', 'ready');
+                        logAction('Rhythm converted', 'Success');
                         updateDisplays();
                     } else {
                         setMessage('CHECK RHYTHM', 'ready');
                     }
-                
                 } else if (!state.scenarioActive) {
-                    let shouldConvert = false;
-                    const currentRhythm = state.rhythm;
-                    
-                    if (currentRhythm === 'vfib' || currentRhythm === 'vt_pulseless') {
-                        if (state.shockCount >= 3 && shockEnergy >= 150) { 
-                            shouldConvert = true;
-                        }
-                    }
-                    else if (currentRhythm === 'vtach' || currentRhythm === 'svt' || currentRhythm === 'afib') {
-                        if (state.syncMode && shockEnergy >= 100) { 
-                            shouldConvert = true;
-                        }
-                    }
-                
-                    if (shouldConvert) {
-                        const successVitals = rhythmVitals['nsr'];
-                        const successRhythm = 'nsr';
-
-                        setVitals(successRhythm);
-                        state.hr = successVitals.hr;
-                        state.spo2 = successVitals.spo2;
-                        state.etco2 = successVitals.etco2;
-                        state.bpSys = successVitals.bpSys;
-                        state.bpDia = successVitals.bpDia;
-                        state.hasPulse = true;
-                        state.roscAchieved = true;
-                        
-                        if (currentRhythm === 'vfib' || currentRhythm === 'vt_pulseless') {
-                            setMessage('RHYTHM CONVERTED - CHECK PULSE', 'ready');
-                            logAction('ROSC achieved', 'Return of spontaneous circulation');
-                        } else {
-                            setMessage('RHYTHM CONVERTED TO SINUS', 'ready');
-                            logAction('Rhythm converted', 'Converted to sinus rhythm');
-                        }
-                        
-                        updateDisplays();
+                    // Free play conversion logic
+                    if ((state.rhythm === 'vfib' || state.rhythm === 'vt_pulseless') && state.shockCount >= 3 && shockEnergy >= 150) {
+                         setVitals('nsr');
+                         state.roscAchieved = true;
+                         setMessage('RHYTHM CONVERTED', 'ready');
                     } else {
-                        setMessage('CHECK RHYTHM', 'ready');
+                         setMessage('CHECK RHYTHM', 'ready');
                     }
+                    updateDisplays();
                 }
             }, 2000);
         }
 
         function analyseRhythm() {
             if (state.deviceMode === 'off') return;
+            if (state.machineState !== APP_STATES.IDLE && state.machineState !== undefined) return;
 
             if (state.customScenarioActive) {
                 logAction('Analyse pressed (Cycle ' + (state.currentScenarioStep + 1) + ')');
                 state.currentScenarioStep++;
-                
                 if (state.currentScenarioStep >= state.customScenario.length) {
                     setMessage('CUSTOM SCENARIO COMPLETE', 'ready');
                     logAction('Custom Scenario complete');
@@ -2235,33 +2225,32 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
                     state.customScenarioActive = false;
                     return;
                 }
-                
                 const nextRhythm = state.customScenario[state.currentScenarioStep].initial;
                 setVitals(nextRhythm);
-                
                 logAction('Custom Scenario: Cycle ' + (state.currentScenarioStep + 1), 'Rhythm: ' + nextRhythm);
+                
+                transitionTo(APP_STATES.ANALYSING);
                 setMessage('ANALYSING... CYCLE ' + (state.currentScenarioStep + 1), '');
                 
                 setTimeout(() => {
                     const vitals = rhythmVitals[nextRhythm];
                     if (!vitals.hasPulse || nextRhythm === 'vtach' || nextRhythm === 'svt' || nextRhythm === 'afib') {
                         setMessage('SHOCKABLE RHYTHM DETECTED', 'alert');
-                        logAction('Analysis result', 'Shockable rhythm');
                     } else {
                         setMessage('ORGANISED RHYTHM', 'ready');
-                        logAction('Analysis result', 'Non-shockable rhythm');
                     }
+                    transitionTo(APP_STATES.IDLE);
                 }, 1500); 
                 return;
             }
 
-            setMessage('ANALYSING...', '');
+            transitionTo(APP_STATES.ANALYSING);
+            setMessage('ANALYSING... STAND CLEAR', 'alert');
             logAction('Rhythm analysed');
             
             setTimeout(() => {
                 let currentRhythm = state.rhythm;
                 let currentPulse = state.hasPulse;
-
                 if (state.selectedScenario && state.scenarioActive) {
                     const scenario = scenarios[state.selectedScenario];
                     currentPulse = scenario.hasPulse || state.roscAchieved;
@@ -2269,11 +2258,10 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
                 
                 if (currentRhythm === 'vfib' || (currentRhythm === 'vtach' && !currentPulse) || currentRhythm === 'vt_pulseless') {
                     setMessage('SHOCKABLE RHYTHM DETECTED', 'alert');
-                    logAction('Analysis result', 'Shockable rhythm');
                 } else {
                     setMessage('ORGANISED RHYTHM', 'ready');
-                    logAction('Analysis result', 'Non-shockable rhythm');
                 }
+                transitionTo(APP_STATES.IDLE);
             }, 2500);
         }
 
