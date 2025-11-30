@@ -162,30 +162,33 @@ var rhythms = {
 // Artefact Wrapper
 function withArtefacts(fn){
     return function(x, hr, tSeconds, canvasInfo){
+        // 1. Calculate underlying rhythm first
         var y = fn(x, hr, tSeconds, canvasInfo); 
+        
         var st = window.state || {};
         var flags = (st.noise || {});
-        
-        // CPR Artefact: 120bpm (2 Hz) VT-like appearance
+        var baseline = (canvasInfo.height || 300) / 2;
+
+        // 2. CPR Artefact: 110bpm (1.83 Hz)
         if (st.cprActive) {
-            // Frequency: 120 bpm = 2.0 Hz
-            var freq = 2.0; 
+            // Frequency: 110 bpm = ~1.83 Hz
+            var freq = 1.83; 
             var ang = tSeconds * freq * 2 * Math.PI;
 
-            // Shape: Sharpened Sine wave (looks more like QRS/VT)
-            // sin(t) - 0.2*sin(2t) creates a "sawtooth-ish" cardiac shape
-            var cprWave = (Math.sin(ang) - 0.2 * Math.sin(2 * ang + 0.5)) * (window.PX_PER_MV * 1.8);
+            // Shape: Large, smooth compression wave (2.5mV amplitude)
+            // We use a simple Sine wave. Real CPR looks like a rounded sawtooth, 
+            // but a clean sine is better than fuzzy noise for simulation.
+            var cprWave = Math.sin(ang) * (window.PX_PER_MV * 2.5);
 
-            // Add High frequency noise
-            var cprNoise = (Math.random() - 0.5) * 8; 
-
-            // LOGIC: Overwrite underlying rhythm almost entirely (85% CPR, 15% Underlying)
-            // This simulates the CPR artifact dominating the ECG pickup
-            y = (y * 0.15) + cprWave + cprNoise;
+            // LOGIC: Heavily dampen the underlying rhythm and replace with CPR wave
+            // This centers it perfectly on the baseline
+            y = baseline + ((y - baseline) * 0.15) + cprWave;
         }
 
+        // 3. Other Noise
         if(flags.movement) y += Math.sin(tSeconds * 0.5 + x * 0.005) * (window.PX_PER_MM * 1.5);
         if(flags.leadoff) y += Math.sin(tSeconds * 50) * (window.PX_PER_MM * 4.0);
+        
         return y;
     }
 }
