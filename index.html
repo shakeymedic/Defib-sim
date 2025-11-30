@@ -166,13 +166,22 @@ function withArtefacts(fn){
         var st = window.state || {};
         var flags = (st.noise || {});
         
-        // CPR Artefact: Large, regular compressions (approx 110/min)
+        // CPR Artefact: 120bpm (2 Hz) VT-like appearance
         if (st.cprActive) {
-            // Create a compression wave (~1.8Hz)
-            var cprWave = Math.sin(tSeconds * 11) * (window.PX_PER_MV * 2.5);
-            // Add some high-frequency noise to simulate muscle artifact
-            var cprNoise = Math.random() * 5; 
-            y += (cprWave + cprNoise);
+            // Frequency: 120 bpm = 2.0 Hz
+            var freq = 2.0; 
+            var ang = tSeconds * freq * 2 * Math.PI;
+
+            // Shape: Sharpened Sine wave (looks more like QRS/VT)
+            // sin(t) - 0.2*sin(2t) creates a "sawtooth-ish" cardiac shape
+            var cprWave = (Math.sin(ang) - 0.2 * Math.sin(2 * ang + 0.5)) * (window.PX_PER_MV * 1.8);
+
+            // Add High frequency noise
+            var cprNoise = (Math.random() - 0.5) * 8; 
+
+            // LOGIC: Overwrite underlying rhythm almost entirely (85% CPR, 15% Underlying)
+            // This simulates the CPR artifact dominating the ECG pickup
+            y = (y * 0.15) + cprWave + cprNoise;
         }
 
         if(flags.movement) y += Math.sin(tSeconds * 0.5 + x * 0.005) * (window.PX_PER_MM * 1.5);
@@ -195,15 +204,17 @@ window.drawECGGrid = function(ctx, w, h) {
     ctx.fillStyle = '#050505'; 
     ctx.fillRect(0, 0, w, h);
 
+    // Dimmed Small Grid
     ctx.lineWidth = 1;
-    ctx.strokeStyle = 'rgba(0, 255, 50, 0.15)'; 
+    ctx.strokeStyle = 'rgba(0, 255, 50, 0.07)'; // Brightness reduced
     ctx.beginPath();
     for (var x=0; x<=w; x+=window.PX_PER_MM) { ctx.moveTo(x+0.5,0); ctx.lineTo(x+0.5,h); }
     for (var y=0; y<=h; y+=window.PX_PER_MM) { ctx.moveTo(0,y+0.5); ctx.lineTo(w,y+0.5); }
     ctx.stroke();
 
+    // Dimmed Large Grid
     ctx.lineWidth = 1.5;
-    ctx.strokeStyle = 'rgba(0, 255, 50, 0.25)'; 
+    ctx.strokeStyle = 'rgba(0, 255, 50, 0.12)'; // Brightness reduced
     ctx.beginPath();
     for (var x=0; x<=w; x+=window.PX_PER_BIG) { ctx.moveTo(x+0.5,0); ctx.lineTo(x+0.5,h); }
     for (var y=0; y<=h; y+=window.PX_PER_BIG) { ctx.moveTo(0,y+0.5); ctx.lineTo(w,y+0.5); }
@@ -803,17 +814,30 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
                      <div class="btn-subtext">RESET TIMER</div>
                 </button>
             </div>
+            <div id="cprLog" style="
+                margin-top: 15px; 
+                background: rgba(0,0,0,0.3); 
+                border-radius: 6px; 
+                padding: 8px; 
+                height: 120px; 
+                overflow-y: auto; 
+                text-align: left; 
+                font-family: monospace; 
+                font-size: 11px;
+                border: 1px solid rgba(255,255,255,0.2);
+                color: #ddd;
+                display: flex;
+                flex-direction: column-reverse; /* Newest items at top */
+            ">
+                <div style="color: #666; text-align: center; font-style: italic; margin-bottom: 5px;">-- Event Log --</div>
+            </div>
+            <button id="roscBtn" class="rosc-btn">
 
             <button id="roscBtn" class="rosc-btn">
                 ❤️ PATIENT ROSC
             </button>
         </div>
-
-    <button id="roscBtn" class="rosc-btn">
-        ❤️ PATIENT ROSC
-    </button>
-</div>
-        
+       
         <button class="back-button hidden" id="endScenarioBtn">
             ◀ End Scenario
         </button>
@@ -1412,14 +1436,25 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
 
                     // 2. Sync Markers (White Bar at Top of Screen)
                     if (state.syncMode && state.hasPulse && state.rhythm !== 'vfib' && state.rhythm !== 'asystole') {
-                        // Precise peak timing for alignment
                         let peakT = 0.25; 
-                        if (state.rhythm === 'svt') peakT = 0.15; 
-                        if (state.rhythm === 'paced') peakT = 0.12; 
-                        if (state.rhythm === 'afib') peakT = 0.25; // Variable
+                        
+                        // FIX: Use the EXACT BPMs defined in the rhythm generator functions to prevent drift
+                        let syncBPM = state.hr || 75; 
 
-                        const hr = state.hr || 75;
-                        const cycle = (60 / hr) * window.ecgSpeed;
+                        if (state.rhythm === 'svt') { 
+                            peakT = 0.15; 
+                            syncBPM = 180; // Matches svt() function
+                        } else if (state.rhythm === 'vtach') {
+                            syncBPM = 160; // Matches vtach() function
+                        } else if (state.rhythm === 'afib') {
+                            peakT = 0.25;
+                            syncBPM = 140; // Matches afib() function
+                        } else if (state.rhythm === 'paced') {
+                            peakT = 0.12;
+                            syncBPM = state.pacerRate; 
+                        }
+
+                        const cycle = (60 / syncBPM) * window.ecgSpeed;
                         const t = (gx % cycle) / cycle;
                         
                         // Check if we are at the peak phase
@@ -1519,6 +1554,18 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
                 details: details
             });
             console.log(`[${timestamp}s] ${action}${details ? ': ' + details : ''}`);
+
+            // Update Visual Log in CPR Panel
+            const cprLog = document.getElementById('cprLog');
+            if (cprLog) {
+                const timeStr = document.getElementById('cprTimerDisplay').textContent || "00:00";
+                const entry = document.createElement('div');
+                entry.style.borderBottom = '1px solid rgba(255,255,255,0.1)';
+                entry.style.padding = '2px 0';
+                entry.innerHTML = `<span style="color:#f1c40f; font-weight:bold;">[${timeStr}]</span> ${action} <span style="opacity:0.7">${details}</span>`;
+                // Insert at the beginning so it stays at the top (due to flex-direction: column-reverse)
+                cprLog.prepend(entry); 
+            }
         }
 
         function backToModeSelect() {
