@@ -1711,41 +1711,6 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
             }, 1000);
         }
 
-        function startCustomScenario() {
-            state.customScenario = [];
-            for (let i = 1; i <= 5; i++) {
-                const initial = document.getElementById(`cycle_${i}_initial`).value;
-                const postshock = document.getElementById(`cycle_${i}_postshock`).value;
-                state.customScenario.push({ initial, postshock });
-            }
-            
-            state.customScenarioActive = true;
-            state.currentScenarioStep = 0;
-            state.selectedScenario = null; 
-            state.actions = [];
-            state.shockCount = 0;
-            state.syncMode = false;
-            state.pacingActive = false;
-            state.charged = false;
-            state.roscAchieved = false;
-            
-            setVitals(state.customScenario[0].initial);
-            
-            menuWrapper.classList.add('hidden');
-            scenarioCreatorScreen.classList.add('hidden');
-            simulatorContainer.classList.remove('hidden');
-            instructorPanel.classList.add('hidden'); 
-            endScenarioBtn.classList.remove('hidden'); 
-            
-            setMode('monitor'); 
-
-            state.scenarioActive = true; 
-            state.scenarioStartTime = Date.now();
-            
-            setMessage(`CUSTOM SCENARIO STARTED. CYCLE 1: ${state.customScenario[0].initial.toUpperCase()}`, 'ready');
-            logAction('Custom Scenario started');
-        }
-
         function endScenario() {
             if (!state.scenarioActive) {
                 returnToMenu();
@@ -2192,6 +2157,7 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
                         updateDisplays();
                     }, 1000);
                     
+                    // *** FIX: Trigger the scenario advance ***
                     if (state.customScenarioActive) checkScenarioTrigger('shock');
                 } else {
                     if (failReason) setMessage(`SHOCK FAILED: ${failReason}`, 'alert');
@@ -2291,14 +2257,20 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
                         
                         logAction('Pacing capture achieved', `at ${state.pacerOutput}mA`);
                         state.rhythm = 'paced'; 
-                        
                         state.hr = state.pacerRate; 
-                        state.spo2 = successVitals.spo2;
-                        state.etco2 = successVitals.etco2;
-                        state.bpSys = successVitals.bpSys;
-                        state.bpDia = successVitals.bpDia;
+                        
+                        // Use default paced vitals if no scenario specific ones exist
+                        if(successVitals) {
+                            state.spo2 = successVitals.spo2;
+                            state.etco2 = successVitals.etco2;
+                            state.bpSys = successVitals.bpSys;
+                            state.bpDia = successVitals.bpDia;
+                        }
                         
                         setMessage(`CAPTURE ACHIEVED AT ${state.pacerOutput}mA`, 'ready');
+                        
+                        // *** FIX: Trigger the scenario advance ***
+                        if (state.customScenarioActive) checkScenarioTrigger('pacing');
                         
                     } else {
                         logAction('Pacing capture lost');
@@ -2523,49 +2495,6 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
             setMode(next);
         }
 
-        // --- NEW: Populate Scenario Creator Dropdowns ---
-        function initScenarioCreator() {
-            const rhythmOptions = Object.keys(rhythmVitals).map(key => 
-                `<option value="${key}">${key.replace(/_/g, ' ').toUpperCase()}</option>`
-            ).join('');
-            
-            document.querySelectorAll('.scenario-rhythm-select').forEach(select => {
-                select.innerHTML = rhythmOptions;
-            });
-
-            // Set smart defaults (VF -> VF)
-            document.getElementById('cycle_1_initial').value = 'vfib';
-            document.getElementById('cycle_1_postshock').value = 'vfib';
-            document.getElementById('cycle_2_initial').value = 'vfib';
-            document.getElementById('cycle_2_postshock').value = 'asystole'; // e.g.
-            document.getElementById('cycle_3_initial').value = 'asystole';
-            document.getElementById('cycle_3_postshock').value = 'vfib';
-            document.getElementById('cycle_4_initial').value = 'vfib';
-            document.getElementById('cycle_4_postshock').value = 'nsr';
-            document.getElementById('cycle_5_initial').value = 'nsr';
-            document.getElementById('cycle_5_postshock').value = 'nsr';
-
-            // --- LINK CYCLES LOGIC ---
-            const linkCycles = (fromId, toId) => {
-                const fromEl = document.getElementById(fromId);
-                const toEl = document.getElementById(toId);
-                
-                // Disable the 'next' initial cycle so users can't break the chain
-                toEl.disabled = true;
-                toEl.style.opacity = "0.7";
-                toEl.value = fromEl.value; // Set initial value
-
-                fromEl.addEventListener('change', () => {
-                    toEl.value = fromEl.value;
-                });
-            };
-
-            linkCycles('cycle_1_postshock', 'cycle_2_initial');
-            linkCycles('cycle_2_postshock', 'cycle_3_initial');
-            linkCycles('cycle_3_postshock', 'cycle_4_initial');
-            linkCycles('cycle_4_postshock', 'cycle_5_initial');
-        }
-
         // --- Keyboard Shortcuts ---
         document.addEventListener('keydown', (e) => {
             const key = e.key.toLowerCase();
@@ -2642,8 +2571,6 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
             scenarioCreatorScreen.classList.add('hidden');
             simulatorContainer.classList.remove('hidden'); // <<< THIS IS THE FIX
         });
-        document.getElementById('startCustomScenarioBtn').addEventListener('click', startCustomScenario);
-
 
         // Quick Rhythm Panel
         document.querySelectorAll('.quick-rhythm-panel .rhythm-btn').forEach(btn => {
@@ -2703,8 +2630,7 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
         });
 
         // --- INITIALISATION ---
-        initScenarioCreator(); // New
-        // --- NEW: Custom Scenario Logic ---
+                // --- NEW: Custom Scenario Logic ---
         function getScenarioStepHTML(index) {
             // Clone the existing select options so we don't have to hardcode them
             const rhythmOpts = document.querySelector('.rhythm-btn') ? 
