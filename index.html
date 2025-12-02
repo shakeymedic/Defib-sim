@@ -2029,23 +2029,27 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
 
         function setMode(mode) {
             const labels = document.querySelectorAll('.mode-label');
-            labels.forEach(label => {
-                if (label.dataset.mode === mode) {
-                    label.classList.add('active');
-                } else {
-                    label.classList.remove('active');
-                }
-            });
+            labels.forEach(l => l.classList.remove('active'));
+            const activeLabel = document.querySelector(`.mode-label[data-mode="${mode}"]`);
+            if(activeLabel) activeLabel.classList.add('active');
             
             const rotations = { monitor: 0, defib: 90, pacer: 180, off: 270 };
             document.getElementById('modeDial').style.setProperty('--dial-rotation', `${rotations[mode]}deg`);
 
-            const screenEl = document.querySelector('.screen');
-            if (!screenEl) return;
-            
-            const wasOff = state.deviceMode === 'off';
-            state.deviceMode = mode; 
+            // NEW: Toggle Pacing Cover
+            const cover = document.getElementById('pacingCover');
+            if (cover) {
+                if (mode === 'pacer') {
+                    cover.classList.add('open');
+                } else {
+                    cover.classList.remove('open');
+                    state.isCaptured = false; 
+                }
+            }
 
+            const screenEl = document.querySelector('.screen');
+            state.deviceMode = mode; 
+            
             if (mode === 'off') {
                 if (animationId) {
                     cancelAnimationFrame(animationId);
@@ -2066,43 +2070,22 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
                     const dpr = window.devicePixelRatio || 1;
                     ctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);
                 }
-                
                 logAction('Mode changed', 'OFF');
-
             } else {
                 screenEl.classList.remove('screen-off');
-                
-                if (wasOff) {
-                    showSplashScreen(() => {
-                        logAction('Mode changed', mode.toUpperCase());
-                        updateDisplays();
-                        
-                        if (!animationId) {
-                            lastTimestamp = 0;
-                            window.waveformX = 0;
-                            animationId = requestAnimationFrame(animate);
-                        }
-                    });
-                } else {
-                    logAction('Mode changed', mode.toUpperCase());
-                    updateDisplays();
-                    
-                    if (!animationId) { 
-                        lastTimestamp = 0;
-                        window.waveformX = 0;
-                        animationId = requestAnimationFrame(animate);
-                    }
+                logAction('Mode changed', mode.toUpperCase());
+                updateDisplays();
+                if (!animationId) { 
+                    lastTimestamp = 0;
+                    window.waveformX = 0;
+                    animationId = requestAnimationFrame(animate);
                 }
             }
             
             if (mode === 'pacer') {
                 state.pacingActive = true;
-                if (!state.originalRhythm) { 
-                    state.originalRhythm = state.rhythm;
-                }
-                state.lastCardiacEvent = window.waveformX;
+                if (!state.originalRhythm) state.originalRhythm = state.rhythm;
                 state.pacerStartTime = window.waveformX; 
-                state.firedSpikes = []; 
             } else {
                 state.pacingActive = false;
                 if (state.isCaptured) {
@@ -2112,10 +2095,7 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
                 state.originalRhythm = null;
                 state.isCaptured = false;
             }
-
-            if (mode !== 'off' && !wasOff) {
-                 updateDisplays();
-            }
+            if (mode !== 'off') updateDisplays();
         }
 
         function toggleSync() {
@@ -2171,12 +2151,13 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
         function deliverShock() {
             if (state.machineState !== APP_STATES.READY) return;
             
-            const scenario = scenarios[state.selectedScenario];
             state.shockCount++;
-            const shockEnergy = state.energy;
+            const energy = state.energy;
+            const sync = state.syncMode;
+            const rhythm = state.rhythm;
             
             playSound('shock');
-            logAction(`Shock ${state.shockCount} delivered`, `${shockEnergy}J`);
+            logAction(`Shock ${state.shockCount} delivered`, `${energy}J (${sync ? 'SYNC' : 'UNSYNC'})`);
             
             if (canvas) {
                 canvas.style.background = '#fff';
@@ -2185,57 +2166,39 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
             
             setMessage(`SHOCK DELIVERED`, 'alert');
             transitionTo(APP_STATES.IDLE);
-            startCPRTimer();
             
-            // Re-use your existing logic for outcomes...
+            // --- SMART ALS LOGIC ---
             setTimeout(() => {
-                if (state.customScenarioActive) {
-                    const currentRhythm = state.rhythm;
-                    const vitals = rhythmVitals[currentRhythm];
-                    if (vitals.hasPulse === false || currentRhythm === 'vtach' || currentRhythm === 'svt' || currentRhythm === 'afib') {
-                        const step = state.customScenario[state.currentScenarioStep];
-                        setVitals(step.postshock);
-                        logAction('Custom Scenario: Shock delivered', 'New rhythm: ' + step.postshock);
-                        setMessage('CHECK RHYTHM / PULSE', 'ready');
-                    } else {
-                        logAction('Custom Scenario: Inappropriate shock');
-                        setMessage('INAPPROPRIATE SHOCK - NO CHANGE', 'alert');
-                    }
-                    updateDisplays();
-                } else if (scenario && state.scenarioActive) {
-                    let shouldConvert = false;
-                    if (scenario.category === 'defibrillation') {
-                        if (state.shockCount >= scenario.shockToConvert && shockEnergy >= scenario.successEnergy) shouldConvert = true;
-                    } else if (scenario.category === 'cardioversion') {
-                        if (state.syncMode && shockEnergy >= scenario.successEnergy - 30) shouldConvert = true;
-                    }
+                let success = false;
+                let failReason = "";
 
-                    if (shouldConvert) {
-                        setVitals(scenario.successRhythm);
-                        state.hr = scenario.successVitals.hr;
-                        state.spo2 = scenario.successVitals.spo2;
-                        state.etco2 = scenario.successVitals.etco2;
-                        state.bpSys = scenario.successVitals.bpSys;
-                        state.bpDia = scenario.successVitals.bpDia;
-                        state.hasPulse = true;
-                        state.roscAchieved = true;
-                        setMessage('RHYTHM CONVERTED', 'ready');
-                        logAction('Rhythm converted', 'Success');
-                        updateDisplays();
-                    } else {
-                        setMessage('CHECK RHYTHM', 'ready');
-                    }
-                } else if (!state.scenarioActive) {
-                    // Free play conversion logic
-                    if ((state.rhythm === 'vfib' || state.rhythm === 'vt_pulseless') && state.shockCount >= 3 && shockEnergy >= 150) {
-                         setVitals('nsr');
-                         state.roscAchieved = true;
-                         setMessage('RHYTHM CONVERTED', 'ready');
-                    } else {
-                         setMessage('CHECK RHYTHM', 'ready');
-                    }
-                    updateDisplays();
+                // 1. VF / pVT Criteria
+                if (rhythm === 'vfib' || rhythm === 'vt_pulseless') {
+                    if (energy >= 120) success = true; 
+                    else failReason = "ENERGY TOO LOW";
                 }
+                // 2. Unstable SVT / AFib / VT Criteria
+                else if (rhythm === 'svt' || rhythm === 'afib' || rhythm === 'vtach') {
+                    if (sync && energy >= 70) success = true; 
+                    else if (!sync) failReason = "R-ON-T HAZARD (NO SYNC)";
+                    else failReason = "ENERGY TOO LOW";
+                }
+
+                if (success) {
+                    setMessage('RHYTHM CONVERTING...', 'ready');
+                    setTimeout(() => {
+                        quickSetRhythm('nsr');
+                        state.roscAchieved = true;
+                        updateDisplays();
+                    }, 1000);
+                    
+                    if (state.customScenarioActive) checkScenarioTrigger('shock');
+                } else {
+                    if (failReason) setMessage(`SHOCK FAILED: ${failReason}`, 'alert');
+                    else setMessage('SHOCK DELIVERED - NO CHANGE', 'ready');
+                }
+                
+                startCPRTimer();
             }, 2000);
         }
 
