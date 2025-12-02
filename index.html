@@ -166,30 +166,32 @@ var rhythms = {
     sinus: function(x,h,t,c){ return sinusTemplate(x, 75, c, {}); }
 };
 
-// Artefact Wrapper
+// --- UPDATED ARTEFACT LOGIC ---
 function withArtefacts(fn){
     return function(x, hr, tSeconds, canvasInfo){
-        // 1. Calculate underlying rhythm first
+        // 1. Calculate underlying rhythm
         var y = fn(x, hr, tSeconds, canvasInfo); 
         
         var st = window.state || {};
         var flags = (st.noise || {});
         var baseline = (canvasInfo.height || 300) / 2;
 
-        // 2. CPR Artefact: 110bpm (1.83 Hz)
+        // 2. REALISTIC CPR ARTEFACT
         if (st.cprActive) {
             // Frequency: 110 bpm = ~1.83 Hz
             var freq = 1.83; 
             var ang = tSeconds * freq * 2 * Math.PI;
 
-            // Shape: Large, smooth compression wave (2.5mV amplitude)
-            // We use a simple Sine wave. Real CPR looks like a rounded sawtooth, 
-            // but a clean sine is better than fuzzy noise for simulation.
-            var cprWave = Math.sin(ang) * (window.PX_PER_MV * 2.5);
+            // Shape: Compression is a sharp downstroke, recoil is smoother.
+            // We combine a primary Sine with a secondary Sine at 2x frequency to create a "sawtooth" push.
+            // Amplitude: Increased to 4.5 (was 2.5) to dominate the trace.
+            var cprWave = (Math.sin(ang) - 0.25 * Math.sin(2 * ang - 0.5)) * (window.PX_PER_MV * 4.5);
 
-            // LOGIC: Heavily dampen the underlying rhythm and replace with CPR wave
-            // This centers it perfectly on the baseline
-            y = baseline + ((y - baseline) * 0.15) + cprWave;
+            // Noise: Add high-frequency jitter to simulate muscle movement/contact noise during CPR
+            var noise = (Math.random() - 0.5) * (window.PX_PER_MV * 0.4);
+
+            // LOGIC: Heavily dampen underlying rhythm (0.1x) because compressions obscure it.
+            y = baseline + ((y - baseline) * 0.1) + cprWave + noise;
         }
 
         // 3. Other Noise
@@ -2780,41 +2782,89 @@ function playSound(type) {
         // Ensure cprActive is tracked
         state.cprActive = false;
 
+        // --- IMPROVED ARREST LOGIC ---
+
         // 1. Check for Arrest on Rhythm Change
         function updateArrestPanel() {
             const currentRhythm = state.rhythm;
             const vitals = rhythmVitals[currentRhythm];
             
-            const isArrest = vitals && vitals.hasPulse === false;
-            const panel = document.getElementById('cprPanel');
+            // Check if this is an arrest rhythm (No pulse)
+            const isArrestRhythm = vitals && vitals.hasPulse === false;
             
-            if (isArrest && !state.roscAchieved) {
+            // If we are in arrest AND we haven't achieved ROSC
+            if (isArrestRhythm && !state.roscAchieved) {
+                const panel = document.getElementById('cprPanel');
                 panel.classList.remove('hidden');
                 setTimeout(() => panel.classList.add('active'), 50);
                 
+                // CRITICAL FIX: Only set the start time if it's not already running.
+                // This ensures switching VF -> Asystole doesn't reset the timer.
+                if (!state.arrestStartTime) {
+                    state.arrestStartTime = Date.now();
+                    logAction('Cardiac Arrest Detected', 'Timer Started');
+                }
+                
+                // Ensure the visual loop is running
                 if (!window.arrestTimerInterval) {
                     startArrestTimer();
                 }
             } else {
-                panel.classList.remove('active');
-                state.cprActive = false; // Stop CPR if panel closes
+                // We are not in arrest (or have ROSC).
+                // Hide the panel, but DO NOT clear the timer variable (state.arrestStartTime).
+                // This allows the timer to resume correctly if you switch back to an arrest rhythm.
+                document.getElementById('cprPanel').classList.remove('active');
+                state.cprActive = false;
                 updateCprButton();
             }
         }
 
-        // 2. Timer Logic (Counts UP)
+        // 2. Timer Logic (Timestamp based)
         function startArrestTimer() {
-            let seconds = 0;
-            const timerDisplay = document.getElementById('cprTimerDisplay');
-            
             if (window.arrestTimerInterval) clearInterval(window.arrestTimerInterval);
             
+            const timerDisplay = document.getElementById('cprTimerDisplay');
+            
             window.arrestTimerInterval = setInterval(() => {
-                seconds++;
-                const m = Math.floor(seconds / 60);
-                const s = seconds % 60;
+                if (!state.arrestStartTime) return;
+                
+                const diff = Date.now() - state.arrestStartTime;
+                const totalSeconds = Math.floor(diff / 1000);
+                
+                const m = Math.floor(totalSeconds / 60);
+                const s = totalSeconds % 60;
+                
+                // Format: 02:30
                 timerDisplay.textContent = `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-            }, 1000);
+                
+                // METRONOME LOGIC (110 bpm)
+                if (state.metronomeActive) {
+                    const beatInterval = 60000 / 110; // ms per beat
+                    const now = Date.now();
+                    if (!state.lastBeat || (now - state.lastBeat) > beatInterval) {
+                        playMetronomeTick();
+                        state.lastBeat = now;
+                    }
+                }
+            }, 100); // Update frequently for accuracy
+        }
+        
+        // Helper for metronome sound
+        function playMetronomeTick() {
+            const AudioCtx = window.AudioContext || window.webkitAudioContext;
+            // Use the global audioCtx we fixed earlier
+            if (!AudioCtx || !audioCtx) return; 
+            
+            // Short high-pitched beep
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.frequency.value = 1200;
+            gain.gain.value = 0.1;
+            
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.05);
         }
 
         function updateCprButton() {
@@ -2871,26 +2921,22 @@ function playSound(type) {
         document.getElementById('roscBtn').addEventListener('click', () => {
             state.roscAchieved = true;
             state.hasPulse = true;
-            state.cprActive = false; // Stop CPR visuals
+            state.cprActive = false;
             updateCprButton();
             
-            // FORCE RHYTHM TO NSR IMMEDIATELY
             quickSetRhythm('nsr'); 
-
-            // Restore "Post-ROSC" vitals just in case
-            state.hr = 80;
-            state.spo2 = 96;
-            state.etco2 = 4.5;
-            state.bpSys = 110;
-            state.bpDia = 70;
             
-            logAction('ROSC CONFIRMED', 'Manual Trigger');
+            // Stop the timer visual loop
+            clearInterval(window.arrestTimerInterval);
+            window.arrestTimerInterval = null;
+            
+            // CRITICAL: Clear the start timestamp so the next arrest starts at 00:00
+            state.arrestStartTime = null; 
+            
+            logAction('ROSC CONFIRMED', 'Timer Stopped');
             setMessage('ROSC ACHIEVED - START POST-RESUS CARE', 'ready');
             updateDisplays();
             
-            // Stop timer
-            clearInterval(window.arrestTimerInterval);
-            window.arrestTimerInterval = null;
             document.getElementById('cprPanel').classList.remove('active');
         });
 
