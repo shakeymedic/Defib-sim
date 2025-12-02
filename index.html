@@ -536,6 +536,53 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
     .mode-dial { width: 100px; height: 100px; }
     .pacer-dial { width: 70px; height: 70px; }
 }
+        /* --- NEW FEATURES CSS --- */
+
+/* 1. Organised Menu Grids */
+.rhythm-grid-primary { display: grid; grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); gap: 8px; margin-bottom: 10px; }
+.rhythm-grid-secondary { display: grid; grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); gap: 8px; max-height: 0; overflow: hidden; transition: max-height 0.4s ease-out; opacity: 0; }
+.rhythm-grid-secondary.open { max-height: 600px; opacity: 1; padding-top: 15px; border-top: 1px dashed #465a6e; margin-top: 10px; }
+.toggle-secondary-btn { background: none; border: none; color: #3498db; cursor: pointer; font-size: 13px; margin: 10px auto 0; display: block; width: 100%; }
+.toggle-secondary-btn:hover { color: #5dade2; text-decoration: underline; }
+.rhythm-section-title { color: #7f8c8d; font-size: 11px; font-weight: bold; text-transform: uppercase; margin-bottom: 8px; letter-spacing: 1px; }
+
+/* 2. Pacing Cover Panel */
+.pacing-controls { position: relative; overflow: hidden; } /* Ensure parent clips the cover */
+.pacing-cover {
+    position: absolute; top: -5px; left: -5px; right: -5px; bottom: -5px;
+    background: linear-gradient(135deg, #7f8c8d 0%, #95a5a6 100%);
+    border: 2px solid #555; border-radius: 8px; z-index: 20;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    color: #ecf0f1; font-weight: bold; font-size: 13px; text-transform: uppercase;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+    box-shadow: inset 0 0 20px rgba(0,0,0,0.2);
+    transition: transform 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    transform: translateY(0); /* Default Closed */
+}
+.pacing-cover.open { transform: translateY(115%); } /* Slides down when open */
+
+/* 3. Assessor Guide Icons */
+.rhythm-btn { position: relative; }
+.info-icon {
+    position: absolute; top: -6px; right: -6px;
+    width: 18px; height: 18px;
+    background: #f39c12; color: #fff;
+    border-radius: 50%; border: 2px solid #2c3e50;
+    font-size: 11px; font-weight: bold;
+    display: flex; align-items: center; justify-content: center;
+    cursor: help; z-index: 5;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+.info-icon:hover { transform: scale(1.1); background: #e67e22; }
+
+/* 4. Scenario Creator Steps */
+.scenario-step-card {
+    background: #34495e; border-left: 4px solid #3498db;
+    padding: 15px; margin-bottom: 10px; border-radius: 4px;
+    display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+}
+.scenario-step-card h5 { grid-column: 1 / -1; margin: 0 0 10px 0; color: #bdc3c7; font-size: 12px; text-transform: uppercase; }
+.step-remove-btn { grid-column: 1 / -1; background: #c0392b; color: white; border: none; padding: 5px; border-radius: 3px; cursor: pointer; font-size: 11px; margin-top: 5px; }
     </style>
 </head>
 <body>
@@ -554,20 +601,29 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
     </div>
 
     <div class="quick-rhythm-panel">
-        <h4>Quick Rhythm Select (Default Testing Mode)</h4>
-        <div class="rhythm-buttons">
+        <h4>Quick Rhythm Select</h4>
+        
+        <div class="rhythm-section-title">Primary (ALS Algorithms)</div>
+        <div class="rhythm-grid-primary">
             <button class="rhythm-btn active" data-rhythm="nsr">NSR</button>
-            <button class="rhythm-btn" data-rhythm="vfib">VF</button>
-            <button class="rhythm-btn" data-rhythm="vt_pulseless">VT (Pulseless)</button>
-            <button class="rhythm-btn" data-rhythm="vtach">VT (Pulsed)</button>
-            <button class="rhythm-btn" data-rhythm="svt">SVT</button>
-            <button class="rhythm-btn" data-rhythm="afib">AF</button>
-            <button class="rhythm-btn" data-rhythm="sinus_brady">SB</button>
-            <button class="rhythm-btn" data-rhythm="sinus_tach">ST</button>
-            <button class="rhythm-btn" data-rhythm="asystole">ASY</button>
-            <button class="rhythm-btn" data-rhythm="chb">CHB</button>
-            <button class="rhythm-btn" data-rhythm="paced">PACED</button>
-            <button class="rhythm-btn" data-rhythm="idioventricular">IVR</button>
+            <button class="rhythm-btn" data-rhythm="vfib" style="border-color: #c0392b;">VF <span class="info-icon" data-guide="vf">?</span></button>
+            <button class="rhythm-btn" data-rhythm="vt_pulseless" style="border-color: #c0392b;">pVT <span class="info-icon" data-guide="vf">?</span></button>
+            <button class="rhythm-btn" data-rhythm="asystole" style="border-color: #c0392b;">ASY <span class="info-icon" data-guide="nonshock">?</span></button>
+            <button class="rhythm-btn" data-rhythm="pea" style="border-color: #c0392b;">PEA <span class="info-icon" data-guide="nonshock">?</span></button>
+            <button class="rhythm-btn" data-rhythm="svt" style="border-color: #f39c12;">SVT <span class="info-icon" data-guide="tachy">?</span></button>
+            <button class="rhythm-btn" data-rhythm="vtach" style="border-color: #f39c12;">VT (Pulse) <span class="info-icon" data-guide="tachy">?</span></button>
+            <button class="rhythm-btn" data-rhythm="chb" style="border-color: #f39c12;">CHB <span class="info-icon" data-guide="brady">?</span></button>
+        </div>
+
+        <button class="toggle-secondary-btn" id="toggleSecondaryBtn">▼ Show More Rhythms</button>
+        
+        <div class="rhythm-grid-secondary" id="secondaryRhythms">
+            <button class="rhythm-btn" data-rhythm="afib">AFib</button>
+            <button class="rhythm-btn" data-rhythm="sinus_brady">Sinus Brady</button>
+            <button class="rhythm-btn" data-rhythm="sinus_tach">Sinus Tach</button>
+            <button class="rhythm-btn" data-rhythm="paced">Paced</button>
+            <button class="rhythm-btn" data-rhythm="idioventricular">Idioventricular</button>
+            <button class="rhythm-btn" data-rhythm="brady">Junctional Brady</button>
         </div>
     </div>
 
@@ -581,62 +637,24 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
     <div class="menu-wrapper hidden" id="menuWrapper">
         
         <div class="menu-screen hidden" id="scenarioCreatorScreen" style="max-width: 900px;">
-            <div class="menu-title">
-                <h1>Custom Scenario Creator</h1>
-                <p>Define the rhythm for each analysis cycle. The "after shock" rhythm will appear if a shock is given.</p>
+        <div class="menu-title">
+            <h1>Advanced Scenario Creator</h1>
+            <p>Build a custom sequence. Simulator advances when trigger is met.</p>
+        </div>
+        
+        <div style="display: flex; gap: 20px; width: 100%; height: 60vh;">
+            <div id="customScenarioSteps" style="flex: 2; overflow-y: auto; padding-right: 10px; border-right: 1px solid #465a6e;">
+                <div style="color: #bdc3c7; text-align: center; margin-top: 50px;">Click "Add Step" to begin</div>
             </div>
-            <div style="width: 100%; max-width: 800px; display: flex; flex-direction: column; gap: 15px;">
-                <div class="scenario-cycle">
-                    <div>
-                        <label for="cycle_1_initial">Cycle 1: Initial Rhythm</label>
-                        <select class="scenario-rhythm-select" id="cycle_1_initial"></select>
-                    </div>
-                    <div>
-                        <label for="cycle_1_postshock">Cycle 1: Rhythm After Shock</label>
-                        <select class="scenario-rhythm-select" id="cycle_1_postshock"></select>
-                    </div>
-                </div>
-                <div class="scenario-cycle">
-                    <div>
-                        <label for="cycle_2_initial">Cycle 2: Initial Rhythm</label>
-                        <select class="scenario-rhythm-select" id="cycle_2_initial"></select>
-                    </div>
-                    <div>
-                        <label for="cycle_2_postshock">Cycle 2: Rhythm After Shock</label>
-                        <select class="scenario-rhythm-select" id="cycle_2_postshock"></select>
-                    </div>
-                </div>
-                <div class="scenario-cycle">
-                    <div>
-                        <label for="cycle_3_initial">Cycle 3: Initial Rhythm</label>
-                        <select class="scenario-rhythm-select" id="cycle_3_initial"></select>
-                    </div>
-                    <div>
-                        <label for="cycle_3_postshock">Cycle 3: Rhythm After Shock</label>
-                        <select class="scenario-rhythm-select" id="cycle_3_postshock"></select>
-                    </div>
-                </div>
-                <div class="scenario-cycle">
-                    <div>
-                        <label for="cycle_4_initial">Cycle 4: Initial Rhythm</label>
-                        <select class="scenario-rhythm-select" id="cycle_4_initial"></select>
-                    </div>
-                    <div>
-                        <label for="cycle_4_postshock">Cycle 4: Rhythm After Shock</label>
-                        <select class="scenario-rhythm-select" id="cycle_4_postshock"></select>
-                    </div>
-                </div>
-                <div class="scenario-cycle">
-                    <div>
-                        <label for="cycle_5_initial">Cycle 5: Initial Rhythm</label>
-                        <select class="scenario-rhythm-select" id="cycle_5_initial"></select>
-                    </div>
-                    <div>
-                        <label for="cycle_5_postshock">Cycle 5: Rhythm After Shock</label>
-                        <select class="scenario-rhythm-select" id="cycle_5_postshock"></select>
-                    </div>
-                </div>
+
+            <div style="flex: 1; display: flex; flex-direction: column; gap: 15px;">
+                <button class="menu-option" id="addStepBtn" style="padding: 15px; font-size: 16px; background: #34495e;">+ Add Step</button>
+                <div style="flex-grow: 1;"></div>
+                <button class="menu-option" id="startCustomScenarioBtn" style="padding: 20px; background: linear-gradient(180deg,#27ae60 0%,#229954 100%);">START</button>
+                <button class="menu-option" id="cancelCustomScenarioBtn" style="padding: 15px; background: #c0392b;">Cancel</button>
             </div>
+        </div>
+    </div>
             <div style="display: flex; gap: 15px; margin-top: 30px;">
                 <button class="menu-option" id="startCustomScenarioBtn" style="padding: 20px 40px; background: linear-gradient(180deg,#27ae60 0%,#229954 100%);">
                     Start Custom Scenario
@@ -1020,14 +1038,19 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
                 </div>
 
                 <div class="pacing-controls">
+                    <div class="pacing-cover" id="pacingCover">
+                        <div>PACING DISABLED</div>
+                        <div style="font-size: 9px; font-weight: normal; margin-top: 5px; opacity: 0.8;">Select PACER Mode to Open</div>
+                    </div>
+
                     <div>
                         <div class="pacer-label">OUTPUT</div>
                         <div class="pacer-dial" style="--dial-rotation: 0deg;"></div>
                         <div class="pacer-value" id="outputDisplay">0</div>
                         <div class="pacer-label">mA</div>
                         <div class="pacer-controls-btn">
-                            <button class="pacer-btn" data-pacer-param="output" data-pacer-dir="-10">-</button>
-                            <button class="pacer-btn" data-pacer-param="output" data-pacer-dir="10">+</button>
+                            <button class="pacer-btn" data-pacer-param="output" data-pacer-dir="-5">-</button>
+                            <button class="pacer-btn" data-pacer-param="output" data-pacer-dir="5">+</button>
                         </div>
                     </div>
                     <div>
@@ -1036,12 +1059,11 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
                         <div class="pacer-value" id="rateDisplay">60</div>
                         <div class="pacer-label">ppm</div>
                         <div class="pacer-controls-btn">
-                            <button class="pacer-btn" data-pacer-param="rate" data-pacer-dir="-10">-</button>
-                            <button class="pacer-btn" data-pacer-param="rate" data-pacer-dir="10">+</button>
+                            <button class="pacer-btn" data-pacer-param="rate" data-pacer-dir="-5">-</button>
+                            <button class="pacer-btn" data-pacer-param="rate" data-pacer-dir="5">+</button>
                         </div>
                     </div>
                 </div>
-            </div>
 
             <div class="zoll-branding">
                 <div class="zoll-logo-text">ZOLL</div>
@@ -1383,6 +1405,12 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
             idioventricular: { hr: 40,  spo2: 93, etco2: 4.3, bpSys: 88,  bpDia: 50, hasPulse: true },
             brady:           { hr: 38,  spo2: 93, etco2: 4.1, bpSys: 84,  bpDia: 52, hasPulse: true }
         };
+        const treatmentGuides = {
+        vf: "<h3>Shockable Arrest (VF/pVT)</h3><ul><li><b>CPR:</b> 30:2 immediately.</li><li><b>Shock:</b> >120J Biphasic (150J recommended).</li><li><b>Drugs:</b> Adrenaline 1mg every 3-5min. Amiodarone 300mg after 3 shocks.</li></ul>",
+        nonshock: "<h3>Non-Shockable (PEA/Asystole)</h3><ul><li><b>CPR:</b> 30:2 immediately.</li><li><b>Shock:</b> DO NOT SHOCK.</li><li><b>Drugs:</b> Adrenaline 1mg immediately. Treat reversible causes (4Hs 4Ts).</li></ul>",
+        tachy: "<h3>Tachycardia Algorithm</h3><ul><li><b>Unstable:</b> Synchronised Cardioversion (up to 3 attempts). Sedation/GA if conscious.</li><li><b>Stable:</b> Vagal manoeuvres -> Adenosine (SVT) or Amiodarone (VT).</li></ul>",
+        brady: "<h3>Bradycardia Algorithm</h3><ul><li><b>Drugs:</b> Atropine 500mcg IV (Max 3mg).</li><li><b>Pacing:</b> Indicated for Mobitz II, CHB, or Pause >3s. Set rate 60-90. Increase mA until capture.</li></ul>"
+    };
         // Map PEA to Sinus visual
         window.rhythms.pea = window.rhythms.nsr;
 
@@ -2713,6 +2741,131 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
 
         // --- INITIALISATION ---
         initScenarioCreator(); // New
+        // --- NEW: Custom Scenario Logic ---
+        function getScenarioStepHTML(index) {
+            // Clone the existing select options so we don't have to hardcode them
+            const rhythmOpts = document.querySelector('.rhythm-btn') ? 
+                `<option value="nsr">NSR</option>
+                 <option value="vfib">VF</option>
+                 <option value="vt_pulseless">pVT</option>
+                 <option value="svt">SVT</option>
+                 <option value="chb">CHB</option>
+                 <option value="asystole">Asystole</option>` 
+                 : "";
+
+            return `
+            <div class="scenario-step-card" id="step-${index}">
+                <h5>Step ${index + 1}</h5>
+                <div>
+                    <label style="color:#bdc3c7; font-size:10px;">Rhythm</label>
+                    <select class="scenario-rhythm-select step-rhythm">
+                        ${rhythmOpts}
+                    </select>
+                </div>
+                <div>
+                    <label style="color:#bdc3c7; font-size:10px;">Trigger to Next</label>
+                    <select class="step-trigger" style="width:100%; padding:5px;">
+                        <option value="manual">Manual Only</option>
+                        <option value="shock">On Shock Success</option>
+                        <option value="pacing">On Pacing Capture</option>
+                        <option value="timer_30">Timer: 30s</option>
+                        <option value="timer_60">Timer: 60s</option>
+                        <option value="timer_120">Timer: 2m</option>
+                    </select>
+                </div>
+            </div>`;
+        }
+
+        const addStepBtn = document.getElementById('addStepBtn');
+        if(addStepBtn) {
+            addStepBtn.addEventListener('click', () => {
+                const container = document.getElementById('customScenarioSteps');
+                const count = container.children.length;
+                if (count >= 5) return;
+                
+                const div = document.createElement('div');
+                div.innerHTML = getScenarioStepHTML(count);
+                container.appendChild(div);
+            });
+        }
+
+        const startScenBtn = document.getElementById('startCustomScenarioBtn');
+        if(startScenBtn) {
+            startScenBtn.addEventListener('click', () => {
+                state.customScenario = [];
+                document.querySelectorAll('.scenario-step-card').forEach(card => {
+                    state.customScenario.push({
+                        rhythm: card.querySelector('.step-rhythm').value,
+                        trigger: card.querySelector('.step-trigger').value
+                    });
+                });
+
+                if (state.customScenario.length === 0) return;
+
+                state.customScenarioActive = true;
+                state.currentScenarioStep = 0;
+                
+                activateScenarioStep(0);
+                
+                menuWrapper.classList.add('hidden');
+                scenarioCreatorScreen.classList.add('hidden');
+                simulatorContainer.classList.remove('hidden');
+            });
+        }
+
+        function activateScenarioStep(index) {
+            if (index >= state.customScenario.length) {
+                setMessage('SCENARIO COMPLETE', 'ready');
+                return;
+            }
+            const step = state.customScenario[index];
+            quickSetRhythm(step.rhythm);
+            setMessage(`SCENARIO STEP ${index+1}/${state.customScenario.length}`, 'ready');
+            
+            if (step.trigger.startsWith('timer_')) {
+                const seconds = parseInt(step.trigger.split('_')[1]);
+                setTimeout(() => {
+                    if (state.customScenarioActive && state.currentScenarioStep === index) {
+                        state.currentScenarioStep++;
+                        activateScenarioStep(state.currentScenarioStep);
+                    }
+                }, seconds * 1000);
+            }
+        }
+
+        function checkScenarioTrigger(actionType) {
+            if (!state.customScenarioActive) return;
+            const currentStep = state.customScenario[state.currentScenarioStep];
+            if (currentStep && currentStep.trigger === actionType) {
+                state.currentScenarioStep++;
+                activateScenarioStep(state.currentScenarioStep);
+            }
+        }
+
+        // --- NEW: Secondary Menu Toggle ---
+        const toggleBtn = document.getElementById('toggleSecondaryBtn');
+        if(toggleBtn) {
+            toggleBtn.addEventListener('click', function() {
+                document.getElementById('secondaryRhythms').classList.toggle('open');
+                this.textContent = document.getElementById('secondaryRhythms').classList.contains('open') 
+                    ? "▲ Hide Rhythms" 
+                    : "▼ Show More Rhythms";
+            });
+        }
+
+        // --- NEW: Info Icon Listeners ---
+        document.addEventListener('click', (e) => {
+            if (e.target.classList.contains('info-icon')) {
+                e.stopPropagation(); 
+                const guideKey = e.target.dataset.guide;
+                const content = treatmentGuides[guideKey];
+                if (content) {
+                    document.getElementById('modalTitle').textContent = "Treatment Guideline";
+                    document.getElementById('modalBody').innerHTML = content;
+                    document.getElementById('modalOverlay').classList.remove('hidden');
+                }
+            }
+        });
         initCanvas(); 
         setMode('off'); 
 
