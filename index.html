@@ -2920,7 +2920,7 @@ function quickSetRhythm(rhythm) {
             }
         }
 
-        function checkScenarioTrigger(actionType) {
+ function checkScenarioTrigger(actionType) {
             if (!state.customScenarioActive) return;
             const currentStep = state.customScenario[state.currentScenarioStep];
             if (currentStep && currentStep.trigger === actionType) {
@@ -2929,16 +2929,7 @@ function quickSetRhythm(rhythm) {
             }
         }
 
-        // --- NEW: Secondary Menu Toggle ---
-        const toggleBtn = document.getElementById('toggleSecondaryBtn');
-        if(toggleBtn) {
-            toggleBtn.addEventListener('click', function() {
-                document.getElementById('secondaryRhythms').classList.toggle('open');
-                this.textContent = document.getElementById('secondaryRhythms').classList.contains('open') 
-                    ? "▲ Hide Rhythms" 
-                    : "▼ Show More Rhythms";
-            });
-        }
+        // --- NEW: Info Icon Listeners ---
 
         // --- NEW: Info Icon Listeners ---
         document.addEventListener('click', (e) => {
