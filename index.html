@@ -176,23 +176,21 @@ function withArtefacts(fn){
         var flags = (st.noise || {});
         var baseline = (canvasInfo.height || 300) / 2;
 
-        // 2. REALISTIC CPR ARTEFACT (Updated to Sine Wave / VT shape)
+        // 2. REALISTIC CPR ARTEFACT (Broad, VT-like shape)
         if (st.cprActive) {
             // Frequency: 110 bpm = ~1.83 Hz
             var freq = 1.83; 
             var ang = tSeconds * freq * 2 * Math.PI;
 
-            // Shape: Monomorphic Sine Wave (looks like VT)
-            var cprWave = Math.sin(ang) * (window.PX_PER_MV * 3.5); 
+            // Shape: Sharp upstroke, slower downstroke (Sawtooth/VT style)
+            // Using a combination of sine waves to create a more mechanical "thrust" shape
+            var cprWave = (Math.sin(ang) - 0.4 * Math.sin(2 * ang)) * (window.PX_PER_MV * 4.0);
             
-            // Add a little sharpness to mimic the "push"
-            cprWave -= 0.3 * Math.sin(2 * ang);
+            // Add some high-frequency muscle noise from the physical effort
+            var noise = (Math.random() - 0.5) * (window.PX_PER_MV * 0.4);
 
-            // Add High-Freq Noise (Muscle artifact from pushing)
-            var noise = (Math.random() - 0.5) * (window.PX_PER_MV * 0.3);
-
-            // Dampen underlying rhythm significantly (0.15x) so CPR dominates
-            y = baseline + ((y - baseline) * 0.15) + cprWave + noise;
+            // Heavily dampen the underlying rhythm (0.1x) so CPR totally dominates
+            y = baseline + ((y - baseline) * 0.1) + cprWave + noise;
         }
 
         // 3. Other Noise
@@ -471,265 +469,92 @@ window.drawECGGrid = function(ctx, w, h) {
 button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-btn, .rhythm-btn, .back-button {
     -webkit-touch-callout: none; -webkit-user-select: none; -moz-user-select: none; -ms-user-select: none; user-select: none; touch-action: manipulation;
 }
+/* --- FOOTER STYLE --- */
+.app-footer {
+    text-align: center;
+    color: #5d6d7e;
+    font-size: 12px;
+    padding: 20px;
+    margin-top: 30px;
+    border-top: 1px solid #2c3e50;
+    font-family: Arial, sans-serif;
+}
+
 /* --- OPTIMISED RESPONSIVE DESIGN --- */
 
-/* 1. Laptops & Landscape Tablets (900px - 1200px) */
-/* FIX: Keep side-by-side layout for laptops instead of stacking too early */
-@media (max-width: 1200px) and (min-width: 900px) {
-    .zoll-device {
-        max-width: 98%;
-        grid-template-columns: 1.1fr 0.9fr; /* Slightly tighter columns */
-        gap: 15px;
-        padding: 20px;
-        border-width: 12px;
-    }
-    .device-screen-section, .device-controls-section {
-        padding: 15px;
-    }
-    .btn-shock {
-        width: 100px; height: 100px; /* Scale down shock button */
-        font-size: 16px;
-    }
-    .btn-shock::before { font-size: 50px; }
-    .energy-display { font-size: 26px; }
-    .vital-value { font-size: 30px; }
-    .menu-option { padding: 30px; font-size: 20px; }
+/* 1. Small Laptops (Height constrained) */
+@media (max-height: 800px) {
+    .zoll-device { transform: scale(0.9); transform-origin: top center; margin-bottom: -50px; }
+    .ecg-canvas-container { height: 220px; }
+    .btn-shock { width: 100px; height: 100px; font-size: 16px; }
+    .btn-shock::before { font-size: 40px; }
 }
 
-/* 2. Portrait Tablets & Large Phones (600px - 900px) */
+/* 2. Laptops & Landscape Tablets (900px - 1200px) */
+@media (max-width: 1200px) {
+    .zoll-device {
+        max-width: 100%;
+        grid-template-columns: 1.1fr 0.9fr; 
+        gap: 15px;
+        padding: 15px;
+        border-width: 10px;
+    }
+    .device-screen-section, .device-controls-section { padding: 10px; }
+    .energy-display { font-size: 24px; }
+}
+
+/* 3. Portrait Tablets & Large Phones (600px - 900px) */
 @media (max-width: 900px) {
     .zoll-device {
-        grid-template-columns: 1fr; /* Stack vertically */
-        gap: 20px;
-        margin: 10px auto;
-        border-width: 10px;
-        padding: 15px;
-        max-width: 600px; /* Prevent it getting too wide on tablets */
-    }
-    .ecg-canvas-container {
-        height: 240px; /* Reduce screen height slightly */
-    }
-    .top-buttons {
-        display: flex;
-        justify-content: center;
-        gap: 20px;
-    }
-    .btn-shock {
-        margin: 0; /* Remove auto margins to work with flex gap */
-    }
-    .side-buttons {
-        grid-template-columns: 1fr 1fr 1fr 1fr; /* Horizontal row of buttons */
-    }
-    .vitals-display {
-        grid-template-columns: 1fr 1fr; /* 2x2 grid is better for vertical layouts */
+        grid-template-columns: 1fr; 
         gap: 15px;
+        transform: none; /* Reset scaling */
+        margin: 10px auto;
+        max-width: 650px;
     }
-    /* Hide the big WMEBEM logo on the device casing to save space */
+    .ecg-canvas-container { height: 200px; }
+    .top-buttons { justify-content: center; gap: 20px; }
     .zoll-top-logo { display: none; }
+    .side-buttons { grid-template-columns: repeat(4, 1fr); }
 }
 
-/* 3. Mobile Phones (< 600px) */
+/* 4. Mobile Phones (< 600px) */
 @media (max-width: 600px) {
-    body { padding: 5px; background: #1a1a1a; } /* Dark background for immersion */
-    
-    .main-header { flex-direction: column; text-align: center; gap: 10px; }
-    .main-header img { height: 40px; }
-    .main-header h1 { font-size: 20px; }
+    body { padding: 5px; } 
+    .main-header h1 { font-size: 18px; }
+    .main-header img { height: 35px; }
+    .menu-option { padding: 15px; font-size: 14px; }
     
     .zoll-device {
-        padding: 10px;
-        border: 5px solid #2b7bbf;
-        border-radius: 12px;
-        margin: 0;
+        padding: 8px;
+        border-width: 5px;
+        border-radius: 10px;
     }
     
-    /* CRITICAL: Shrink the ECG screen so the user doesn't have to scroll */
-    .ecg-canvas-container {
-        height: 180px; 
-    }
-    .screen { padding: 8px; }
+    /* Critical space savers */
+    .ecg-canvas-container { height: 160px; }
+    .screen { padding: 5px; }
+    .softkeys { display: none; } /* Hide softkeys on very small screens to save space */
+    .vitals-display { padding: 5px; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 2px; }
+    .vital-value { font-size: 24px; }
+    .vital-label { font-size: 8px; }
     
-    /* Make touch targets larger/clearer */
-    .softkeys { gap: 5px; }
-    .softkey { padding: 10px 5px; font-size: 10px; }
+    .device-controls-section { gap: 8px; }
+    .action-buttons-group { flex-direction: row; flex-wrap: wrap; }
+    .btn-analyze, .btn-charge { flex: 1; min-width: 100px; padding: 8px; }
     
-    /* Stack controls compactly */
-    .device-controls-section { gap: 10px; }
-    .action-buttons-group { 
-        flex-direction: row; 
-        flex-wrap: wrap; 
-        justify-content: center; 
-    }
-    .btn-analyze, .btn-charge { 
-        flex: 1; 
-        min-width: 120px; 
-        padding: 10px; 
-    }
-    .energy-selector { width: 100%; margin-top: 5px; }
-    
-    /* Adjust Dials */
-    .mode-dial-container { padding: 10px; }
-    .mode-dial { width: 90px; height: 90px; }
-    .mode-labels { font-size: 10px; }
-    .mode-label { padding: 8px; }
-    
-    .pacer-dial { width: 60px; height: 60px; }
-    .pacer-value { font-size: 16px; }
-    
-    /* Hide Branding Footer on phones */
+    .mode-dial { width: 70px; height: 70px; }
+    .pacing-controls { display: none; } /* Hide pacing on smallest screens if needed, or stack */
     .zoll-branding { display: none; }
-
-    /* Fix Menu Buttons */
-    .menu-options { grid-template-columns: 1fr; }
-    .menu-option { padding: 20px; font-size: 16px; }
-}
-        /* --- NEW FEATURES CSS --- */
-
-/* 1. Organised Menu Grids */
-.rhythm-grid-primary { display: grid; grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); gap: 8px; margin-bottom: 10px; }
-.rhythm-grid-secondary { display: grid; grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); gap: 8px; max-height: 0; overflow: hidden; transition: max-height 0.4s ease-out; opacity: 0; }
-.rhythm-grid-secondary.open { max-height: 600px; opacity: 1; padding-top: 15px; border-top: 1px dashed #465a6e; margin-top: 10px; }
-.toggle-secondary-btn { background: none; border: none; color: #3498db; cursor: pointer; font-size: 13px; margin: 10px auto 0; display: block; width: 100%; }
-.toggle-secondary-btn:hover { color: #5dade2; text-decoration: underline; }
-.rhythm-section-title { color: #7f8c8d; font-size: 11px; font-weight: bold; text-transform: uppercase; margin-bottom: 8px; letter-spacing: 1px; }
-
-/* 2. Pacing Cover Panel */
-.pacing-controls { position: relative; overflow: hidden; } /* Ensure parent clips the cover */
-.pacing-cover {
-    position: absolute; top: -5px; left: -5px; right: -5px; bottom: -5px;
-    background: linear-gradient(135deg, #7f8c8d 0%, #95a5a6 100%);
-    border: 2px solid #555; border-radius: 8px; z-index: 20;
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    color: #ecf0f1; font-weight: bold; font-size: 13px; text-transform: uppercase;
-    text-shadow: 0 1px 2px rgba(0,0,0,0.5);
-    box-shadow: inset 0 0 20px rgba(0,0,0,0.2);
-    transition: transform 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-    transform: translateY(0); /* Default Closed */
-}
-.pacing-cover.open { transform: translateY(115%); } /* Slides down when open */
-
-/* 3. Assessor Guide Icons */
-.rhythm-btn { position: relative; }
-.info-icon {
-    position: absolute; top: -6px; right: -6px;
-    width: 18px; height: 18px;
-    background: #f39c12; color: #fff;
-    border-radius: 50%; border: 2px solid #2c3e50;
-    font-size: 11px; font-weight: bold;
-    display: flex; align-items: center; justify-content: center;
-    cursor: help; z-index: 5;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-}
-.info-icon:hover { transform: scale(1.1); background: #e67e22; }
-
-/* 4. Scenario Creator Steps */
-.scenario-step-card {
-    background: #34495e; border-left: 4px solid #3498db;
-    padding: 15px; margin-bottom: 10px; border-radius: 4px;
-    display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
-}
-.scenario-step-card h5 { grid-column: 1 / -1; margin: 0 0 10px 0; color: #bdc3c7; font-size: 12px; text-transform: uppercase; }
-.step-remove-btn { grid-column: 1 / -1; background: #c0392b; color: white; border: none; padding: 5px; border-radius: 3px; cursor: pointer; font-size: 11px; margin-top: 5px; }
-
-        /* --- MOBILE CPR PANEL FIXES --- */
-@media (max-width: 600px) {
-    #cprPanel {
-        top: auto !important;
-        bottom: -60vh; /* Start hidden below screen */
-        right: 0 !important;
-        left: 0 !important;
-        width: 100% !important;
-        height: 50vh; /* Occupy bottom half */
-        border-radius: 15px 15px 0 0 !important; /* Rounded top only */
-        border-left: 3px solid #e74c3c !important; /* Match border style */
-        border-bottom: none !important;
-        border-right: 3px solid #e74c3c !important;
-        transition: bottom 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    
+    /* Fix CPR Panel position */
+    #cprPanel { 
+        width: 100% !important; 
+        left: 0 !important; 
+        border-radius: 15px 15px 0 0; 
+        bottom: -100%;
     }
-    #cprPanel.active {
-        bottom: 0 !important;
-    }
-}
-
-/* --- BUTTON HIGHLIGHT ANIMATION --- */
-@keyframes attention-pulse {
-    0% { box-shadow: 0 0 0 0 rgba(230, 126, 34, 0.7); transform: scale(1); }
-    50% { box-shadow: 0 0 0 10px rgba(230, 126, 34, 0); transform: scale(1.02); }
-    100% { box-shadow: 0 0 0 0 rgba(230, 126, 34, 0); transform: scale(1); }
-}
-
-.highlight-btn {
-    animation: attention-pulse 1.5s infinite;
-    border-color: #f1c40f !important;
-    background-color: #d35400 !important;
-    z-index: 10;
-}
-    /* Checklist Buttons */
-.cause-btn {
-    background: transparent;
-    border: 1px solid #555;
-    color: #aaa;
-    padding: 6px;
-    border-radius: 4px;
-    font-size: 10px;
-    cursor: pointer;
-    transition: all 0.2s;
-    text-align: left;
-}
-.cause-btn:hover { background: rgba(255,255,255,0.05); }
-
-/* When an assessor clicks a cause, it turns green */
-.cause-btn.checked {
-    background: #27ae60;
-    border-color: #2ecc71;
-    color: white;
-    font-weight: bold;
-}
-
-/* Timer Warning States */
-.cycle-warning {
-    background-color: #c0392b !important;
-    border-color: #e74c3c !important;
-    animation: flash-bg 1s infinite;
-}
-@keyframes flash-bg {
-    0% { opacity: 1; }
-    50% { opacity: 0.8; }
-    100% { opacity: 1; }
-}
-
-/* Button Highlight Animation */
-@keyframes attention-pulse {
-    0% { box-shadow: 0 0 0 0 rgba(230, 126, 34, 0.7); transform: scale(1); }
-    50% { box-shadow: 0 0 0 10px rgba(230, 126, 34, 0); transform: scale(1.02); }
-    100% { box-shadow: 0 0 0 0 rgba(230, 126, 34, 0); transform: scale(1); }
-}
-
-.highlight-btn {
-    animation: attention-pulse 1.5s infinite;
-    border-color: #f1c40f !important;
-    background-color: #d35400 !important;
-    z-index: 10;
-}
-
-/* Mobile Fixes for Panel */
-@media (max-width: 600px) {
-    #cprPanel {
-        top: auto !important;
-        bottom: -60vh; /* Start hidden below screen */
-        right: 0 !important;
-        left: 0 !important;
-        width: 100% !important;
-        height: 50vh; /* Occupy bottom half */
-        border-radius: 15px 15px 0 0 !important; 
-        border-left: 3px solid #e74c3c !important; 
-        border-bottom: none !important;
-        border-right: 3px solid #e74c3c !important;
-        transition: bottom 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    }
-    #cprPanel.active {
-        bottom: 0 !important;
-    }
+    #cprPanel.active { bottom: 0 !important; }
 }
     </style>
 </head>
@@ -1249,6 +1074,9 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
             </div>
         </div>
     </div>
+        <footer class="app-footer">
+        © 2025 West Midlands Evidence Based Emergency Medicine. Author: Dr Jake Turner.
+    </footer>
 
     <div id="modalOverlay" class="hidden">
         <div class="modal-content">
@@ -3139,7 +2967,7 @@ function playMetronomeClick() {
 
         // --- IMPROVED ARREST LOGIC ---
 
-        // 1. Check for Arrest on Rhythm Change
+// 1. Check for Arrest on Rhythm Change
         function updateArrestPanel() {
             const currentRhythm = state.rhythm;
             const vitals = rhythmVitals[currentRhythm];
@@ -3156,7 +2984,7 @@ function playMetronomeClick() {
                 setTimeout(() => {
                     if (!panel.classList.contains('active')) {
                         panel.classList.add('active');
-                        // Highlight the reset button to encourage syncing
+                        // Highlight the reset button
                         const btn = document.getElementById('nextCycleBtn');
                         if (btn) btn.classList.add('highlight-btn');
                     }
@@ -3165,6 +2993,12 @@ function playMetronomeClick() {
                 if (!state.arrestStartTime) {
                     state.arrestStartTime = Date.now();
                     logAction('Cardiac Arrest Detected', 'Timer Started');
+                    
+                    // --- AUTO-START CYCLE TIMER ---
+                    if (typeof startCycleCountdown === 'function') {
+                        startCycleCountdown();
+                        logAction('CPR Cycle', '2 Minute Timer Auto-Started');
+                    }
                 }
                 
                 if (!window.arrestTimerInterval) {
