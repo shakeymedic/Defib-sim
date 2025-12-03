@@ -176,22 +176,23 @@ function withArtefacts(fn){
         var flags = (st.noise || {});
         var baseline = (canvasInfo.height || 300) / 2;
 
-        // 2. REALISTIC CPR ARTEFACT
+        // 2. REALISTIC CPR ARTEFACT (Updated to Sine Wave / VT shape)
         if (st.cprActive) {
             // Frequency: 110 bpm = ~1.83 Hz
             var freq = 1.83; 
             var ang = tSeconds * freq * 2 * Math.PI;
 
-            // Shape: Compression is a sharp downstroke, recoil is smoother.
-            // We combine a primary Sine with a secondary Sine at 2x frequency to create a "sawtooth" push.
-            // Amplitude: Increased to 4.5 (was 2.5) to dominate the trace.
-            var cprWave = (Math.sin(ang) - 0.25 * Math.sin(2 * ang - 0.5)) * (window.PX_PER_MV * 4.5);
+            // Shape: Monomorphic Sine Wave (looks like VT)
+            var cprWave = Math.sin(ang) * (window.PX_PER_MV * 3.5); 
+            
+            // Add a little sharpness to mimic the "push"
+            cprWave -= 0.3 * Math.sin(2 * ang);
 
-            // Noise: Add high-frequency jitter to simulate muscle movement/contact noise during CPR
-            var noise = (Math.random() - 0.5) * (window.PX_PER_MV * 0.4);
+            // Add High-Freq Noise (Muscle artifact from pushing)
+            var noise = (Math.random() - 0.5) * (window.PX_PER_MV * 0.3);
 
-            // LOGIC: Heavily dampen underlying rhythm (0.1x) because compressions obscure it.
-            y = baseline + ((y - baseline) * 0.1) + cprWave + noise;
+            // Dampen underlying rhythm significantly (0.15x) so CPR dominates
+            y = baseline + ((y - baseline) * 0.15) + cprWave + noise;
         }
 
         // 3. Other Noise
@@ -629,6 +630,107 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
 }
 .scenario-step-card h5 { grid-column: 1 / -1; margin: 0 0 10px 0; color: #bdc3c7; font-size: 12px; text-transform: uppercase; }
 .step-remove-btn { grid-column: 1 / -1; background: #c0392b; color: white; border: none; padding: 5px; border-radius: 3px; cursor: pointer; font-size: 11px; margin-top: 5px; }
+
+        /* --- MOBILE CPR PANEL FIXES --- */
+@media (max-width: 600px) {
+    #cprPanel {
+        top: auto !important;
+        bottom: -60vh; /* Start hidden below screen */
+        right: 0 !important;
+        left: 0 !important;
+        width: 100% !important;
+        height: 50vh; /* Occupy bottom half */
+        border-radius: 15px 15px 0 0 !important; /* Rounded top only */
+        border-left: 3px solid #e74c3c !important; /* Match border style */
+        border-bottom: none !important;
+        border-right: 3px solid #e74c3c !important;
+        transition: bottom 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    #cprPanel.active {
+        bottom: 0 !important;
+    }
+}
+
+/* --- BUTTON HIGHLIGHT ANIMATION --- */
+@keyframes attention-pulse {
+    0% { box-shadow: 0 0 0 0 rgba(230, 126, 34, 0.7); transform: scale(1); }
+    50% { box-shadow: 0 0 0 10px rgba(230, 126, 34, 0); transform: scale(1.02); }
+    100% { box-shadow: 0 0 0 0 rgba(230, 126, 34, 0); transform: scale(1); }
+}
+
+.highlight-btn {
+    animation: attention-pulse 1.5s infinite;
+    border-color: #f1c40f !important;
+    background-color: #d35400 !important;
+    z-index: 10;
+}
+    /* Checklist Buttons */
+.cause-btn {
+    background: transparent;
+    border: 1px solid #555;
+    color: #aaa;
+    padding: 6px;
+    border-radius: 4px;
+    font-size: 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: left;
+}
+.cause-btn:hover { background: rgba(255,255,255,0.05); }
+
+/* When an assessor clicks a cause, it turns green */
+.cause-btn.checked {
+    background: #27ae60;
+    border-color: #2ecc71;
+    color: white;
+    font-weight: bold;
+}
+
+/* Timer Warning States */
+.cycle-warning {
+    background-color: #c0392b !important;
+    border-color: #e74c3c !important;
+    animation: flash-bg 1s infinite;
+}
+@keyframes flash-bg {
+    0% { opacity: 1; }
+    50% { opacity: 0.8; }
+    100% { opacity: 1; }
+}
+
+/* Button Highlight Animation */
+@keyframes attention-pulse {
+    0% { box-shadow: 0 0 0 0 rgba(230, 126, 34, 0.7); transform: scale(1); }
+    50% { box-shadow: 0 0 0 10px rgba(230, 126, 34, 0); transform: scale(1.02); }
+    100% { box-shadow: 0 0 0 0 rgba(230, 126, 34, 0); transform: scale(1); }
+}
+
+.highlight-btn {
+    animation: attention-pulse 1.5s infinite;
+    border-color: #f1c40f !important;
+    background-color: #d35400 !important;
+    z-index: 10;
+}
+
+/* Mobile Fixes for Panel */
+@media (max-width: 600px) {
+    #cprPanel {
+        top: auto !important;
+        bottom: -60vh; /* Start hidden below screen */
+        right: 0 !important;
+        left: 0 !important;
+        width: 100% !important;
+        height: 50vh; /* Occupy bottom half */
+        border-radius: 15px 15px 0 0 !important; 
+        border-left: 3px solid #e74c3c !important; 
+        border-bottom: none !important;
+        border-right: 3px solid #e74c3c !important;
+        transition: bottom 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    #cprPanel.active {
+        bottom: 0 !important;
+    }
+}
     </style>
 </head>
 <body>
@@ -867,14 +969,49 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
 
     <div class="simulator-container" id="simulatorContainer">
         <div id="cprPanel" class="hidden">
-            <div class="cpr-header">CARDIAC ARREST MANAGEMENT</div>
-            <div class="cpr-timer" id="cprTimerDisplay">00:00</div>
-            
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 15px;">
-                <button class="cpr-action-btn" id="cprToggleBtn" data-action="cpr-toggle">
-                    <span>START CPR</span>
-                    <div class="btn-subtext">COMPRESSIONS</div>
+            <div class="cpr-header" style="border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 5px; margin-bottom: 10px;">
+                INSTRUCTOR CONTROL
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
+                <div style="background: rgba(0,0,0,0.3); padding: 5px; border-radius: 5px;">
+                    <div style="font-size: 9px; color: #aaa; text-transform: uppercase;">Total Downtime</div>
+                    <div class="cpr-timer" id="cprTimerDisplay" style="font-size: 24px;">00:00</div>
+                </div>
+                <div id="cycleTimerContainer" style="background: rgba(0,0,0,0.3); padding: 5px; border-radius: 5px; border: 1px solid #444;">
+                    <div style="font-size: 9px; color: #f39c12; text-transform: uppercase; font-weight: bold;">Cycle Remaining</div>
+                    <div class="cpr-timer" id="cycleTimerDisplay" style="font-size: 24px; color: #f39c12;">02:00</div>
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 5px; margin-bottom: 10px;">
+                <button class="cpr-action-btn" id="cprToggleBtn" data-action="cpr-toggle" style="flex: 2;">
+                    <span>START CPR (LOG)</span>
                 </button>
+                <button class="cpr-action-btn" id="metronomeBtn" style="flex: 1; background: #2c3e50; border-color: #34495e;">
+                    <span>🔊 110</span>
+                </button>
+            </div>
+
+            <button class="cpr-action-btn" id="nextCycleBtn" style="width: 100%; background: #e67e22; margin-bottom: 15px;">
+                <span>↺ RESET CYCLE (2 MIN)</span>
+            </button>
+
+            <div style="margin-bottom: 15px;">
+                <div style="font-size: 10px; color: #bdc3c7; margin-bottom: 5px; font-weight: bold;">REVERSIBLE CAUSES (Log when mentioned)</div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px;">
+                    <button class="cause-btn" data-cause="Hypoxia">Hypoxia</button>
+                    <button class="cause-btn" data-cause="Hypovolaemia">Hypovolaemia</button>
+                    <button class="cause-btn" data-cause="Hypothermia">Hypothermia</button>
+                    <button class="cause-btn" data-cause="Hyperkalemia">H+ / K+</button>
+                    <button class="cause-btn" data-cause="Toxins">Toxins</button>
+                    <button class="cause-btn" data-cause="Tamponade">Tamponade</button>
+                    <button class="cause-btn" data-cause="Tension Pneumo">Tension PTX</button>
+                    <button class="cause-btn" data-cause="Thrombosis">Thrombosis</button>
+                </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px;">
                 <button class="cpr-action-btn" data-action="adrenaline">
                     <span>ADRENALINE</span>
                     <div class="btn-subtext">1mg IV/IO</div>
@@ -883,31 +1020,27 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
                     <span>AMIODARONE</span>
                     <div class="btn-subtext">300mg IV/IO</div>
                 </button>
-                <button class="cpr-action-btn" data-action="next-cycle">
-                     <span>NEXT CYCLE</span>
-                     <div class="btn-subtext">RESET TIMER</div>
-                </button>
-            </div>
-            <div id="cprLog" style="
-                margin-top: 15px; 
-                background: rgba(0,0,0,0.3); 
-                border-radius: 6px; 
-                padding: 8px; 
-                height: 120px; 
-                overflow-y: auto; 
-                text-align: left; 
-                font-family: monospace; 
-                font-size: 11px;
-                border: 1px solid rgba(255,255,255,0.2);
-                color: #ddd;
-                display: flex;
-                flex-direction: column-reverse; /* Newest items at top */
-            ">
-                <div style="color: #666; text-align: center; font-style: italic; margin-bottom: 5px;">-- Event Log --</div>
             </div>
 
-            <button id="roscBtn" class="rosc-btn">
-                ❤️ PATIENT ROSC
+            <div id="cprLog" style="
+                margin-top: 10px; 
+                background: rgba(0,0,0,0.3); 
+                border-radius: 6px; 
+                padding: 5px; 
+                height: 100px; 
+                overflow-y: auto; 
+                font-family: monospace; 
+                font-size: 10px;
+                color: #ccc;
+                display: flex;
+                flex-direction: column-reverse;
+                border: 1px solid #444;
+            ">
+                <div style="color: #666; text-align: center; padding: 10px;">Waiting for start...</div>
+            </div>
+
+            <button id="roscBtn" class="rosc-btn" style="margin-top: 10px;">
+                ❤️ CONFIRM ROSC
             </button>
         </div>
        
@@ -1623,7 +1756,16 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
             
             document.getElementById('hrDisplay').textContent = displayHR;
             document.getElementById('spo2Display').textContent = state.spo2;
-            document.getElementById('etco2Display').textContent = state.etco2;
+
+            // --- ETCO2 LOGIC UPDATE ---
+            let displayEtco2 = state.etco2;
+            // If CPR is active and no ROSC, simulate perfusion boost (2.8 - 3.0 range)
+            if (state.cprActive && !state.roscAchieved && displayEtco2 < 2.5) {
+                displayEtco2 = 2.8 + (Math.random() * 0.2);
+            }
+            document.getElementById('etco2Display').textContent = displayEtco2.toFixed(1);
+            // --------------------------
+
             document.getElementById('bpDisplay').textContent = `${state.bpSys}/${state.bpDia}`;
             document.getElementById('energyDisplay').textContent = state.energy;
             document.getElementById('outputDisplay').textContent = state.pacerOutput;
@@ -2170,6 +2312,13 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
             playSound('shock');
             logAction(`Shock ${state.shockCount} delivered`, `${energy}J (${sync ? 'SYNC' : 'UNSYNC'})`);
             
+            // --- AUTO-RESET CYCLE TIMER ---
+            if (typeof startCycleCountdown === 'function') {
+                startCycleCountdown();
+                logAction('Shock Delivered', 'Cycle Timer Reset');
+            }
+            // ------------------------------
+
             if (canvas) {
                 canvas.style.background = '#fff';
                 setTimeout(() => canvas.style.background = '#000', 100);
@@ -2203,7 +2352,6 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
                         updateDisplays();
                     }, 1000);
                     
-                    // *** FIX: Trigger the scenario advance ***
                     if (state.customScenarioActive) checkScenarioTrigger('shock');
                 } else {
                     if (failReason) setMessage(`SHOCK FAILED: ${failReason}`, 'alert');
@@ -2816,6 +2964,150 @@ function playSound(type) {
                 }
             }
         });
+
+// --- INSTRUCTOR / ASSESSOR PANEL LOGIC ---
+        let cycleTime = 120; // 2 minutes in seconds
+        let cycleInterval = null;
+        let metronomeInterval = null;
+        
+        function startCycleCountdown() {
+            if (cycleInterval) clearInterval(cycleInterval);
+            cycleTime = 120; 
+            
+            const display = document.getElementById('cycleTimerDisplay');
+            const container = document.getElementById('cycleTimerContainer');
+            
+            // Reset visuals
+            if (container) container.classList.remove('cycle-warning');
+            if (display) display.textContent = "02:00";
+            
+            cycleInterval = setInterval(() => {
+                cycleTime--;
+                
+                // Format MM:SS
+                const m = Math.floor(cycleTime / 60);
+                const s = cycleTime % 60;
+                if (display) display.textContent = `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+                
+                // Warning at 10 seconds
+                if (cycleTime <= 10 && container) {
+                    container.classList.add('cycle-warning');
+                }
+                
+                // Time Up
+                if (cycleTime <= 0) {
+                    clearInterval(cycleInterval);
+                    playSound('alarm'); // Use existing beep
+                    logAction('CYCLE ENDED', 'Assess Rhythm');
+                }
+            }, 1000);
+        }
+
+        function toggleMetronome() {
+            const btn = document.getElementById('metronomeBtn');
+            
+            if (metronomeInterval) {
+                clearInterval(metronomeInterval);
+                metronomeInterval = null;
+                btn.style.background = "#2c3e50";
+                logAction('Metronome', 'OFF');
+            } else {
+                logAction('Metronome', 'ON (110 bpm)');
+                btn.style.background = "#27ae60"; 
+                
+                // 110 BPM = 545ms interval
+                metronomeInterval = setInterval(() => {
+                    playMetronomeClick();
+                }, 545);
+            }
+        }
+
+        function playMetronomeClick() {
+            const AudioCtx = window.AudioContext || window.webkitAudioContext;
+            if (!AudioCtx) return;
+            if (!audioCtx) audioCtx = new AudioCtx();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            
+            osc.frequency.value = 1000;
+            osc.type = 'square';
+            gain.gain.value = 0.05;
+            
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.05);
+        }
+
+        // LISTENERS
+        const nextCycleBtn = document.getElementById('nextCycleBtn');
+        if (nextCycleBtn) {
+            nextCycleBtn.addEventListener('click', function() {
+                startCycleCountdown();
+                this.classList.remove('highlight-btn'); // Stop flashing
+                logAction('CYCLE RESET', '2 Minutes');
+            });
+        }
+
+        const metronomeBtn = document.getElementById('metronomeBtn');
+        if (metronomeBtn) metronomeBtn.addEventListener('click', toggleMetronome);
+
+        document.querySelectorAll('.cause-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                this.classList.toggle('checked');
+                const causeName = this.dataset.cause;
+                const status = this.classList.contains('checked') ? 'CONSIDERED' : 'UNCHECKED';
+                logAction('Differential', `${causeName} ${status}`);
+            });
+        });
+
+        // REPLACEMENT ROSC LISTENER (Clears timers + ETCO2 Spike)
+        const oldRoscBtn = document.getElementById('roscBtn');
+        if (oldRoscBtn) {
+            // Remove old listener by cloning node (cleanest way without named function)
+            const newRoscBtn = oldRoscBtn.cloneNode(true);
+            oldRoscBtn.parentNode.replaceChild(newRoscBtn, oldRoscBtn);
+            
+            newRoscBtn.addEventListener('click', () => {
+                if (cycleInterval) clearInterval(cycleInterval);
+                if (metronomeInterval) clearInterval(metronomeInterval);
+                if (metronomeBtn) metronomeBtn.style.background = "#2c3e50";
+                if (window.arrestTimerInterval) {
+                    clearInterval(window.arrestTimerInterval);
+                    window.arrestTimerInterval = null;
+                }
+
+                state.roscAchieved = true;
+                state.hasPulse = true;
+                state.cprActive = false;
+                state.arrestStartTime = null; 
+                updateCprButton();
+                quickSetRhythm('nsr'); 
+                
+                // ROSC SPIKE LOGIC
+                state.etco2 = 6.8; 
+                logAction('ROSC CONFIRMED', 'ETCO2 Spike > 6.0kPa');
+                
+                // Settle ETCO2 logic
+                let settleInterval = setInterval(() => {
+                    if (state.etco2 > 5.1) {
+                        state.etco2 -= 0.05; 
+                    } else {
+                        state.etco2 = 5.1;
+                        clearInterval(settleInterval);
+                    }
+                }, 200);
+
+                setMessage('ROSC ACHIEVED - START POST-RESUS CARE', 'ready');
+                updateDisplays();
+                document.getElementById('cprPanel').classList.remove('active');
+            });
+        }
+        // ------------------------------------------
+        
         initCanvas(); 
         setMode('off'); 
 
@@ -2840,23 +3132,26 @@ function playSound(type) {
             if (isArrestRhythm && !state.roscAchieved) {
                 const panel = document.getElementById('cprPanel');
                 panel.classList.remove('hidden');
-                setTimeout(() => panel.classList.add('active'), 50);
                 
-                // CRITICAL FIX: Only set the start time if it's not already running.
-                // This ensures switching VF -> Asystole doesn't reset the timer.
+                // Add active class slightly later for CSS transition
+                setTimeout(() => {
+                    if (!panel.classList.contains('active')) {
+                        panel.classList.add('active');
+                        // Highlight the reset button to encourage syncing
+                        const btn = document.getElementById('nextCycleBtn');
+                        if (btn) btn.classList.add('highlight-btn');
+                    }
+                }, 50);
+
                 if (!state.arrestStartTime) {
                     state.arrestStartTime = Date.now();
                     logAction('Cardiac Arrest Detected', 'Timer Started');
                 }
                 
-                // Ensure the visual loop is running
                 if (!window.arrestTimerInterval) {
                     startArrestTimer();
                 }
             } else {
-                // We are not in arrest (or have ROSC).
-                // Hide the panel, but DO NOT clear the timer variable (state.arrestStartTime).
-                // This allows the timer to resume correctly if you switch back to an arrest rhythm.
                 document.getElementById('cprPanel').classList.remove('active');
                 state.cprActive = false;
                 updateCprButton();
@@ -2960,28 +3255,6 @@ function playSound(type) {
                     logAction(`Cycle Advanced`, `Timer Reset`);
                 }
             });
-        });
-
-        document.getElementById('roscBtn').addEventListener('click', () => {
-            state.roscAchieved = true;
-            state.hasPulse = true;
-            state.cprActive = false;
-            updateCprButton();
-            
-            quickSetRhythm('nsr'); 
-            
-            // Stop the timer visual loop
-            clearInterval(window.arrestTimerInterval);
-            window.arrestTimerInterval = null;
-            
-            // CRITICAL: Clear the start timestamp so the next arrest starts at 00:00
-            state.arrestStartTime = null; 
-            
-            logAction('ROSC CONFIRMED', 'Timer Stopped');
-            setMessage('ROSC ACHIEVED - START POST-RESUS CARE', 'ready');
-            updateDisplays();
-            
-            document.getElementById('cprPanel').classList.remove('active');
         });
 
         // 4. Overwrite quickSetRhythm to trigger the panel
