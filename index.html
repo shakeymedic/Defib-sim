@@ -1348,6 +1348,30 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
             currentScenarioStep: 0,
         };
         window.state = state; 
+
+        // --- HELPER: Global Timer Cleanup ---
+        function clearAllTimers() {
+            // Clear Animation Loops
+            if (animationId) {
+                cancelAnimationFrame(animationId);
+                animationId = null;
+            }
+            // Clear Intervals
+            if (typeof cycleInterval !== 'undefined' && cycleInterval) clearInterval(cycleInterval);
+            if (typeof metronomeInterval !== 'undefined' && metronomeInterval) clearInterval(metronomeInterval);
+            if (typeof window.arrestTimerInterval !== 'undefined' && window.arrestTimerInterval) clearInterval(window.arrestTimerInterval);
+            if (state.chargeTimer) clearTimeout(state.chargeTimer);
+            
+            // Reset Interval Variables to null so checks fail safely
+            cycleInterval = null;
+            metronomeInterval = null;
+            window.arrestTimerInterval = null;
+            state.chargeTimer = null;
+
+            // Reset Audio Visuals
+            const metronomeBtn = document.getElementById('metronomeBtn');
+            if(metronomeBtn) metronomeBtn.style.background = "#2c3e50";
+        }
         
         // --- STATE MACHINE LOGIC ---
         function transitionTo(newState) {
@@ -1768,6 +1792,7 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
         }
 
 function selectScenario(scenarioId) {
+    clearAllTimers();
             const scenario = scenarios[scenarioId];
             if (!scenario) return;
             
@@ -2074,6 +2099,7 @@ function selectScenario(scenarioId) {
         }
 
         function returnToMenu() {
+            clearAllTimers();
             summaryScreen.classList.add('hidden');
             certificateScreen.classList.add('hidden');
             scenarioScreen.classList.add('hidden');
@@ -3042,35 +3068,27 @@ function playMetronomeClick() {
             });
         });
 
-        // REPLACEMENT ROSC LISTENER (Clears timers + ETCO2 Spike)
-        const oldRoscBtn = document.getElementById('roscBtn');
-        if (oldRoscBtn) {
-            // Remove old listener by cloning node (cleanest way without named function)
-            const newRoscBtn = oldRoscBtn.cloneNode(true);
-            oldRoscBtn.parentNode.replaceChild(newRoscBtn, oldRoscBtn);
-            
-            newRoscBtn.addEventListener('click', () => {
-                if (cycleInterval) clearInterval(cycleInterval);
-                if (metronomeInterval) clearInterval(metronomeInterval);
-                if (metronomeBtn) metronomeBtn.style.background = "#2c3e50";
-                if (window.arrestTimerInterval) {
-                    clearInterval(window.arrestTimerInterval);
-                    window.arrestTimerInterval = null;
-                }
+ // --- OPTIMISED ROSC LISTENER ---
+        const roscBtn = document.getElementById('roscBtn');
+        if (roscBtn) {
+            roscBtn.addEventListener('click', () => {
+                clearAllTimers(); // Use our new helper!
 
+                // State Updates
                 state.roscAchieved = true;
                 state.hasPulse = true;
                 state.cprActive = false;
                 state.arrestStartTime = null; 
+                
                 updateCprButton();
                 quickSetRhythm('nsr'); 
                 
-                // ROSC SPIKE LOGIC
+                // ROSC SPIKE LOGIC (Simulate CO2 washout)
                 state.etco2 = 6.8; 
                 logAction('ROSC CONFIRMED', 'ETCO2 Spike > 6.0kPa');
                 
                 // Settle ETCO2 logic
-                let settleInterval = setInterval(() => {
+                const settleInterval = setInterval(() => {
                     if (state.etco2 > 5.1) {
                         state.etco2 -= 0.05; 
                     } else {
