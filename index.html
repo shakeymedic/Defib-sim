@@ -449,7 +449,29 @@ window.drawECGGrid = function(ctx, w, h) {
 }
 
 /* --- Controls & Buttons --- */
-.message-bar.ready{color:#00ff00;text-shadow:0 0 5px rgba(0,255,0,0.5)}.message-bar.alert{color:#ff0000;animation:blink 1s infinite;text-shadow:0 0 5px rgba(255,0,0,0.5)}.softkeys{display:flex;gap:10px;margin-top:15px}.softkey{flex:1;background:#7a8288;color:#fff;border:2px solid #6a7278;padding:12px;border-radius:6px;font-size:11px;cursor:pointer;text-align:center;font-weight:bold}.softkey:hover{background:#8a9298}.softkey.active{background:#27ae60}.device-controls-section{display:flex;flex-direction:column;gap:15px}.top-buttons{display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:start}.btn-teal{background:#17a2b8;color:white;border:3px solid #138496;padding:15px 20px;border-radius:8px;font-size:13px;font-weight:bold;cursor:pointer;box-shadow:0 4px 8px rgba(0,0,0,0.3)}.btn-sync{background:#f39c12;color:white;border:3px solid #d68910;padding:15px 20px;border-radius:8px;font-size:13px;font-weight:bold;cursor:pointer;box-shadow:0 4px 8px rgba(0,0,0,0.3);transition:all 0.3s}.btn-sync.active{background:#e67e22;box-shadow:0 0 15px rgba(230,126,34,0.7)}.btn-shock{background:linear-gradient(135deg,#ff6347 0%,#ff4520 100%);color:white;border:5px solid #cc4f39;width:120px;height:120px;border-radius:50%;font-size:20px;font-weight:bold;cursor:pointer;box-shadow:0 6px 12px rgba(0,0,0,0.4);display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;overflow:hidden}.btn-shock::before{content:'⚡';position:absolute;font-size:80px;opacity:0.15;color:#fff;z-index:0}.btn-shock span{position:relative;z-index:1}.btn-shock:disabled{opacity:0.5;cursor:not-allowed}.btn-shock .number{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);font-size:18px;color:#fff}.side-buttons{display:grid;grid-template-columns:1fr 1fr;gap:10px}.side-btn{background:#7a8288;color:#fff;border:3px solid #6a7278;padding:12px;border-radius:8px;font-size:12px;font-weight:bold;cursor:pointer;box-shadow:0 3px 6px rgba(0,0,0,0.3)}.side-btn:hover{background:#8a9298}.action-buttons-group{display:flex;flex-direction:column;gap:10px}.btn-analyze,.btn-charge{background:linear-gradient(180deg,#ff9933 0%,#ff7700 100%);color:#000;border:4px solid #cc6600;padding:16px;border-radius:10px;font-size:15px;font-weight:bold;cursor:pointer;box-shadow:0 4px 8px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:space-between}.btn-number{background:#fff;color:#ff7700;width:30px;height:30px;border-radius:50%;display:flex;align:items:center;justify-content:center;font-size:18px;font-weight:bold}.energy-selector{background:linear-gradient(180deg,#dc3545 0%,#c82333 100%);color:#fff;border:4px solid #a71d2a;padding:16px;border-radius:10px;cursor:pointer;box-shadow:0 4px 8px rgba(0,0,0,0.3);display:flex;flex-direction:column;align-items:center;gap:8px}.energy-display{font-size:32px;font-weight:bold;text-shadow:0 2px 4px rgba(0,0,0,0.3)}.energy-arrows{display:flex;gap:15px}.energy-arrow{background:#fff;color:#dc3545;width:40px;height:40px;border-radius:50%;border:none;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center}.mode-dial-container{text-align:center;padding:15px;background:#a8b0b8;border-radius:12px}.mode-dial{width:150px;height:150px;background:radial-gradient(circle,#2a2a2a 0%,#1a1a1a 100%);border:6px solid #0a0a0a;border-radius:50%;margin:0 auto 15px;position:relative;cursor:pointer;box-shadow:0 6px 12px rgba(0,0,0,0.5)}.mode-dial::before{content:'';position:absolute;width:8px;height:60px;background:#fff;top:20px;left:50%;transform:translateX(-50%) rotate(var(--dial-rotation,0deg));transform-origin:center bottom;border-radius:4px}.mode-labels{display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:11px;font-weight:bold;color:#2a2a2a}.mode-label{padding:12px 16px;border-radius:8px;cursor:pointer;background:#34495e;color:#ecf0f1;border:3px solid #2c3e50;font-weight:bold;transition:all 0.3s;text-transform:uppercase;font-size:13px}.mode-label:hover{background:#3a4f5e;transform:translateY(-2px)}.mode-label.active{background:linear-gradient(180deg,#3498db 0%,#2874a6 100%);color:white;border-color:#1f5f8b;box-shadow:0 0 15px rgba(52,152,219,0.5)}.pacing-controls{display:grid;grid-template-columns:1fr 1fr;gap:12px}.pacer-dial{background:#2a2a2a;border:5px solid #0a0a0a;border-radius:50%;width:100px;height:100px;margin:0 auto;position:relative;cursor:pointer;box-shadow:0 4px 8px rgba(0,0,0,0.5)}.pacer-dial::before{content:'';position:absolute;width:4px;height:35px;background:#17a2b8;top:15px;left:50%;transform:translateX(-50%) rotate(var(--dial-rotation,0deg));transform-origin:center 35px;border-radius:2px;transition:transform 0.3s ease}.pacer-label{text-align:center;color:#2a2a2a;font-size:11px;font-weight:bold;margin-top:8px}.pacer-value{text-align:center;color:#17a2b8;font-size:20px;font-weight:bold;margin-top:4px}.pacer-controls-btn{display:flex;gap:5px;justify-content:center;margin-top:8px}.pacer-btn{background:#7a8288;color:#fff;border:2px solid #6a7278;width:35px;height:35px;border-radius:5px;font-size:18px;cursor:pointer}.zoll-branding{background:linear-gradient(180deg,#e8eef3 0%,#d8dee3 100%);padding:20px;border-radius:0 0 15px 15px;margin:-30px -30px 0 -30px;text-align:center;box-shadow:0 -4px 10px rgba(0,0,0,0.1)}.zoll-logo-text{font-size:48px;font-weight:bold;color:#9a9a9a;letter-spacing:8px;text-shadow:2px 2px 4px rgba(0,0,0,0.1)}@media (max-width:1200px){.zoll-device{grid-template-columns:1fr}}@media print{body{background:white;padding:0}.menu-wrapper{min-height:0}.menu-screen{display:block !important;box-shadow:none;padding:0;background:white}.menu-option{display:none !important}#certificateContent{box-shadow:none}}
+.message-bar.ready{color:#00ff00;text-shadow:0 0 5px rgba(0,255,0,0.5)}.message-bar.alert{color:#ff0000;animation:blink 1s infinite;text-shadow:0 0 5px rgba(255,0,0,0.5)}.softkeys{display:flex;gap:10px;margin-top:15px}.softkey{flex:1;background:#7a8288;color:#fff;border:2px solid #6a7278;padding:12px;border-radius:6px;font-size:11px;cursor:pointer;text-align:center;font-weight:bold}.softkey:hover{background:#8a9298}.softkey.active{background:#27ae60}.device-controls-section{display:flex;flex-direction:column;gap:15px}.top-buttons{display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:start}.btn-teal{background:#17a2b8;color:white;border:3px solid #138496;padding:15px 20px;border-radius:8px;font-size:13px;font-weight:bold;cursor:pointer;box-shadow:0 4px 8px rgba(0,0,0,0.3)}.btn-sync{background:#f39c12;color:white;border:3px solid #d68910;padding:15px 20px;border-radius:8px;font-size:13px;font-weight:bold;cursor:pointer;box-shadow:0 4px 8px rgba(0,0,0,0.3);transition:all 0.3s}.btn-sync.active{background:#e67e22;box-shadow:0 0 15px rgba(230,126,34,0.7)}.btn-shock{background:linear-gradient(135deg,#ff6347 0%,#ff4520 100%);color:white;border:5px solid #cc4f39;width:120px;height:120px;border-radius:50%;font-size:20px;font-weight:bold;cursor:pointer;box-shadow:0 6px 12px rgba(0,0,0,0.4);display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;overflow:hidden}.btn-shock::before{content:'⚡';position:absolute;font-size:80px;opacity:0.15;color:#fff;z-index:0}.btn-shock span{position:relative;z-index:1}.btn-shock:disabled{opacity:0.5;cursor:not-allowed}.btn-shock .number{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);font-size:18px;color:#fff}.side-buttons{display:grid;grid-template-columns:1fr 1fr;gap:10px}.side-btn{background:#7a8288;color:#fff;border:3px solid #6a7278;padding:12px;border-radius:8px;font-size:12px;font-weight:bold;cursor:pointer;box-shadow:0 3px 6px rgba(0,0,0,0.3)}.side-btn:hover{background:#8a9298}.action-buttons-group{display:flex;flex-direction:column;gap:10px}.btn-analyze,.btn-charge{background:linear-gradient(180deg,#ff9933 0%,#ff7700 100%);color:#000;border:4px solid #cc6600;padding:16px;border-radius:10px;font-size:15px;font-weight:bold;cursor:pointer;box-shadow:0 4px 8px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:space-between}.btn-number{background:#fff;color:#ff7700;width:30px;height:30px;border-radius:50%;display:flex;align:items:center;justify-content:center;font-size:18px;font-weight:bold}.energy-selector{background:linear-gradient(180deg,#dc3545 0%,#c82333 100%);color:#fff;border:4px solid #a71d2a;padding:16px;border-radius:10px;cursor:pointer;box-shadow:0 4px 8px rgba(0,0,0,0.3);display:flex;flex-direction:column;align-items:center;gap:8px}.energy-display{font-size:32px;font-weight:bold;text-shadow:0 2px 4px rgba(0,0,0,0.3)}.energy-arrows{display:flex;gap:15px}.energy-arrow{background:#fff;color:#dc3545;width:40px;height:40px;border-radius:50%;border:none;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center}.mode-dial-container{text-align:center;padding:15px;background:#a8b0b8;border-radius:12px}.mode-dial{width:150px;height:150px;background:radial-gradient(circle,#2a2a2a 0%,#1a1a1a 100%);border:6px solid #0a0a0a;border-radius:50%;margin:0 auto 15px;position:relative;cursor:pointer;box-shadow:0 6px 12px rgba(0,0,0,0.5)}.mode-dial::before{content:'';position:absolute;width:8px;height:60px;background:#fff;top:20px;left:50%;transform:translateX(-50%) rotate(var(--dial-rotation,0deg));transform-origin:center bottom;border-radius:4px}.mode-labels{display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:11px;font-weight:bold;color:#2a2a2a}.mode-label{padding:12px 16px;border-radius:8px;cursor:pointer;background:#34495e;color:#ecf0f1;border:3px solid #2c3e50;font-weight:bold;transition:all 0.3s;text-transform:uppercase;font-size:13px}.mode-label:hover{background:#3a4f5e;transform:translateY(-2px)}.mode-label.active{background:linear-gradient(180deg,#3498db 0%,#2874a6 100%);color:white;border-color:#1f5f8b;box-shadow:0 0 15px rgba(52,152,219,0.5)}/* UPDATED PACING CONTROLS & COVER */
+.pacing-controls {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    position: relative; /* Essential for the cover */
+    overflow: hidden;
+}
+
+.pacing-cover {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(44, 62, 80, 0.96);
+    z-index: 20;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    color: #bdc3c7; font-size: 13px; font-weight: bold; text-align: center;
+    transition: all 0.3s ease;
+    opacity: 1; visibility: visible; pointer-events: auto;
+}
+
+.pacing-cover.open {
+    opacity: 0; visibility: hidden; pointer-events: none;
+}.pacer-dial{background:#2a2a2a;border:5px solid #0a0a0a;border-radius:50%;width:100px;height:100px;margin:0 auto;position:relative;cursor:pointer;box-shadow:0 4px 8px rgba(0,0,0,0.5)}.pacer-dial::before{content:'';position:absolute;width:4px;height:35px;background:#17a2b8;top:15px;left:50%;transform:translateX(-50%) rotate(var(--dial-rotation,0deg));transform-origin:center 35px;border-radius:2px;transition:transform 0.3s ease}.pacer-label{text-align:center;color:#2a2a2a;font-size:11px;font-weight:bold;margin-top:8px}.pacer-value{text-align:center;color:#17a2b8;font-size:20px;font-weight:bold;margin-top:4px}.pacer-controls-btn{display:flex;gap:5px;justify-content:center;margin-top:8px}.pacer-btn{background:#7a8288;color:#fff;border:2px solid #6a7278;width:35px;height:35px;border-radius:5px;font-size:18px;cursor:pointer}.zoll-branding{background:linear-gradient(180deg,#e8eef3 0%,#d8dee3 100%);padding:20px;border-radius:0 0 15px 15px;margin:-30px -30px 0 -30px;text-align:center;box-shadow:0 -4px 10px rgba(0,0,0,0.1)}.zoll-logo-text{font-size:48px;font-weight:bold;color:#9a9a9a;letter-spacing:8px;text-shadow:2px 2px 4px rgba(0,0,0,0.1)}@media (max-width:1200px){.zoll-device{grid-template-columns:1fr}}@media print{body{background:white;padding:0}.menu-wrapper{min-height:0}.menu-screen{display:block !important;box-shadow:none;padding:0;background:white}.menu-option{display:none !important}#certificateContent{box-shadow:none}}
 
 /* --- Helper Styles --- */
 .splash-screen{position:absolute;top:0;left:0;right:0;bottom:0;background:#1a1a1a;display:flex;align-items:center;justify-content:center;z-index:100}
@@ -461,11 +483,11 @@ window.drawECGGrid = function(ctx, w, h) {
 .screen.screen-off{background:#1a1a1a}
 .hidden { display: none !important; }
 
-/* --- CPR Panel Styles --- */
+/* --- CPR Panel Styles (UPDATED) --- */
 #cprPanel {
     position: fixed; 
     top: 100px; 
-    right: -320px; /* Hidden state */
+    right: -320px; /* Hidden state: completely off screen */
     width: 300px;
     background: linear-gradient(135deg, #c0392b 0%, #922b21 100%);
     border-radius: 10px 0 0 10px; 
@@ -478,7 +500,11 @@ window.drawECGGrid = function(ctx, w, h) {
     text-align: center; 
     color: white;
 }
+/* State 1: Active (Fully Visible) */
 #cprPanel.active { right: 0; }
+
+/* State 2: Active BUT Minimised (Slides almost away) */
+#cprPanel.active.minimised { right: -300px; }
 
 .cpr-action-btn {
     background: rgba(255, 255, 255, 0.1);
@@ -879,8 +905,10 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
         </div>
     </div>
 
-    <div class="simulator-container" id="simulatorContainer">
+<div class="simulator-container" id="simulatorContainer">
         <div id="cprPanel" class="hidden">
+            <button id="cprMinimiseBtn" style="position: absolute; left: -30px; top: 10px; width: 30px; height: 40px; background: #c0392b; border: 3px solid #e74c3c; border-right: none; border-radius: 8px 0 0 8px; color: white; cursor: pointer; font-weight: bold; box-shadow: -2px 2px 5px rgba(0,0,0,0.2);">▶</button>
+            
             <div class="cpr-header" style="border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 5px; margin-bottom: 10px;">
                 INSTRUCTOR CONTROL
             </div>
@@ -3213,6 +3241,20 @@ function playMetronomeClick() {
                 span.textContent = "START CPR";
             }
         }
+
+        // --- NEW: CPR Panel Minimise Logic ---
+        const cprPanel = document.getElementById('cprPanel');
+        const cprMinBtn = document.getElementById('cprMinimiseBtn');
+
+        if (cprMinBtn && cprPanel) {
+            cprMinBtn.addEventListener('click', () => {
+                cprPanel.classList.toggle('minimised');
+                const isMin = cprPanel.classList.contains('minimised');
+                cprMinBtn.textContent = isMin ? "◀" : "▶";
+            });
+        }
+
+        // 3. New Listeners for Panel Buttons
 
         // 3. New Listeners for Panel Buttons
         document.querySelectorAll('.cpr-action-btn').forEach(btn => {
