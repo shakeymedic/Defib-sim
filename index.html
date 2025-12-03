@@ -3284,28 +3284,78 @@ function playMetronomeClick() {
             });
         });
 
-// --- SAFE STARTUP: Show Defib (OFF) ---
+// --- ROBUST INITIALIZATION ---
+function initializeSimulator() {
+    console.log('🚀 Initializing ZOLL Simulator...');
+    
+    try {
+        // Hide all menu screens
+        [menuWrapper, scenarioScreen, summaryScreen, 
+         certificateScreen, scenarioCreatorScreen].forEach(el => {
+            if (el) el.classList.add('hidden');
+        });
+        
+        // Show simulator
+        if (simulatorContainer) {
+            simulatorContainer.classList.remove('hidden');
+            simulatorContainer.style.display = 'block';
+        }
+        if (zollDevice) {
+            zollDevice.style.display = 'grid';
+        }
+        
+        // Hide control buttons initially
+        [endScenarioBtn, resetScenarioBtn, instructorPanel].forEach(el => {
+            if (el) el.classList.add('hidden');
+        });
+        
+        // Hide CPR panel
+        const cprPanel = document.getElementById('cprPanel');
+        if (cprPanel) {
+            cprPanel.classList.add('hidden');
+            cprPanel.classList.remove('active');
+        }
+        
+        // Set to OFF mode
+        setMode('off');
+        
+        // Resize canvas after delay
         setTimeout(() => {
-            // 1. Hide Menu Elements safely
-            if (typeof menuWrapper !== 'undefined') menuWrapper.classList.add('hidden');
-            if (typeof scenarioScreen !== 'undefined') scenarioScreen.classList.add('hidden');
-            
-            // 2. Force Simulator Container to be Visible
-            if (typeof simulatorContainer !== 'undefined') {
-                simulatorContainer.classList.remove('hidden');
-                simulatorContainer.style.display = 'block'; // Force visibility
-            }
-
-            // 3. Set Device to OFF (Black Screen)
-            if (typeof setMode === 'function') {
-                setMode('off');
-            }
-            
-            // 4. Force resize to ensure it draws correctly
             if (typeof resizeCanvas === 'function') {
                 resizeCanvas();
             }
-        }, 100); // Small delay to let styles load
+            console.log('✅ Initialization complete');
+        }, 200);
+        
+    } catch (error) {
+        console.error('❌ Initialization error:', error);
+        // Show user-friendly error
+        document.body.innerHTML = `
+            <div style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+                        background:white;padding:40px;border-radius:15px;box-shadow:0 10px 40px rgba(0,0,0,0.3);
+                        max-width:500px;text-align:center;font-family:Arial;">
+                <h2 style="color:#e74c3c;margin-bottom:20px;">⚠️ Loading Error</h2>
+                <p style="color:#333;margin-bottom:20px;">The simulator failed to load.</p>
+                <p style="color:#666;font-size:14px;margin-bottom:30px;"><strong>Error:</strong> ${error.message}</p>
+                <button onclick="location.reload()" 
+                        style="background:#3498db;color:white;border:none;padding:15px 30px;
+                               border-radius:8px;font-size:16px;font-weight:bold;cursor:pointer;">
+                    Reload Page
+                </button>
+                <p style="color:#999;font-size:12px;margin-top:20px;">
+                    Try: Hard refresh (Ctrl+Shift+R) or open in Incognito mode
+                </p>
+            </div>
+        `;
+    }
+}
+
+// Call initialization
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeSimulator);
+} else {
+    initializeSimulator();
+}
    
     }); // End of DOMContentLoaded
     </script>
