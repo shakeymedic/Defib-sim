@@ -2111,9 +2111,11 @@ function selectScenario(scenarioId) {
             clearAllTimers();
             summaryScreen.classList.add('hidden');
             certificateScreen.classList.add('hidden');
-            scenarioScreen.classList.add('hidden');
-            menuWrapper.classList.add('hidden');
-            simulatorContainer.classList.remove('hidden');
+            
+            // --- FIX: Show the Menu, Hide the Simulator ---
+            scenarioScreen.classList.remove('hidden');
+            menuWrapper.classList.remove('hidden'); 
+            simulatorContainer.classList.add('hidden');
             
             endScenarioBtn.classList.add('hidden');
             resetScenarioBtn.classList.add('hidden');
@@ -3281,6 +3283,12 @@ function playMetronomeClick() {
                 }
             });
         });
+
+                // --- FIX: Show Main Menu on Startup ---
+        // This ensures the menu is visible and the simulator is hidden when the app loads.
+        menuWrapper.classList.remove('hidden');
+        scenarioScreen.classList.remove('hidden');
+        simulatorContainer.classList.add('hidden');
    
     }); // End of DOMContentLoaded
     </script>
