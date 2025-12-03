@@ -3284,7 +3284,8 @@ function playMetronomeClick() {
             });
         });
 
-        // --- FIX: Show Defib Immediately (Skip Menu) ---
+        // --- BYPASS MENU: Show Defib (OFF) ---
+        
         // 1. Hide the menu screens
         menuWrapper.classList.add('hidden');
         scenarioScreen.classList.add('hidden');
@@ -3292,7 +3293,8 @@ function playMetronomeClick() {
         // 2. Show the simulator container
         simulatorContainer.classList.remove('hidden'); 
         
-        // 3. Force the device mode to 'OFF' so the screen is black
+        // 3. Set device to OFF (Black Screen)
+        // This makes the screen black, but the device body is visible.
         setMode('off');
    
     }); // End of DOMContentLoaded
