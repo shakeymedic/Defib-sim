@@ -1,4 +1,4 @@
-const CACHE_NAME = 'zoll-sim-v1';
+const CACHE_NAME = 'zoll-sim-v2';
 const ASSETS = [
   './',
   './index.html',
