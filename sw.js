@@ -1,19 +1,18 @@
-const CACHE_NAME = 'zoll-sim-v2';
-const ASSETS = [
-  './',
-  './index.html',
-  './images/logo.png',
-  'https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap'
-];
-
-self.addEventListener('install', (e) => {
-  e.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS))
-  );
+// sw.js - Uninstall script
+self.addEventListener('install', function(e) {
+  self.skipWaiting();
 });
 
-self.addEventListener('fetch', (e) => {
-  e.respondWith(
-    caches.match(e.request).then((response) => response || fetch(e.request))
+self.addEventListener('activate', function(e) {
+  e.waitUntil(
+    caches.keys().then(function(cacheNames) {
+      return Promise.all(
+        cacheNames.map(function(cacheName) {
+          return caches.delete(cacheName);
+        })
+      );
+    }).then(function() {
+      return self.registration.unregister();
+    })
   );
 });
