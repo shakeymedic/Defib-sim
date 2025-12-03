@@ -3284,11 +3284,16 @@ function playMetronomeClick() {
             });
         });
 
-                // --- FIX: Show Main Menu on Startup ---
-        // This ensures the menu is visible and the simulator is hidden when the app loads.
-        menuWrapper.classList.remove('hidden');
-        scenarioScreen.classList.remove('hidden');
-        simulatorContainer.classList.add('hidden');
+        // --- FIX: Show Defib Immediately (Skip Menu) ---
+        // 1. Hide the menu screens
+        menuWrapper.classList.add('hidden');
+        scenarioScreen.classList.add('hidden');
+        
+        // 2. Show the simulator container
+        simulatorContainer.classList.remove('hidden'); 
+        
+        // 3. Force the device mode to 'OFF' so the screen is black
+        setMode('off');
    
     }); // End of DOMContentLoaded
     </script>
