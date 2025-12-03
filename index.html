@@ -6,9 +6,23 @@
     <title>ZOLL R Series Simulator - WMEBEM | RCUK 2025</title>
     <link rel="manifest" href="manifest.json">
     <script>
+      // SERVICE WORKER DISABLED FOR DEVELOPMENT
+      // (Uncomment this block only when you are ready to publish the final version)
+      /*
       if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('sw.js')
           .then(() => console.log('Service Worker Registered'));
+      }
+      */
+      
+      // Force unregister any existing workers to fix the grey screen immediately
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(function(registrations) {
+          for(let registration of registrations) {
+            registration.unregister();
+            console.log("Service Worker Unregistered");
+          }
+        });
       }
     </script>
     
@@ -2372,7 +2386,9 @@ function chargeDefib() {
                     state.customScenarioActive = false;
                     return;
                 }
-                const nextRhythm = state.customScenario[state.currentScenarioStep].initial;
+                
+                // --- FIX: Accessed .rhythm instead of .initial ---
+                const nextRhythm = state.customScenario[state.currentScenarioStep].rhythm; 
                 setVitals(nextRhythm);
                 logAction('Custom Scenario: Cycle ' + (state.currentScenarioStep + 1), 'Rhythm: ' + nextRhythm);
                 
@@ -2380,7 +2396,8 @@ function chargeDefib() {
                 setMessage('ANALYSING... CYCLE ' + (state.currentScenarioStep + 1), '');
                 
                 setTimeout(() => {
-                    const vitals = rhythmVitals[nextRhythm];
+                    const vitals = rhythmVitals[nextRhythm] || rhythmVitals['nsr'];
+                    
                     if (!vitals.hasPulse || nextRhythm === 'vtach' || nextRhythm === 'svt' || nextRhythm === 'afib') {
                         setMessage('SHOCKABLE RHYTHM DETECTED', 'alert');
                     } else {
