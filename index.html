@@ -1666,7 +1666,7 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
             resetScenarioBtn.classList.add('hidden');
         }
 
-        function selectScenario(scenarioId) {
+function selectScenario(scenarioId) {
             const scenario = scenarios[scenarioId];
             if (!scenario) return;
             
@@ -1679,6 +1679,15 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
             state.roscAchieved = false;
             state.customScenarioActive = false; 
             
+            // --- NEW: RANDOMISE CAPTURE THRESHOLD ---
+            // Adds variance (+/- 15mA) to the scenario default so students must "hunt"
+            if (scenario.captureThreshold) {
+                const variance = Math.floor(Math.random() * 30) - 15; 
+                scenario.currentThreshold = Math.max(30, scenario.captureThreshold + variance);
+                console.log("Sim Capture Threshold set to:", scenario.currentThreshold); // For debugging
+            }
+            // ----------------------------------------
+
             setVitals(scenario.initialRhythm);
             state.hr = scenario.initialVitals.hr;
             state.spo2 = scenario.initialVitals.spo2;
@@ -2110,7 +2119,7 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
             updateDisplays();
         }
 
-        function chargeDefib() {
+function chargeDefib() {
             if (state.deviceMode !== 'defib') {
                 setMessage('SWITCH TO DEFIB MODE', '');
                 return;
@@ -2126,68 +2135,97 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
                 state.charged = true; 
                 transitionTo(APP_STATES.READY);
                 logAction('Charged', `${state.energy}J ready`);
+                
+                // --- SAFETY DUMP TIMER ---
+                // Auto-disarm after 60 seconds if shock not delivered
+                if (state.chargeTimer) clearTimeout(state.chargeTimer);
+                state.chargeTimer = setTimeout(() => {
+                    if (state.charged) {
+                        state.charged = false;
+                        document.getElementById('shockBtn').disabled = true;
+                        transitionTo(APP_STATES.IDLE);
+                        setMessage('CHARGE DUMPED - SAFETY TIMEOUT', 'ready');
+                        logAction('Safety', 'Charge dumped (Timeout)');
+                        playSound('alarm');
+                    }
+                }, 60000);
+                // -------------------------
+                
             }, 2000);
         }
 
         function deliverShock() {
             if (state.machineState !== APP_STATES.READY) return;
             
-            state.shockCount++;
+            // Clear safety timer if it exists
+            if (state.chargeTimer) clearTimeout(state.chargeTimer);
+
             const energy = state.energy;
             const sync = state.syncMode;
             const rhythm = state.rhythm;
-            
-            playSound('shock');
-            logAction(`Shock ${state.shockCount} delivered`, `${energy}J (${sync ? 'SYNC' : 'UNSYNC'})`);
-            
-            // --- AUTO-RESET CYCLE TIMER ---
-            if (typeof startCycleCountdown === 'function') {
-                startCycleCountdown();
-                logAction('Shock Delivered', 'Cycle Timer Reset');
-            }
-            // ------------------------------
 
-            if (canvas) {
-                canvas.style.background = '#fff';
-                setTimeout(() => canvas.style.background = '#000', 100);
+            // --- REALISTIC SYNC DELAY ---
+            // If in SYNC mode, simulate the delay while waiting for R-wave
+            let delay = 0;
+            if (sync) {
+                // Random delay between 200ms and 800ms to mimic waiting for next QRS
+                delay = Math.floor(Math.random() * 600) + 200;
+                setMessage('SYNC... WAITING FOR R-WAVE...', 'alert');
             }
-            
-            setMessage(`SHOCK DELIVERED`, 'alert');
-            transitionTo(APP_STATES.IDLE);
-            
-            // --- SMART ALS LOGIC ---
+
             setTimeout(() => {
-                let success = false;
-                let failReason = "";
-
-                // 1. VF / pVT Criteria
-                if (rhythm === 'vfib' || rhythm === 'vt_pulseless') {
-                    if (energy >= 120) success = true; 
-                    else failReason = "ENERGY TOO LOW";
-                }
-                // 2. Unstable SVT / AFib / VT Criteria
-                else if (rhythm === 'svt' || rhythm === 'afib' || rhythm === 'vtach') {
-                    if (sync && energy >= 70) success = true; 
-                    else if (!sync) failReason = "R-ON-T HAZARD (NO SYNC)";
-                    else failReason = "ENERGY TOO LOW";
+                state.shockCount++;
+                playSound('shock');
+                logAction(`Shock ${state.shockCount} delivered`, `${energy}J (${sync ? 'SYNC' : 'UNSYNC'})`);
+                
+                // --- AUTO-RESET CYCLE TIMER ---
+                if (typeof startCycleCountdown === 'function') {
+                    startCycleCountdown();
+                    logAction('Shock Delivered', 'Cycle Timer Reset');
                 }
 
-                if (success) {
-                    setMessage('RHYTHM CONVERTING...', 'ready');
-                    setTimeout(() => {
-                        quickSetRhythm('nsr');
-                        state.roscAchieved = true;
-                        updateDisplays();
-                    }, 1000);
-                    
-                    if (state.customScenarioActive) checkScenarioTrigger('shock');
-                } else {
-                    if (failReason) setMessage(`SHOCK FAILED: ${failReason}`, 'alert');
-                    else setMessage('SHOCK DELIVERED - NO CHANGE', 'ready');
+                if (canvas) {
+                    canvas.style.background = '#fff';
+                    setTimeout(() => canvas.style.background = '#000', 100);
                 }
                 
-                startCPRTimer();
-            }, 2000);
+                setMessage(`SHOCK DELIVERED`, 'alert');
+                transitionTo(APP_STATES.IDLE);
+                
+                // --- SMART ALS LOGIC ---
+                setTimeout(() => {
+                    let success = false;
+                    let failReason = "";
+
+                    // 1. VF / pVT Criteria
+                    if (rhythm === 'vfib' || rhythm === 'vt_pulseless') {
+                        if (energy >= 120) success = true; 
+                        else failReason = "ENERGY TOO LOW";
+                    }
+                    // 2. Unstable SVT / AFib / VT Criteria
+                    else if (rhythm === 'svt' || rhythm === 'afib' || rhythm === 'vtach') {
+                        if (sync && energy >= 70) success = true; 
+                        else if (!sync) failReason = "R-ON-T HAZARD (NO SYNC)";
+                        else failReason = "ENERGY TOO LOW";
+                    }
+
+                    if (success) {
+                        setMessage('RHYTHM CONVERTING...', 'ready');
+                        setTimeout(() => {
+                            quickSetRhythm('nsr');
+                            state.roscAchieved = true;
+                            updateDisplays();
+                        }, 1000);
+                        
+                        if (state.customScenarioActive) checkScenarioTrigger('shock');
+                    } else {
+                        if (failReason) setMessage(`SHOCK FAILED: ${failReason}`, 'alert');
+                        else setMessage('SHOCK DELIVERED - NO CHANGE', 'ready');
+                    }
+                    
+                    startCPRTimer();
+                }, 2000);
+            }, delay);
         }
 
         function analyseRhythm() {
@@ -2260,10 +2298,11 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
                 const dial = document.querySelector('.pacing-controls > div:first-child .pacer-dial');
                 if (dial) dial.style.setProperty('--dial-rotation', `${rotation}deg`);
                 
-                let captureThreshold = 60; 
+let captureThreshold = 60; 
                 let isPacingScenario = false;
                 if (scenario && state.scenarioActive && scenario.requiresPacing) {
-                    captureThreshold = scenario.captureThreshold;
+                    // USE THE NEW RANDOMISED THRESHOLD
+                    captureThreshold = scenario.currentThreshold || scenario.captureThreshold;
                     isPacingScenario = true;
                 } else {
                     isPacingScenario = (state.originalRhythm === 'chb' || state.originalRhythm === 'brady' || state.originalRhythm === 'sinus_brady');
