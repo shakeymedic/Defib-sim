@@ -176,20 +176,20 @@ function withArtefacts(fn){
         var flags = (st.noise || {});
         var baseline = (canvasInfo.height || 300) / 2;
 
-        // 2. REALISTIC CPR ARTEFACT (Broad, VT-like shape)
+  // 2. REALISTIC CPR ARTEFACT (Low Amplitude VT Style)
         if (st.cprActive) {
             // Frequency: 110 bpm = ~1.83 Hz
             var freq = 1.83; 
             var ang = tSeconds * freq * 2 * Math.PI;
 
-            // Shape: Sharp upstroke, slower downstroke (Sawtooth/VT style)
-            // Using a combination of sine waves to create a more mechanical "thrust" shape
-            var cprWave = (Math.sin(ang) - 0.4 * Math.sin(2 * ang)) * (window.PX_PER_MV * 4.0);
+            // Shape: Smoother sine-wave based (looks like monomorphic VT)
+            // Amplitude reduced significantly (1.2 instead of 4.0)
+            var cprWave = (Math.sin(ang) - 0.2 * Math.sin(2 * ang)) * (window.PX_PER_MV * 1.2);
             
-            // Add some high-frequency muscle noise from the physical effort
-            var noise = (Math.random() - 0.5) * (window.PX_PER_MV * 0.4);
+            // Reduced muscle noise for a cleaner look
+            var noise = (Math.random() - 0.5) * (window.PX_PER_MV * 0.15);
 
-            // Heavily dampen the underlying rhythm (0.1x) so CPR totally dominates
+            // Heavily dampen the underlying rhythm (0.1x)
             y = baseline + ((y - baseline) * 0.1) + cprWave + noise;
         }
 
@@ -581,94 +581,77 @@ window.drawECGGrid = function(ctx, w, h) {
 button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-btn, .rhythm-btn, .back-button {
     -webkit-touch-callout: none; -webkit-user-select: none; -moz-user-select: none; -ms-user-select: none; user-select: none; touch-action: manipulation;
 }
-/* --- FOOTER STYLE --- */
-.app-footer {
-    text-align: center;
-    color: #5d6d7e;
-    font-size: 12px;
-    padding: 20px;
-    margin-top: 30px;
-    border-top: 1px solid #2c3e50;
-    font-family: Arial, sans-serif;
-}
+/* --- OPTIMISED RESPONSIVE DESIGN (SCALING STRATEGY) --- */
 
-/* --- OPTIMISED RESPONSIVE DESIGN --- */
-
-/* 1. Small Laptops (Height constrained) */
-@media (max-height: 800px) {
-    .zoll-device { transform: scale(0.9); transform-origin: top center; margin-bottom: -50px; }
-    .ecg-canvas-container { height: 220px; }
-    .btn-shock { width: 100px; height: 100px; font-size: 16px; }
-    .btn-shock::before { font-size: 40px; }
-}
-
-/* 2. Laptops & Landscape Tablets (900px - 1200px) */
-@media (max-width: 1200px) {
+/* 1. Standard Laptops (1280px - 1440px) */
+/* Scales to 85% to fit headers/footers */
+@media (max-width: 1450px) {
     .zoll-device {
-        max-width: 100%;
-        grid-template-columns: 1.1fr 0.9fr; 
-        gap: 15px;
-        padding: 15px;
-        border-width: 10px;
+        transform: scale(0.85);
+        transform-origin: top center;
+        margin-bottom: -100px; /* Compensate for empty space at bottom */
     }
-    .device-screen-section, .device-controls-section { padding: 10px; }
-    .energy-display { font-size: 24px; }
 }
 
-/* 3. Portrait Tablets & Large Phones (600px - 900px) */
-@media (max-width: 900px) {
+/* 2. Smaller Laptops / Large Tablets (1024px - 1280px) */
+/* Scales to 75% */
+@media (max-width: 1280px) {
     .zoll-device {
-        grid-template-columns: 1fr; 
-        gap: 15px;
-        transform: none; /* Reset scaling */
-        margin: 10px auto;
-        max-width: 650px;
+        transform: scale(0.75);
+        transform-origin: top center;
+        margin-bottom: -150px; 
+        max-width: 100%; /* Ensure it doesn't overflow horizontally */
+    }
+    .quick-rhythm-panel { max-width: 90%; }
+}
+
+/* 3. Portrait Tablets / Vertical Screens (< 1000px) */
+/* Switches to Vertical Layout AND Scales */
+@media (max-width: 1000px) {
+    .zoll-device {
+        grid-template-columns: 1fr; /* Stack vertically */
+        max-width: 600px;
+        transform: scale(0.8); /* Scale the vertical stack */
+        margin: 0 auto -200px auto;
     }
     .ecg-canvas-container { height: 200px; }
-    .top-buttons { justify-content: center; gap: 20px; }
-    .zoll-top-logo { display: none; }
     .side-buttons { grid-template-columns: repeat(4, 1fr); }
+    .zoll-top-logo { display: none; }
 }
 
-/* 4. Mobile Phones (< 600px) */
-@media (max-width: 600px) {
-    body { padding: 5px; } 
-    .main-header h1 { font-size: 18px; }
-    .main-header img { height: 35px; }
-    .menu-option { padding: 15px; font-size: 14px; }
-    
+/* 4. Small Screens / Phones (< 650px) */
+/* Aggressive Scaling */
+@media (max-width: 650px) {
     .zoll-device {
-        padding: 8px;
-        border-width: 5px;
-        border-radius: 10px;
+        transform: scale(0.6);
+        width: 100%;
+        margin-left: 0; margin-right: 0;
+        margin-bottom: -300px;
     }
+    .quick-rhythm-panel { display: none; } /* Hide rhythm panel on phones to save space */
+    body { padding: 0; overflow-x: hidden; }
     
-    /* Critical space savers */
-    .ecg-canvas-container { height: 160px; }
-    .screen { padding: 5px; }
-    .softkeys { display: none; } /* Hide softkeys on very small screens to save space */
-    .vitals-display { padding: 5px; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 2px; }
-    .vital-value { font-size: 24px; }
-    .vital-label { font-size: 8px; }
-    
-    .device-controls-section { gap: 8px; }
-    .action-buttons-group { flex-direction: row; flex-wrap: wrap; }
-    .btn-analyze, .btn-charge { flex: 1; min-width: 100px; padding: 8px; }
-    
-    .mode-dial { width: 70px; height: 70px; }
-    .pacing-controls { display: none; } /* Hide pacing on smallest screens if needed, or stack */
-    .zoll-branding { display: none; }
-    
-    /* Fix CPR Panel position */
+    /* Force CPR panel to be usable on mobile */
     #cprPanel { 
         width: 100% !important; 
         left: 0 !important; 
         border-radius: 15px 15px 0 0; 
         bottom: -100%;
+        top: auto; /* Unset top */
+        right: auto;
     }
-    #cprPanel.active { bottom: 0 !important; }
+    #cprPanel.active { bottom: 0 !important; right: 0; }
 }
-    </style>
+
+/* 5. Short Screens (Height Constraint) */
+/* If the screen is wide but short, scale down to fit vertical height */
+@media (min-width: 1000px) and (max-height: 850px) {
+    .zoll-device {
+        transform: scale(0.75);
+        transform-origin: top center;
+        margin-bottom: -150px;
+    }
+}
 </head>
 <body>
     <div class="main-header" style="display: flex; justify-content: space-between; align-items: center; max-width: 1600px; margin: 0 auto 20px auto; padding: 10px 20px; background: linear-gradient(135deg,#2c3e50 0%,#34495e 100%); border-radius: 10px; border: 3px solid #1a252f;">
