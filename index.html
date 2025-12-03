@@ -3284,18 +3284,28 @@ function playMetronomeClick() {
             });
         });
 
-        // --- BYPASS MENU: Show Defib (OFF) ---
-        
-        // 1. Hide the menu screens
-        menuWrapper.classList.add('hidden');
-        scenarioScreen.classList.add('hidden');
-        
-        // 2. Show the simulator container
-        simulatorContainer.classList.remove('hidden'); 
-        
-        // 3. Set device to OFF (Black Screen)
-        // This makes the screen black, but the device body is visible.
-        setMode('off');
+// --- SAFE STARTUP: Show Defib (OFF) ---
+        setTimeout(() => {
+            // 1. Hide Menu Elements safely
+            if (typeof menuWrapper !== 'undefined') menuWrapper.classList.add('hidden');
+            if (typeof scenarioScreen !== 'undefined') scenarioScreen.classList.add('hidden');
+            
+            // 2. Force Simulator Container to be Visible
+            if (typeof simulatorContainer !== 'undefined') {
+                simulatorContainer.classList.remove('hidden');
+                simulatorContainer.style.display = 'block'; // Force visibility
+            }
+
+            // 3. Set Device to OFF (Black Screen)
+            if (typeof setMode === 'function') {
+                setMode('off');
+            }
+            
+            // 4. Force resize to ensure it draws correctly
+            if (typeof resizeCanvas === 'function') {
+                resizeCanvas();
+            }
+        }, 100); // Small delay to let styles load
    
     }); // End of DOMContentLoaded
     </script>
