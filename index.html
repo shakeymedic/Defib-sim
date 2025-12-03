@@ -176,21 +176,20 @@ function withArtefacts(fn){
         var flags = (st.noise || {});
         var baseline = (canvasInfo.height || 300) / 2;
 
-        // 2. REALISTIC CPR ARTEFACT
+        // 2. REALISTIC CPR ARTEFACT (Broad, VT-like shape)
         if (st.cprActive) {
             // Frequency: 110 bpm = ~1.83 Hz
             var freq = 1.83; 
             var ang = tSeconds * freq * 2 * Math.PI;
 
-            // Shape: Compression is a sharp downstroke, recoil is smoother.
-            // We combine a primary Sine with a secondary Sine at 2x frequency to create a "sawtooth" push.
-            // Amplitude: Increased to 4.5 (was 2.5) to dominate the trace.
-            var cprWave = (Math.sin(ang) - 0.25 * Math.sin(2 * ang - 0.5)) * (window.PX_PER_MV * 4.5);
-
-            // Noise: Add high-frequency jitter to simulate muscle movement/contact noise during CPR
+            // Shape: Sharp upstroke, slower downstroke (Sawtooth/VT style)
+            // Using a combination of sine waves to create a more mechanical "thrust" shape
+            var cprWave = (Math.sin(ang) - 0.4 * Math.sin(2 * ang)) * (window.PX_PER_MV * 4.0);
+            
+            // Add some high-frequency muscle noise from the physical effort
             var noise = (Math.random() - 0.5) * (window.PX_PER_MV * 0.4);
 
-            // LOGIC: Heavily dampen underlying rhythm (0.1x) because compressions obscure it.
+            // Heavily dampen the underlying rhythm (0.1x) so CPR totally dominates
             y = baseline + ((y - baseline) * 0.1) + cprWave + noise;
         }
 
@@ -240,12 +239,124 @@ window.drawECGGrid = function(ctx, w, h) {
 
 *{margin:0;padding:0;box-sizing:border-box}body{font-family:Arial,sans-serif;background:#2a2a2a;padding:20px;min-height:100vh}
 
-/* --- Menu & Panel Styles --- */
-.quick-rhythm-panel{background:linear-gradient(135deg,#2c3e50 0%,#34495e 100%);border-radius:10px;padding:20px;margin:0 auto 20px auto;max-width:1600px;border:3px solid #1a252f}.quick-rhythm-panel h4{color:#3498db;font-size:14px;margin-bottom:15px;text-transform:uppercase;text-align:center}.menu-wrapper{display:flex;justify-content:center;align-items:center}
-.menu-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;background:linear-gradient(135deg,#2c3e50 0%,#34495e 100%);border-radius:15px;padding:60px;max-width:800px;box-shadow:0 20px 60px rgba(0,0,0,0.5)}
-#modeSelectScreen{display:block;padding:30px;max-width:1600px;margin:0 auto 20px auto;border-radius:10px}#modeSelectScreen .menu-title{margin-bottom:30px}#modeSelectScreen .menu-option{padding:25px 20px;font-size:20px}.menu-logo{margin-bottom:30px}.menu-logo img{height:80px;background:white;padding:15px 25px;border-radius:10px}.menu-title{text-align:center;margin-bottom:50px}.menu-title h1{color:#ecf0f1;font-size:36px;margin-bottom:15px}.menu-title p{color:#bdc3c7;font-size:18px}.menu-options{display:grid;grid-template-columns:1fr 1fr;gap:30px;width:100%}.menu-option{background:linear-gradient(180deg,#3498db 0%,#2874a6 100%);color:white;border:none;padding:50px 40px;border-radius:15px;font-size:24px;font-weight:bold;cursor:pointer;transition:all 0.3s;box-shadow:0 10px 25px rgba(0,0,0,0.3);text-align:center}.menu-option:hover{transform:translateY(-5px);box-shadow:0 15px 35px rgba(0,0,0,0.4)}.menu-option.single-column{grid-column:1 / -1}.menu-option .subtitle{font-size:14px;margin-top:10px;opacity:0.9;font-weight:normal}.simulator-container{max-width:1600px;width:100%;margin:0 auto}.back-button{background:#e74c3c;color:white;border:none;padding:15px 30px;border-radius:8px;font-size:16px;font-weight:bold;cursor:pointer;margin-bottom:20px;display:inline-flex;align-items:center;gap:10px;box-shadow:0 4px 10px rgba(0,0,0,0.3)}.back-button:hover{background:#c0392b}.reset-button{background:#3498db;margin-left:10px}.reset-button:hover{background:#2980b9}.instructor-panel{background:linear-gradient(135deg,#2c3e50 0%,#34495e 100%);border-radius:10px;padding:25px;margin-bottom:20px;border:3px solid #1a252f;transition:all 0.3s ease}.instructor-panel.minimised{padding:12px 18px}.instructor-panel.minimised .control-grid{display:none !important}.minimise-btn{background:#34495e;color:#ecf0f1;border:2px solid #2c3e50;padding:8px 16px;border-radius:6px;font-size:12px;cursor:pointer;transition:all 0.3s}.minimise-btn:hover{background:#3a4f5e}.instructor-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:15px}.instructor-logo{display:flex;align-items:center;gap:15px}.instructor-logo img{height:40px;background:white;padding:6px;border-radius:8px}.instructor-title h2{color:#ecf0f1;font-size:18px}.instructor-title p{color:#bdc3c7;font-size:12px;margin-top:4px}.control-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:15px;margin-top:10px}.control-section{background:#2c3e50;padding:15px;border-radius:8px}.control-section h4{color:#3498db;font-size:13px;margin-bottom:10px;text-transform:uppercase}.control-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;padding:8px;background:#34495e;border-radius:6px}.control-row label{color:#ecf0f1;font-size:12px;font-weight:bold;display:flex;align-items:center;gap:6px}.control-row input,.control-row select{width:100px;padding:6px;border-radius:4px;border:1px solid #2c3e50;background:#2c3e50;color:#00ff00;font-weight:bold}.rhythm-buttons{display:grid;grid-template-columns:repeat(auto-fit,minmax(80px,1fr));gap:6px}.rhythm-btn{background:#34495e;color:#ecf0f1;border:2px solid #2c3e50;padding:8px;border-radius:6px;font-size:11px;cursor:pointer;transition:all 0.2s}.rhythm-btn.active{background:#2980b9;border-color:#1f5f8b}
+/* --- FIXED Quick Access Panel --- */
+.quick-rhythm-panel {
+    background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+    border-radius: 8px;
+    padding: 15px;
+    margin: 0 auto 20px auto;
+    max-width: 1600px;
+    border: 2px solid #1a252f;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+}
 
-/* --- UPDATED DEVICE CONTAINER --- */
+.quick-rhythm-panel h4 {
+    color: #3498db;
+    font-size: 12px;
+    margin-bottom: 10px;
+    text-transform: uppercase;
+    text-align: center;
+    letter-spacing: 1px;
+}
+
+/* Primary Grid Layout */
+.rhythm-grid-primary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+}
+
+/* Rhythm Buttons */
+.rhythm-btn {
+    background: #34495e;
+    color: #ecf0f1;
+    border: 2px solid #455a64; /* Default border */
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-width: 70px;
+    text-transform: uppercase;
+}
+
+.rhythm-btn:hover {
+    transform: translateY(-2px);
+    background: #3e5871;
+}
+
+.rhythm-btn.active {
+    background: #3498db;
+    border-color: #2980b9 !important;
+    color: white;
+    box-shadow: 0 0 10px rgba(52, 152, 219, 0.4);
+}
+
+/* Specific Border Colors */
+.btn-red { border-color: #c0392b; }
+.btn-orange { border-color: #f39c12; }
+
+/* The Dropdown Menu - FIXING THE VISIBILITY BUG */
+#secondaryRhythms {
+    display: none; /* Hidden by default */
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid rgba(255,255,255,0.1);
+    animation: fadeIn 0.3s ease;
+}
+
+#secondaryRhythms.open {
+    display: flex; /* Only shows when 'open' class is added */
+}
+
+/* Toggle Button */
+.toggle-secondary-btn {
+    background: none;
+    border: none;
+    color: #bdc3c7;
+    font-size: 10px;
+    width: 100%;
+    margin-top: 10px;
+    cursor: pointer;
+    text-transform: uppercase;
+    font-weight: bold;
+}
+.toggle-secondary-btn:hover { color: white; }
+
+/* Guideline Hint Buttons */
+.guideline-hints-panel {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+.hint-btn {
+    background: #17a2b8;
+    color: white;
+    border: 1px solid #138496;
+    padding: 8px 15px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: bold;
+    cursor: pointer;
+}
+.hint-btn:hover { background: #138496; }
+
+@keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
+
+
+/* --- Rest of Original Styles --- */
+.menu-wrapper{display:flex;justify-content:center;align-items:center}
+.menu-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;background:linear-gradient(135deg,#2c3e50 0%,#34495e 100%);border-radius:15px;padding:60px;max-width:800px;box-shadow:0 20px 60px rgba(0,0,0,0.5)}
+#modeSelectScreen{display:block;padding:30px;max-width:1600px;margin:0 auto 20px auto;border-radius:10px}#modeSelectScreen .menu-title{margin-bottom:30px}#modeSelectScreen .menu-option{padding:25px 20px;font-size:20px}.menu-logo{margin-bottom:30px}.menu-logo img{height:80px;background:white;padding:15px 25px;border-radius:10px}.menu-title{text-align:center;margin-bottom:50px}.menu-title h1{color:#ecf0f1;font-size:36px;margin-bottom:15px}.menu-title p{color:#bdc3c7;font-size:18px}.menu-options{display:grid;grid-template-columns:1fr 1fr;gap:30px;width:100%}.menu-option{background:linear-gradient(180deg,#3498db 0%,#2874a6 100%);color:white;border:none;padding:50px 40px;border-radius:15px;font-size:24px;font-weight:bold;cursor:pointer;transition:all 0.3s;box-shadow:0 10px 25px rgba(0,0,0,0.3);text-align:center}.menu-option:hover{transform:translateY(-5px);box-shadow:0 15px 35px rgba(0,0,0,0.4)}.menu-option.single-column{grid-column:1 / -1}.menu-option .subtitle{font-size:14px;margin-top:10px;opacity:0.9;font-weight:normal}.simulator-container{max-width:1600px;width:100%;margin:0 auto}.back-button{background:#e74c3c;color:white;border:none;padding:15px 30px;border-radius:8px;font-size:16px;font-weight:bold;cursor:pointer;margin-bottom:20px;display:inline-flex;align-items:center;gap:10px;box-shadow:0 4px 10px rgba(0,0,0,0.3)}.back-button:hover{background:#c0392b}.reset-button{background:#3498db;margin-left:10px}.reset-button:hover{background:#2980b9}.instructor-panel{background:linear-gradient(135deg,#2c3e50 0%,#34495e 100%);border-radius:10px;padding:25px;margin-bottom:20px;border:3px solid #1a252f;transition:all 0.3s ease}.instructor-panel.minimised{padding:12px 18px}.instructor-panel.minimised .control-grid{display:none !important}.minimise-btn{background:#34495e;color:#ecf0f1;border:2px solid #2c3e50;padding:8px 16px;border-radius:6px;font-size:12px;cursor:pointer;transition:all 0.3s}.minimise-btn:hover{background:#3a4f5e}.instructor-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:15px}.instructor-logo{display:flex;align-items:center;gap:15px}.instructor-logo img{height:40px;background:white;padding:6px;border-radius:8px}.instructor-title h2{color:#ecf0f1;font-size:18px}.instructor-title p{color:#bdc3c7;font-size:12px;margin-top:4px}.control-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:15px;margin-top:10px}.control-section{background:#2c3e50;padding:15px;border-radius:8px}.control-section h4{color:#3498db;font-size:13px;margin-bottom:10px;text-transform:uppercase}.control-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;padding:8px;background:#34495e;border-radius:6px}.control-row label{color:#ecf0f1;font-size:12px;font-weight:bold;display:flex;align-items:center;gap:6px}.control-row input,.control-row select{width:100px;padding:6px;border-radius:4px;border:1px solid #2c3e50;background:#2c3e50;color:#00ff00;font-weight:bold}.rhythm-buttons{display:grid;grid-template-columns:repeat(auto-fit,minmax(80px,1fr));gap:6px}.rhythm-btn.instructor{background:#34495e;color:#ecf0f1;border:2px solid #2c3e50;padding:8px;border-radius:6px;font-size:11px;cursor:pointer;transition:all 0.2s}
+
+/* --- DEVICE CONTAINER --- */
 .zoll-device {
     background: linear-gradient(to bottom, #dbe4ea 0%, #c8d0d8 100%);
     box-shadow: 
@@ -266,7 +377,7 @@ window.drawECGGrid = function(ctx, w, h) {
 .zoll-top-logo{position:absolute;top:25px;right:30px;height:40px;background:white;padding:6px;border-radius:8px;z-index:10}
 .device-screen-section{background:#a8b0b8;padding:25px;border-radius:15px;box-shadow:inset 0 4px 10px rgba(0,0,0,0.2)}
 
-/* --- UPDATED SCREEN STYLES (Scanlines & Bloom) --- */
+/* --- SCREEN STYLES (Scanlines & Bloom) --- */
 .screen {
     background-color: #050505;
     background-image: 
@@ -338,7 +449,29 @@ window.drawECGGrid = function(ctx, w, h) {
 }
 
 /* --- Controls & Buttons --- */
-.message-bar.ready{color:#00ff00;text-shadow:0 0 5px rgba(0,255,0,0.5)}.message-bar.alert{color:#ff0000;animation:blink 1s infinite;text-shadow:0 0 5px rgba(255,0,0,0.5)}.softkeys{display:flex;gap:10px;margin-top:15px}.softkey{flex:1;background:#7a8288;color:#fff;border:2px solid #6a7278;padding:12px;border-radius:6px;font-size:11px;cursor:pointer;text-align:center;font-weight:bold}.softkey:hover{background:#8a9298}.softkey.active{background:#27ae60}.device-controls-section{display:flex;flex-direction:column;gap:15px}.top-buttons{display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:start}.btn-teal{background:#17a2b8;color:white;border:3px solid #138496;padding:15px 20px;border-radius:8px;font-size:13px;font-weight:bold;cursor:pointer;box-shadow:0 4px 8px rgba(0,0,0,0.3)}.btn-sync{background:#f39c12;color:white;border:3px solid #d68910;padding:15px 20px;border-radius:8px;font-size:13px;font-weight:bold;cursor:pointer;box-shadow:0 4px 8px rgba(0,0,0,0.3);transition:all 0.3s}.btn-sync.active{background:#e67e22;box-shadow:0 0 15px rgba(230,126,34,0.7)}.btn-shock{background:linear-gradient(135deg,#ff6347 0%,#ff4520 100%);color:white;border:5px solid #cc4f39;width:120px;height:120px;border-radius:50%;font-size:20px;font-weight:bold;cursor:pointer;box-shadow:0 6px 12px rgba(0,0,0,0.4);display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;overflow:hidden}.btn-shock::before{content:'⚡';position:absolute;font-size:80px;opacity:0.15;color:#fff;z-index:0}.btn-shock span{position:relative;z-index:1}.btn-shock:disabled{opacity:0.5;cursor:not-allowed}.btn-shock .number{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);font-size:18px;color:#fff}.side-buttons{display:grid;grid-template-columns:1fr 1fr;gap:10px}.side-btn{background:#7a8288;color:#fff;border:3px solid #6a7278;padding:12px;border-radius:8px;font-size:12px;font-weight:bold;cursor:pointer;box-shadow:0 3px 6px rgba(0,0,0,0.3)}.side-btn:hover{background:#8a9298}.action-buttons-group{display:flex;flex-direction:column;gap:10px}.btn-analyze,.btn-charge{background:linear-gradient(180deg,#ff9933 0%,#ff7700 100%);color:#000;border:4px solid #cc6600;padding:16px;border-radius:10px;font-size:15px;font-weight:bold;cursor:pointer;box-shadow:0 4px 8px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:space-between}.btn-number{background:#fff;color:#ff7700;width:30px;height:30px;border-radius:50%;display:flex;align:items:center;justify-content:center;font-size:18px;font-weight:bold}.energy-selector{background:linear-gradient(180deg,#dc3545 0%,#c82333 100%);color:#fff;border:4px solid #a71d2a;padding:16px;border-radius:10px;cursor:pointer;box-shadow:0 4px 8px rgba(0,0,0,0.3);display:flex;flex-direction:column;align-items:center;gap:8px}.energy-display{font-size:32px;font-weight:bold;text-shadow:0 2px 4px rgba(0,0,0,0.3)}.energy-arrows{display:flex;gap:15px}.energy-arrow{background:#fff;color:#dc3545;width:40px;height:40px;border-radius:50%;border:none;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center}.mode-dial-container{text-align:center;padding:15px;background:#a8b0b8;border-radius:12px}.mode-dial{width:150px;height:150px;background:radial-gradient(circle,#2a2a2a 0%,#1a1a1a 100%);border:6px solid #0a0a0a;border-radius:50%;margin:0 auto 15px;position:relative;cursor:pointer;box-shadow:0 6px 12px rgba(0,0,0,0.5)}.mode-dial::before{content:'';position:absolute;width:8px;height:60px;background:#fff;top:20px;left:50%;transform:translateX(-50%) rotate(var(--dial-rotation,0deg));transform-origin:center bottom;border-radius:4px}.mode-labels{display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:11px;font-weight:bold;color:#2a2a2a}.mode-label{padding:12px 16px;border-radius:8px;cursor:pointer;background:#34495e;color:#ecf0f1;border:3px solid #2c3e50;font-weight:bold;transition:all 0.3s;text-transform:uppercase;font-size:13px}.mode-label:hover{background:#3a4f5e;transform:translateY(-2px)}.mode-label.active{background:linear-gradient(180deg,#3498db 0%,#2874a6 100%);color:white;border-color:#1f5f8b;box-shadow:0 0 15px rgba(52,152,219,0.5)}.pacing-controls{display:grid;grid-template-columns:1fr 1fr;gap:12px}.pacer-dial{background:#2a2a2a;border:5px solid #0a0a0a;border-radius:50%;width:100px;height:100px;margin:0 auto;position:relative;cursor:pointer;box-shadow:0 4px 8px rgba(0,0,0,0.5)}.pacer-dial::before{content:'';position:absolute;width:4px;height:35px;background:#17a2b8;top:15px;left:50%;transform:translateX(-50%) rotate(var(--dial-rotation,0deg));transform-origin:center 35px;border-radius:2px;transition:transform 0.3s ease}.pacer-label{text-align:center;color:#2a2a2a;font-size:11px;font-weight:bold;margin-top:8px}.pacer-value{text-align:center;color:#17a2b8;font-size:20px;font-weight:bold;margin-top:4px}.pacer-controls-btn{display:flex;gap:5px;justify-content:center;margin-top:8px}.pacer-btn{background:#7a8288;color:#fff;border:2px solid #6a7278;width:35px;height:35px;border-radius:5px;font-size:18px;cursor:pointer}.zoll-branding{background:linear-gradient(180deg,#e8eef3 0%,#d8dee3 100%);padding:20px;border-radius:0 0 15px 15px;margin:-30px -30px 0 -30px;text-align:center;box-shadow:0 -4px 10px rgba(0,0,0,0.1)}.zoll-logo-text{font-size:48px;font-weight:bold;color:#9a9a9a;letter-spacing:8px;text-shadow:2px 2px 4px rgba(0,0,0,0.1)}@media (max-width:1200px){.zoll-device{grid-template-columns:1fr}}@media print{body{background:white;padding:0}.menu-wrapper{min-height:0}.menu-screen{display:block !important;box-shadow:none;padding:0;background:white}.menu-option{display:none !important}#certificateContent{box-shadow:none}}
+.message-bar.ready{color:#00ff00;text-shadow:0 0 5px rgba(0,255,0,0.5)}.message-bar.alert{color:#ff0000;animation:blink 1s infinite;text-shadow:0 0 5px rgba(255,0,0,0.5)}.softkeys{display:flex;gap:10px;margin-top:15px}.softkey{flex:1;background:#7a8288;color:#fff;border:2px solid #6a7278;padding:12px;border-radius:6px;font-size:11px;cursor:pointer;text-align:center;font-weight:bold}.softkey:hover{background:#8a9298}.softkey.active{background:#27ae60}.device-controls-section{display:flex;flex-direction:column;gap:15px}.top-buttons{display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:start}.btn-teal{background:#17a2b8;color:white;border:3px solid #138496;padding:15px 20px;border-radius:8px;font-size:13px;font-weight:bold;cursor:pointer;box-shadow:0 4px 8px rgba(0,0,0,0.3)}.btn-sync{background:#f39c12;color:white;border:3px solid #d68910;padding:15px 20px;border-radius:8px;font-size:13px;font-weight:bold;cursor:pointer;box-shadow:0 4px 8px rgba(0,0,0,0.3);transition:all 0.3s}.btn-sync.active{background:#e67e22;box-shadow:0 0 15px rgba(230,126,34,0.7)}.btn-shock{background:linear-gradient(135deg,#ff6347 0%,#ff4520 100%);color:white;border:5px solid #cc4f39;width:120px;height:120px;border-radius:50%;font-size:20px;font-weight:bold;cursor:pointer;box-shadow:0 6px 12px rgba(0,0,0,0.4);display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;overflow:hidden}.btn-shock::before{content:'⚡';position:absolute;font-size:80px;opacity:0.15;color:#fff;z-index:0}.btn-shock span{position:relative;z-index:1}.btn-shock:disabled{opacity:0.5;cursor:not-allowed}.btn-shock .number{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);font-size:18px;color:#fff}.side-buttons{display:grid;grid-template-columns:1fr 1fr;gap:10px}.side-btn{background:#7a8288;color:#fff;border:3px solid #6a7278;padding:12px;border-radius:8px;font-size:12px;font-weight:bold;cursor:pointer;box-shadow:0 3px 6px rgba(0,0,0,0.3)}.side-btn:hover{background:#8a9298}.action-buttons-group{display:flex;flex-direction:column;gap:10px}.btn-analyze,.btn-charge{background:linear-gradient(180deg,#ff9933 0%,#ff7700 100%);color:#000;border:4px solid #cc6600;padding:16px;border-radius:10px;font-size:15px;font-weight:bold;cursor:pointer;box-shadow:0 4px 8px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:space-between}.btn-number{background:#fff;color:#ff7700;width:30px;height:30px;border-radius:50%;display:flex;align:items:center;justify-content:center;font-size:18px;font-weight:bold}.energy-selector{background:linear-gradient(180deg,#dc3545 0%,#c82333 100%);color:#fff;border:4px solid #a71d2a;padding:16px;border-radius:10px;cursor:pointer;box-shadow:0 4px 8px rgba(0,0,0,0.3);display:flex;flex-direction:column;align-items:center;gap:8px}.energy-display{font-size:32px;font-weight:bold;text-shadow:0 2px 4px rgba(0,0,0,0.3)}.energy-arrows{display:flex;gap:15px}.energy-arrow{background:#fff;color:#dc3545;width:40px;height:40px;border-radius:50%;border:none;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center}.mode-dial-container{text-align:center;padding:15px;background:#a8b0b8;border-radius:12px}.mode-dial{width:150px;height:150px;background:radial-gradient(circle,#2a2a2a 0%,#1a1a1a 100%);border:6px solid #0a0a0a;border-radius:50%;margin:0 auto 15px;position:relative;cursor:pointer;box-shadow:0 6px 12px rgba(0,0,0,0.5)}.mode-dial::before{content:'';position:absolute;width:8px;height:60px;background:#fff;top:20px;left:50%;transform:translateX(-50%) rotate(var(--dial-rotation,0deg));transform-origin:center bottom;border-radius:4px}.mode-labels{display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:11px;font-weight:bold;color:#2a2a2a}.mode-label{padding:12px 16px;border-radius:8px;cursor:pointer;background:#34495e;color:#ecf0f1;border:3px solid #2c3e50;font-weight:bold;transition:all 0.3s;text-transform:uppercase;font-size:13px}.mode-label:hover{background:#3a4f5e;transform:translateY(-2px)}.mode-label.active{background:linear-gradient(180deg,#3498db 0%,#2874a6 100%);color:white;border-color:#1f5f8b;box-shadow:0 0 15px rgba(52,152,219,0.5)}/* UPDATED PACING CONTROLS & COVER */
+.pacing-controls {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    position: relative; /* Essential for the cover */
+    overflow: hidden;
+}
+
+.pacing-cover {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(44, 62, 80, 0.96);
+    z-index: 20;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    color: #bdc3c7; font-size: 13px; font-weight: bold; text-align: center;
+    transition: all 0.3s ease;
+    opacity: 1; visibility: visible; pointer-events: auto;
+}
+
+.pacing-cover.open {
+    opacity: 0; visibility: hidden; pointer-events: none;
+}.pacer-dial{background:#2a2a2a;border:5px solid #0a0a0a;border-radius:50%;width:100px;height:100px;margin:0 auto;position:relative;cursor:pointer;box-shadow:0 4px 8px rgba(0,0,0,0.5)}.pacer-dial::before{content:'';position:absolute;width:4px;height:35px;background:#17a2b8;top:15px;left:50%;transform:translateX(-50%) rotate(var(--dial-rotation,0deg));transform-origin:center 35px;border-radius:2px;transition:transform 0.3s ease}.pacer-label{text-align:center;color:#2a2a2a;font-size:11px;font-weight:bold;margin-top:8px}.pacer-value{text-align:center;color:#17a2b8;font-size:20px;font-weight:bold;margin-top:4px}.pacer-controls-btn{display:flex;gap:5px;justify-content:center;margin-top:8px}.pacer-btn{background:#7a8288;color:#fff;border:2px solid #6a7278;width:35px;height:35px;border-radius:5px;font-size:18px;cursor:pointer}.zoll-branding{background:linear-gradient(180deg,#e8eef3 0%,#d8dee3 100%);padding:20px;border-radius:0 0 15px 15px;margin:-30px -30px 0 -30px;text-align:center;box-shadow:0 -4px 10px rgba(0,0,0,0.1)}.zoll-logo-text{font-size:48px;font-weight:bold;color:#9a9a9a;letter-spacing:8px;text-shadow:2px 2px 4px rgba(0,0,0,0.1)}@media (max-width:1200px){.zoll-device{grid-template-columns:1fr}}@media print{body{background:white;padding:0}.menu-wrapper{min-height:0}.menu-screen{display:block !important;box-shadow:none;padding:0;background:white}.menu-option{display:none !important}#certificateContent{box-shadow:none}}
 
 /* --- Helper Styles --- */
 .splash-screen{position:absolute;top:0;left:0;right:0;bottom:0;background:#1a1a1a;display:flex;align-items:center;justify-content:center;z-index:100}
@@ -350,11 +483,11 @@ window.drawECGGrid = function(ctx, w, h) {
 .screen.screen-off{background:#1a1a1a}
 .hidden { display: none !important; }
 
-/* --- CPR Panel Styles --- */
+/* --- CPR Panel Styles (UPDATED) --- */
 #cprPanel {
     position: fixed; 
     top: 100px; 
-    right: -320px; /* Hidden state */
+    right: -320px; /* Hidden state: completely off screen */
     width: 300px;
     background: linear-gradient(135deg, #c0392b 0%, #922b21 100%);
     border-radius: 10px 0 0 10px; 
@@ -367,7 +500,11 @@ window.drawECGGrid = function(ctx, w, h) {
     text-align: center; 
     color: white;
 }
+/* State 1: Active (Fully Visible) */
 #cprPanel.active { right: 0; }
+
+/* State 2: Active BUT Minimised (Slides almost away) */
+#cprPanel.active.minimised { right: -300px; }
 
 .cpr-action-btn {
     background: rgba(255, 255, 255, 0.1);
@@ -402,32 +539,6 @@ window.drawECGGrid = function(ctx, w, h) {
 .cpr-timer { font-size: 42px; font-family: 'Share Tech Mono', monospace; font-weight: bold; margin: 10px 0; text-shadow: 0 2px 4px rgba(0,0,0,0.3); }
         
 /* --- Guideline Modal Styles --- */
-.guideline-hints-panel {
-    background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
-    border-radius: 10px;
-    padding: 15px 20px;
-    margin: -10px auto 20px auto;
-    max-width: 1600px;
-    border: 3px solid #1a252f;
-    display: flex;
-    justify-content: center;
-    flex-wrap: wrap;
-    gap: 15px;
-}
-.hint-btn {
-    background: #17a2b8;
-    color: white;
-    border: 2px solid #138496;
-    padding: 10px 20px;
-    border-radius: 8px;
-    font-size: 13px;
-    font-weight: bold;
-    cursor: pointer;
-    transition: all 0.2s;
-    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-}
-.hint-btn:hover { background: #1ab8d6; transform: translateY(-2px); }
-
 #modalOverlay {
     position: fixed; top: 0; left: 0; width: 100%; height: 100%;
     background: rgba(0, 0, 0, 0.85);
@@ -470,171 +581,99 @@ window.drawECGGrid = function(ctx, w, h) {
 button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-btn, .rhythm-btn, .back-button {
     -webkit-touch-callout: none; -webkit-user-select: none; -moz-user-select: none; -ms-user-select: none; user-select: none; touch-action: manipulation;
 }
+/* --- FOOTER STYLE --- */
+.app-footer {
+    text-align: center;
+    color: #5d6d7e;
+    font-size: 12px;
+    padding: 20px;
+    margin-top: 30px;
+    border-top: 1px solid #2c3e50;
+    font-family: Arial, sans-serif;
+}
+
 /* --- OPTIMISED RESPONSIVE DESIGN --- */
 
-/* 1. Laptops & Landscape Tablets (900px - 1200px) */
-/* FIX: Keep side-by-side layout for laptops instead of stacking too early */
-@media (max-width: 1200px) and (min-width: 900px) {
-    .zoll-device {
-        max-width: 98%;
-        grid-template-columns: 1.1fr 0.9fr; /* Slightly tighter columns */
-        gap: 15px;
-        padding: 20px;
-        border-width: 12px;
-    }
-    .device-screen-section, .device-controls-section {
-        padding: 15px;
-    }
-    .btn-shock {
-        width: 100px; height: 100px; /* Scale down shock button */
-        font-size: 16px;
-    }
-    .btn-shock::before { font-size: 50px; }
-    .energy-display { font-size: 26px; }
-    .vital-value { font-size: 30px; }
-    .menu-option { padding: 30px; font-size: 20px; }
+/* 1. Small Laptops (Height constrained) */
+@media (max-height: 800px) {
+    .zoll-device { transform: scale(0.9); transform-origin: top center; margin-bottom: -50px; }
+    .ecg-canvas-container { height: 220px; }
+    .btn-shock { width: 100px; height: 100px; font-size: 16px; }
+    .btn-shock::before { font-size: 40px; }
 }
 
-/* 2. Portrait Tablets & Large Phones (600px - 900px) */
+/* 2. Laptops & Landscape Tablets (900px - 1200px) */
+@media (max-width: 1200px) {
+    .zoll-device {
+        max-width: 100%;
+        grid-template-columns: 1.1fr 0.9fr; 
+        gap: 15px;
+        padding: 15px;
+        border-width: 10px;
+    }
+    .device-screen-section, .device-controls-section { padding: 10px; }
+    .energy-display { font-size: 24px; }
+}
+
+/* 3. Portrait Tablets & Large Phones (600px - 900px) */
 @media (max-width: 900px) {
     .zoll-device {
-        grid-template-columns: 1fr; /* Stack vertically */
-        gap: 20px;
-        margin: 10px auto;
-        border-width: 10px;
-        padding: 15px;
-        max-width: 600px; /* Prevent it getting too wide on tablets */
-    }
-    .ecg-canvas-container {
-        height: 240px; /* Reduce screen height slightly */
-    }
-    .top-buttons {
-        display: flex;
-        justify-content: center;
-        gap: 20px;
-    }
-    .btn-shock {
-        margin: 0; /* Remove auto margins to work with flex gap */
-    }
-    .side-buttons {
-        grid-template-columns: 1fr 1fr 1fr 1fr; /* Horizontal row of buttons */
-    }
-    .vitals-display {
-        grid-template-columns: 1fr 1fr; /* 2x2 grid is better for vertical layouts */
+        grid-template-columns: 1fr; 
         gap: 15px;
+        transform: none; /* Reset scaling */
+        margin: 10px auto;
+        max-width: 650px;
     }
-    /* Hide the big WMEBEM logo on the device casing to save space */
+    .ecg-canvas-container { height: 200px; }
+    .top-buttons { justify-content: center; gap: 20px; }
     .zoll-top-logo { display: none; }
+    .side-buttons { grid-template-columns: repeat(4, 1fr); }
 }
 
-/* 3. Mobile Phones (< 600px) */
+/* 4. Mobile Phones (< 600px) */
 @media (max-width: 600px) {
-    body { padding: 5px; background: #1a1a1a; } /* Dark background for immersion */
-    
-    .main-header { flex-direction: column; text-align: center; gap: 10px; }
-    .main-header img { height: 40px; }
-    .main-header h1 { font-size: 20px; }
+    body { padding: 5px; } 
+    .main-header h1 { font-size: 18px; }
+    .main-header img { height: 35px; }
+    .menu-option { padding: 15px; font-size: 14px; }
     
     .zoll-device {
-        padding: 10px;
-        border: 5px solid #2b7bbf;
-        border-radius: 12px;
-        margin: 0;
+        padding: 8px;
+        border-width: 5px;
+        border-radius: 10px;
     }
     
-    /* CRITICAL: Shrink the ECG screen so the user doesn't have to scroll */
-    .ecg-canvas-container {
-        height: 180px; 
-    }
-    .screen { padding: 8px; }
+    /* Critical space savers */
+    .ecg-canvas-container { height: 160px; }
+    .screen { padding: 5px; }
+    .softkeys { display: none; } /* Hide softkeys on very small screens to save space */
+    .vitals-display { padding: 5px; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 2px; }
+    .vital-value { font-size: 24px; }
+    .vital-label { font-size: 8px; }
     
-    /* Make touch targets larger/clearer */
-    .softkeys { gap: 5px; }
-    .softkey { padding: 10px 5px; font-size: 10px; }
+    .device-controls-section { gap: 8px; }
+    .action-buttons-group { flex-direction: row; flex-wrap: wrap; }
+    .btn-analyze, .btn-charge { flex: 1; min-width: 100px; padding: 8px; }
     
-    /* Stack controls compactly */
-    .device-controls-section { gap: 10px; }
-    .action-buttons-group { 
-        flex-direction: row; 
-        flex-wrap: wrap; 
-        justify-content: center; 
-    }
-    .btn-analyze, .btn-charge { 
-        flex: 1; 
-        min-width: 120px; 
-        padding: 10px; 
-    }
-    .energy-selector { width: 100%; margin-top: 5px; }
-    
-    /* Adjust Dials */
-    .mode-dial-container { padding: 10px; }
-    .mode-dial { width: 90px; height: 90px; }
-    .mode-labels { font-size: 10px; }
-    .mode-label { padding: 8px; }
-    
-    .pacer-dial { width: 60px; height: 60px; }
-    .pacer-value { font-size: 16px; }
-    
-    /* Hide Branding Footer on phones */
+    .mode-dial { width: 70px; height: 70px; }
+    .pacing-controls { display: none; } /* Hide pacing on smallest screens if needed, or stack */
     .zoll-branding { display: none; }
-
-    /* Fix Menu Buttons */
-    .menu-options { grid-template-columns: 1fr; }
-    .menu-option { padding: 20px; font-size: 16px; }
+    
+    /* Fix CPR Panel position */
+    #cprPanel { 
+        width: 100% !important; 
+        left: 0 !important; 
+        border-radius: 15px 15px 0 0; 
+        bottom: -100%;
+    }
+    #cprPanel.active { bottom: 0 !important; }
 }
-        /* --- NEW FEATURES CSS --- */
-
-/* 1. Organised Menu Grids */
-.rhythm-grid-primary { display: grid; grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); gap: 8px; margin-bottom: 10px; }
-.rhythm-grid-secondary { display: grid; grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); gap: 8px; max-height: 0; overflow: hidden; transition: max-height 0.4s ease-out; opacity: 0; }
-.rhythm-grid-secondary.open { max-height: 600px; opacity: 1; padding-top: 15px; border-top: 1px dashed #465a6e; margin-top: 10px; }
-.toggle-secondary-btn { background: none; border: none; color: #3498db; cursor: pointer; font-size: 13px; margin: 10px auto 0; display: block; width: 100%; }
-.toggle-secondary-btn:hover { color: #5dade2; text-decoration: underline; }
-.rhythm-section-title { color: #7f8c8d; font-size: 11px; font-weight: bold; text-transform: uppercase; margin-bottom: 8px; letter-spacing: 1px; }
-
-/* 2. Pacing Cover Panel */
-.pacing-controls { position: relative; overflow: hidden; } /* Ensure parent clips the cover */
-.pacing-cover {
-    position: absolute; top: -5px; left: -5px; right: -5px; bottom: -5px;
-    background: linear-gradient(135deg, #7f8c8d 0%, #95a5a6 100%);
-    border: 2px solid #555; border-radius: 8px; z-index: 20;
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    color: #ecf0f1; font-weight: bold; font-size: 13px; text-transform: uppercase;
-    text-shadow: 0 1px 2px rgba(0,0,0,0.5);
-    box-shadow: inset 0 0 20px rgba(0,0,0,0.2);
-    transition: transform 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-    transform: translateY(0); /* Default Closed */
-}
-.pacing-cover.open { transform: translateY(115%); } /* Slides down when open */
-
-/* 3. Assessor Guide Icons */
-.rhythm-btn { position: relative; }
-.info-icon {
-    position: absolute; top: -6px; right: -6px;
-    width: 18px; height: 18px;
-    background: #f39c12; color: #fff;
-    border-radius: 50%; border: 2px solid #2c3e50;
-    font-size: 11px; font-weight: bold;
-    display: flex; align-items: center; justify-content: center;
-    cursor: help; z-index: 5;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-}
-.info-icon:hover { transform: scale(1.1); background: #e67e22; }
-
-/* 4. Scenario Creator Steps */
-.scenario-step-card {
-    background: #34495e; border-left: 4px solid #3498db;
-    padding: 15px; margin-bottom: 10px; border-radius: 4px;
-    display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
-}
-.scenario-step-card h5 { grid-column: 1 / -1; margin: 0 0 10px 0; color: #bdc3c7; font-size: 12px; text-transform: uppercase; }
-.step-remove-btn { grid-column: 1 / -1; background: #c0392b; color: white; border: none; padding: 5px; border-radius: 3px; cursor: pointer; font-size: 11px; margin-top: 5px; }
     </style>
 </head>
 <body>
     <div class="main-header" style="display: flex; justify-content: space-between; align-items: center; max-width: 1600px; margin: 0 auto 20px auto; padding: 10px 20px; background: linear-gradient(135deg,#2c3e50 0%,#34495e 100%); border-radius: 10px; border: 3px solid #1a252f;">
         <div style="display: flex; align-items: center; justify-content: center; gap: 20px;">
-            <img src="https://iili.io/KGQOvkl.md.png" alt="WMEBEM Logo" style="height: 60px; background: white; padding: 10px; border-radius: 10px;">
+            <img src="images/logo.png" alt="WMEBEM Logo" style="height: 60px; background: white; padding: 10px; border-radius: 10px;">
             <div class="menu-title" style="margin-bottom: 0; text-align: left;">
                 <h1 style="margin-bottom: 5px; font-size: 32px;">ZOLL R Series Simulator</h1>
                 <p style="color: #bdc3c7; font-size: 16px;">RCUK 2025 Guidelines Simulator</p>
@@ -649,21 +688,22 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
     <div class="quick-rhythm-panel">
         <h4>Quick Rhythm Select</h4>
         
-        <div class="rhythm-section-title">Primary (ALS Algorithms)</div>
         <div class="rhythm-grid-primary">
             <button class="rhythm-btn active" data-rhythm="nsr">NSR</button>
-            <button class="rhythm-btn" data-rhythm="vfib" style="border-color: #c0392b;">VF <span class="info-icon" data-guide="vf">?</span></button>
-            <button class="rhythm-btn" data-rhythm="vt_pulseless" style="border-color: #c0392b;">pVT <span class="info-icon" data-guide="vf">?</span></button>
-            <button class="rhythm-btn" data-rhythm="asystole" style="border-color: #c0392b;">ASY <span class="info-icon" data-guide="nonshock">?</span></button>
-            <button class="rhythm-btn" data-rhythm="pea" style="border-color: #c0392b;">PEA <span class="info-icon" data-guide="nonshock">?</span></button>
-            <button class="rhythm-btn" data-rhythm="svt" style="border-color: #f39c12;">SVT <span class="info-icon" data-guide="tachy">?</span></button>
-            <button class="rhythm-btn" data-rhythm="vtach" style="border-color: #f39c12;">VT (Pulse) <span class="info-icon" data-guide="tachy">?</span></button>
-            <button class="rhythm-btn" data-rhythm="chb" style="border-color: #f39c12;">CHB <span class="info-icon" data-guide="brady">?</span></button>
+            
+            <button class="rhythm-btn btn-red" data-rhythm="vfib">VF</button>
+            <button class="rhythm-btn btn-red" data-rhythm="vt_pulseless">pVT</button>
+            <button class="rhythm-btn btn-red" data-rhythm="asystole">ASY</button>
+            <button class="rhythm-btn btn-red" data-rhythm="pea">PEA</button>
+            
+            <button class="rhythm-btn btn-orange" data-rhythm="svt">SVT</button>
+            <button class="rhythm-btn btn-orange" data-rhythm="vtach">VT (Pulse)</button>
+            <button class="rhythm-btn btn-orange" data-rhythm="chb">CHB</button>
         </div>
 
         <button class="toggle-secondary-btn" id="toggleSecondaryBtn">▼ Show More Rhythms</button>
         
-        <div class="rhythm-grid-secondary" id="secondaryRhythms">
+        <div id="secondaryRhythms">
             <button class="rhythm-btn" data-rhythm="afib">AFib</button>
             <button class="rhythm-btn" data-rhythm="sinus_brady">Sinus Brady</button>
             <button class="rhythm-btn" data-rhythm="sinus_tach">Sinus Tach</button>
@@ -713,7 +753,7 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
 
         <div class="menu-screen hidden" id="scenarioScreen">
             <div style="display: flex; align-items: center; justify-content: center; gap: 20px; margin-bottom: 30px;">
-                <img src="https://iili.io/KGQOvkl.md.png" alt="WMEBEM Logo" style="height: 60px; background: white; padding: 10px; border-radius: 10px;">
+                <img src="images/logo.png" alt="WMEBEM Logo" style="height: 60px; background: white; padding: 10px; border-radius: 10px;">
                 <div class="menu-title" style="margin-bottom: 0; text-align: left;">
                     <h1 id="modeTitle" style="margin-bottom: 5px; font-size: 32px;">Education Mode</h1>
                     <p>Select a clinical scenario</p>
@@ -773,7 +813,7 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
         
         <div class="menu-screen hidden" id="summaryScreen">
             <div style="display: flex; align-items: center; justify-content: center; gap: 20px; margin-bottom: 30px;">
-                <img src="https://iili.io/KGQOvkl.md.png" alt="WMEBEM Logo" style="height: 60px; background: white; padding: 10px; border-radius: 10px;">
+                <img src="images/logo.png" alt="WMEBEM Logo" style="height: 60px; background: white; padding: 10px; border-radius: 10px;">
                 <div class="menu-title" style="margin-bottom: 0; text-align: left;">
                     <h1 style="margin-bottom: 5px; font-size: 32px;">Scenario Complete</h1>
                     <p>Defibrillator Performance Summary</p>
@@ -818,7 +858,7 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
             <div id="certificateContent" style="background: white; padding: 60px; border-radius: 15px; color: #2c3e50; position: relative;">
                 <div style="border: 8px solid #3498db; padding: 40px; border-radius: 10px;">
                     <div style="text-align: center; margin-bottom: 30px;">
-                        <img src="https://iili.io/KGQOvkl.md.png" alt="WMEBEM Logo" style="height: 60px; margin-bottom: 20px;">
+                        <img src="images/logo.png" alt="WMEBEM Logo" style="height: 60px; margin-bottom: 20px;">
                         <h1 style="color: #2c3e50; font-size: 42px; margin-bottom: 10px;">Certificate of Completion</h1>
                         <div style="width: 100px; height: 3px; background: #3498db; margin: 20px auto;"></div>
                     </div>
@@ -865,16 +905,53 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
         </div>
     </div>
 
-    <div class="simulator-container" id="simulatorContainer">
+<div class="simulator-container" id="simulatorContainer">
         <div id="cprPanel" class="hidden">
-            <div class="cpr-header">CARDIAC ARREST MANAGEMENT</div>
-            <div class="cpr-timer" id="cprTimerDisplay">00:00</div>
+            <button id="cprMinimiseBtn" style="position: absolute; left: -30px; top: 10px; width: 30px; height: 40px; background: #c0392b; border: 3px solid #e74c3c; border-right: none; border-radius: 8px 0 0 8px; color: white; cursor: pointer; font-weight: bold; box-shadow: -2px 2px 5px rgba(0,0,0,0.2);">▶</button>
             
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 15px;">
-                <button class="cpr-action-btn" id="cprToggleBtn" data-action="cpr-toggle">
-                    <span>START CPR</span>
-                    <div class="btn-subtext">COMPRESSIONS</div>
+            <div class="cpr-header" style="border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 5px; margin-bottom: 10px;">
+                INSTRUCTOR CONTROL
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
+                <div style="background: rgba(0,0,0,0.3); padding: 5px; border-radius: 5px;">
+                    <div style="font-size: 9px; color: #aaa; text-transform: uppercase;">Total Downtime</div>
+                    <div class="cpr-timer" id="cprTimerDisplay" style="font-size: 24px;">00:00</div>
+                </div>
+                <div id="cycleTimerContainer" style="background: rgba(0,0,0,0.3); padding: 5px; border-radius: 5px; border: 1px solid #444;">
+                    <div style="font-size: 9px; color: #f39c12; text-transform: uppercase; font-weight: bold;">Cycle Remaining</div>
+                    <div class="cpr-timer" id="cycleTimerDisplay" style="font-size: 24px; color: #f39c12;">02:00</div>
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 5px; margin-bottom: 10px;">
+                <button class="cpr-action-btn" id="cprToggleBtn" data-action="cpr-toggle" style="flex: 2;">
+                    <span>START CPR (LOG)</span>
                 </button>
+                <button class="cpr-action-btn" id="metronomeBtn" style="flex: 1; background: #2c3e50; border-color: #34495e;">
+                    <span>🔊 110</span>
+                </button>
+            </div>
+
+            <button class="cpr-action-btn" id="nextCycleBtn" style="width: 100%; background: #e67e22; margin-bottom: 15px;">
+                <span>↺ RESET CYCLE (2 MIN)</span>
+            </button>
+
+            <div style="margin-bottom: 15px;">
+                <div style="font-size: 10px; color: #bdc3c7; margin-bottom: 5px; font-weight: bold;">REVERSIBLE CAUSES (Log when mentioned)</div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px;">
+                    <button class="cause-btn" data-cause="Hypoxia">Hypoxia</button>
+                    <button class="cause-btn" data-cause="Hypovolaemia">Hypovolaemia</button>
+                    <button class="cause-btn" data-cause="Hypothermia">Hypothermia</button>
+                    <button class="cause-btn" data-cause="Hyperkalemia">H+ / K+</button>
+                    <button class="cause-btn" data-cause="Toxins">Toxins</button>
+                    <button class="cause-btn" data-cause="Tamponade">Tamponade</button>
+                    <button class="cause-btn" data-cause="Tension Pneumo">Tension PTX</button>
+                    <button class="cause-btn" data-cause="Thrombosis">Thrombosis</button>
+                </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px;">
                 <button class="cpr-action-btn" data-action="adrenaline">
                     <span>ADRENALINE</span>
                     <div class="btn-subtext">1mg IV/IO</div>
@@ -883,31 +960,27 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
                     <span>AMIODARONE</span>
                     <div class="btn-subtext">300mg IV/IO</div>
                 </button>
-                <button class="cpr-action-btn" data-action="next-cycle">
-                     <span>NEXT CYCLE</span>
-                     <div class="btn-subtext">RESET TIMER</div>
-                </button>
-            </div>
-            <div id="cprLog" style="
-                margin-top: 15px; 
-                background: rgba(0,0,0,0.3); 
-                border-radius: 6px; 
-                padding: 8px; 
-                height: 120px; 
-                overflow-y: auto; 
-                text-align: left; 
-                font-family: monospace; 
-                font-size: 11px;
-                border: 1px solid rgba(255,255,255,0.2);
-                color: #ddd;
-                display: flex;
-                flex-direction: column-reverse; /* Newest items at top */
-            ">
-                <div style="color: #666; text-align: center; font-style: italic; margin-bottom: 5px;">-- Event Log --</div>
             </div>
 
-            <button id="roscBtn" class="rosc-btn">
-                ❤️ PATIENT ROSC
+            <div id="cprLog" style="
+                margin-top: 10px; 
+                background: rgba(0,0,0,0.3); 
+                border-radius: 6px; 
+                padding: 5px; 
+                height: 100px; 
+                overflow-y: auto; 
+                font-family: monospace; 
+                font-size: 10px;
+                color: #ccc;
+                display: flex;
+                flex-direction: column-reverse;
+                border: 1px solid #444;
+            ">
+                <div style="color: #666; text-align: center; padding: 10px;">Waiting for start...</div>
+            </div>
+
+            <button id="roscBtn" class="rosc-btn" style="margin-top: 10px;">
+                ❤️ CONFIRM ROSC
             </button>
         </div>
        
@@ -921,7 +994,7 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
         <div class="instructor-panel hidden" id="instructorPanel">
             <div class="instructor-header">
                 <div class="instructor-logo">
-                    <img src="https://iili.io/KGQOvkl.md.png" alt="WMEBEM Logo">
+                    <img src="images/logo.png" alt="WMEBEM Logo">
                     <div class="instructor-title">
                         <h2>Instructor Controls</h2>
                         <p id="instructorSubtitle">Scenario in Progress</p>
@@ -983,12 +1056,12 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
         </div>
 
         <div class="zoll-device" id="zollDevice" style="display: grid;">
-            <img src="https://iili.io/KGQOvkl.md.png" alt="WMEBEM Logo" class="zoll-top-logo">
+            <img src="images/logo.png" alt="WMEBEM Logo" class="zoll-top-logo">
             
             <div class="device-screen-section">
                 <div class="screen">
                     <div class="splash-screen" id="splashScreen" style="display: none;">
-                        <img src="https://iili.io/KGQOvkl.md.png" alt="WMEBEM Logo">
+                        <img src="images/logo.png" alt="WMEBEM Logo">
                     </div>
 
                     <div class="screen-header">
@@ -1116,12 +1189,15 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
             </div>
         </div>
     </div>
+        <footer class="app-footer">
+        © 2025 West Midlands Evidence Based Emergency Medicine. Author: Dr Jake Turner.
+    </footer>
 
     <div id="modalOverlay" class="hidden">
         <div class="modal-content">
             <button id="closeModalBtn">×</button>
             <div class="modal-header">
-                <img src="https://iili.io/KGQOvkl.md.png" alt="WMEBEM Logo">
+                <img src="images/logo.png" alt="WMEBEM Logo">
                 <h2 id="modalTitle">RCUK 2025 Guideline Hint</h2>
             </div>
             <div id="modalBody"></div>
@@ -1132,6 +1208,20 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
     document.addEventListener('DOMContentLoaded', () => {
 
         const clamp=(v,lo,hi)=>Math.max(lo,Math.min(hi,v));
+
+        // --- FIX: VISIBILITY FOR DROPDOWN ---
+        const toggleBtn = document.getElementById('toggleSecondaryBtn');
+        const secondaryMenu = document.getElementById('secondaryRhythms');
+
+        if(toggleBtn && secondaryMenu) {
+            toggleBtn.addEventListener('click', function() {
+                secondaryMenu.classList.toggle('open');
+                this.textContent = secondaryMenu.classList.contains('open') 
+                    ? "▲ Hide Rhythms" 
+                    : "▼ Show More Rhythms";
+            });
+        }
+        // ------------------------------------
 
         const scenarios = {
             'vf-arrest': {
@@ -1246,9 +1336,7 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
         };
 
         const state = {
-            // --- NEW STATE MACHINE ---
             machineState: APP_STATES.IDLE, 
-
             selectedMode: null,
             selectedScenario: null,
             scenarioActive: false,
@@ -1288,6 +1376,31 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
             currentScenarioStep: 0,
         };
         window.state = state; 
+
+        // --- HELPER: Global Timer Cleanup ---
+        function clearAllTimers() {
+            // Clear Animation Loops
+            if (animationId) {
+                cancelAnimationFrame(animationId);
+                animationId = null;
+            }
+            // Clear Intervals
+            if (typeof cycleInterval !== 'undefined' && cycleInterval) clearInterval(cycleInterval);
+            if (typeof metronomeInterval !== 'undefined' && metronomeInterval) clearInterval(metronomeInterval);
+            if (typeof window.arrestTimerInterval !== 'undefined' && window.arrestTimerInterval) clearInterval(window.arrestTimerInterval);
+            if (state.chargeTimer) clearTimeout(state.chargeTimer);
+            
+            // Reset Interval Variables to null so checks fail safely
+            cycleInterval = null;
+            metronomeInterval = null;
+            window.arrestTimerInterval = null;
+            state.chargeTimer = null;
+
+            // Reset Audio Visuals
+            const metronomeBtn = document.getElementById('metronomeBtn');
+            if(metronomeBtn) metronomeBtn.style.background = "#2c3e50";
+        }
+        
         // --- STATE MACHINE LOGIC ---
         function transitionTo(newState) {
             console.log(`State Transition: ${state.machineState} -> ${newState}`);
@@ -1314,7 +1427,7 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
             }
         }
 
-        let canvas, ctx, animationId; // Removed local waveformX to fix scope bug
+        let canvas, ctx, animationId; 
         let lastTimestamp = 0;
         const ecgSpeed = 125; 
 
@@ -1623,7 +1736,16 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
             
             document.getElementById('hrDisplay').textContent = displayHR;
             document.getElementById('spo2Display').textContent = state.spo2;
-            document.getElementById('etco2Display').textContent = state.etco2;
+
+            // --- ETCO2 LOGIC UPDATE ---
+            let displayEtco2 = state.etco2;
+            // If CPR is active and no ROSC, simulate perfusion boost (2.8 - 3.0 range)
+            if (state.cprActive && !state.roscAchieved && displayEtco2 < 2.5) {
+                displayEtco2 = 2.8 + (Math.random() * 0.2);
+            }
+            document.getElementById('etco2Display').textContent = displayEtco2.toFixed(1);
+            // --------------------------
+
             document.getElementById('bpDisplay').textContent = `${state.bpSys}/${state.bpDia}`;
             document.getElementById('energyDisplay').textContent = state.energy;
             document.getElementById('outputDisplay').textContent = state.pacerOutput;
@@ -1653,6 +1775,7 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
             }
             if (document.getElementById('pacingStatus')) {
                 document.getElementById('pacingStatus').textContent = state.pacingActive ? 'ACTIVE' : 'OFF';
+
             }
         }
 
@@ -1696,7 +1819,8 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
             resetScenarioBtn.classList.add('hidden');
         }
 
-        function selectScenario(scenarioId) {
+function selectScenario(scenarioId) {
+    clearAllTimers();
             const scenario = scenarios[scenarioId];
             if (!scenario) return;
             
@@ -1709,6 +1833,15 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
             state.roscAchieved = false;
             state.customScenarioActive = false; 
             
+            // --- NEW: RANDOMISE CAPTURE THRESHOLD ---
+            // Adds variance (+/- 15mA) to the scenario default so students must "hunt"
+            if (scenario.captureThreshold) {
+                const variance = Math.floor(Math.random() * 30) - 15; 
+                scenario.currentThreshold = Math.max(30, scenario.captureThreshold + variance);
+                console.log("Sim Capture Threshold set to:", scenario.currentThreshold); // For debugging
+            }
+            // ----------------------------------------
+
             setVitals(scenario.initialRhythm);
             state.hr = scenario.initialVitals.hr;
             state.spo2 = scenario.initialVitals.spo2;
@@ -1994,6 +2127,7 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
         }
 
         function returnToMenu() {
+            clearAllTimers();
             summaryScreen.classList.add('hidden');
             certificateScreen.classList.add('hidden');
             scenarioScreen.classList.add('hidden');
@@ -2140,7 +2274,7 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
             updateDisplays();
         }
 
-        function chargeDefib() {
+function chargeDefib() {
             if (state.deviceMode !== 'defib') {
                 setMessage('SWITCH TO DEFIB MODE', '');
                 return;
@@ -2156,62 +2290,97 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
                 state.charged = true; 
                 transitionTo(APP_STATES.READY);
                 logAction('Charged', `${state.energy}J ready`);
+                
+                // --- SAFETY DUMP TIMER ---
+                // Auto-disarm after 60 seconds if shock not delivered
+                if (state.chargeTimer) clearTimeout(state.chargeTimer);
+                state.chargeTimer = setTimeout(() => {
+                    if (state.charged) {
+                        state.charged = false;
+                        document.getElementById('shockBtn').disabled = true;
+                        transitionTo(APP_STATES.IDLE);
+                        setMessage('CHARGE DUMPED - SAFETY TIMEOUT', 'ready');
+                        logAction('Safety', 'Charge dumped (Timeout)');
+                        playSound('alarm');
+                    }
+                }, 60000);
+                // -------------------------
+                
             }, 2000);
         }
 
         function deliverShock() {
             if (state.machineState !== APP_STATES.READY) return;
             
-            state.shockCount++;
+            // Clear safety timer if it exists
+            if (state.chargeTimer) clearTimeout(state.chargeTimer);
+
             const energy = state.energy;
             const sync = state.syncMode;
             const rhythm = state.rhythm;
-            
-            playSound('shock');
-            logAction(`Shock ${state.shockCount} delivered`, `${energy}J (${sync ? 'SYNC' : 'UNSYNC'})`);
-            
-            if (canvas) {
-                canvas.style.background = '#fff';
-                setTimeout(() => canvas.style.background = '#000', 100);
+
+            // --- REALISTIC SYNC DELAY ---
+            // If in SYNC mode, simulate the delay while waiting for R-wave
+            let delay = 0;
+            if (sync) {
+                // Random delay between 200ms and 800ms to mimic waiting for next QRS
+                delay = Math.floor(Math.random() * 600) + 200;
+                setMessage('SYNC... WAITING FOR R-WAVE...', 'alert');
             }
-            
-            setMessage(`SHOCK DELIVERED`, 'alert');
-            transitionTo(APP_STATES.IDLE);
-            
-            // --- SMART ALS LOGIC ---
+
             setTimeout(() => {
-                let success = false;
-                let failReason = "";
-
-                // 1. VF / pVT Criteria
-                if (rhythm === 'vfib' || rhythm === 'vt_pulseless') {
-                    if (energy >= 120) success = true; 
-                    else failReason = "ENERGY TOO LOW";
-                }
-                // 2. Unstable SVT / AFib / VT Criteria
-                else if (rhythm === 'svt' || rhythm === 'afib' || rhythm === 'vtach') {
-                    if (sync && energy >= 70) success = true; 
-                    else if (!sync) failReason = "R-ON-T HAZARD (NO SYNC)";
-                    else failReason = "ENERGY TOO LOW";
+                state.shockCount++;
+                playSound('shock');
+                logAction(`Shock ${state.shockCount} delivered`, `${energy}J (${sync ? 'SYNC' : 'UNSYNC'})`);
+                
+                // --- AUTO-RESET CYCLE TIMER ---
+                if (typeof startCycleCountdown === 'function') {
+                    startCycleCountdown();
+                    logAction('Shock Delivered', 'Cycle Timer Reset');
                 }
 
-                if (success) {
-                    setMessage('RHYTHM CONVERTING...', 'ready');
-                    setTimeout(() => {
-                        quickSetRhythm('nsr');
-                        state.roscAchieved = true;
-                        updateDisplays();
-                    }, 1000);
-                    
-                    // *** FIX: Trigger the scenario advance ***
-                    if (state.customScenarioActive) checkScenarioTrigger('shock');
-                } else {
-                    if (failReason) setMessage(`SHOCK FAILED: ${failReason}`, 'alert');
-                    else setMessage('SHOCK DELIVERED - NO CHANGE', 'ready');
+                if (canvas) {
+                    canvas.style.background = '#fff';
+                    setTimeout(() => canvas.style.background = '#000', 100);
                 }
                 
-                startCPRTimer();
-            }, 2000);
+                setMessage(`SHOCK DELIVERED`, 'alert');
+                transitionTo(APP_STATES.IDLE);
+                
+                // --- SMART ALS LOGIC ---
+                setTimeout(() => {
+                    let success = false;
+                    let failReason = "";
+
+                    // 1. VF / pVT Criteria
+                    if (rhythm === 'vfib' || rhythm === 'vt_pulseless') {
+                        if (energy >= 120) success = true; 
+                        else failReason = "ENERGY TOO LOW";
+                    }
+                    // 2. Unstable SVT / AFib / VT Criteria
+                    else if (rhythm === 'svt' || rhythm === 'afib' || rhythm === 'vtach') {
+                        if (sync && energy >= 70) success = true; 
+                        else if (!sync) failReason = "R-ON-T HAZARD (NO SYNC)";
+                        else failReason = "ENERGY TOO LOW";
+                    }
+
+                    if (success) {
+                        setMessage('RHYTHM CONVERTING...', 'ready');
+                        setTimeout(() => {
+                            quickSetRhythm('nsr');
+                            state.roscAchieved = true;
+                            updateDisplays();
+                        }, 1000);
+                        
+                        if (state.customScenarioActive) checkScenarioTrigger('shock');
+                    } else {
+                        if (failReason) setMessage(`SHOCK FAILED: ${failReason}`, 'alert');
+                        else setMessage('SHOCK DELIVERED - NO CHANGE', 'ready');
+                    }
+                    
+                    startCPRTimer();
+                }, 2000);
+            }, delay);
         }
 
         function analyseRhythm() {
@@ -2284,10 +2453,11 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
                 const dial = document.querySelector('.pacing-controls > div:first-child .pacer-dial');
                 if (dial) dial.style.setProperty('--dial-rotation', `${rotation}deg`);
                 
-                let captureThreshold = 60; 
+let captureThreshold = 60; 
                 let isPacingScenario = false;
                 if (scenario && state.scenarioActive && scenario.requiresPacing) {
-                    captureThreshold = scenario.captureThreshold;
+                    // USE THE NEW RANDOMISED THRESHOLD
+                    captureThreshold = scenario.currentThreshold || scenario.captureThreshold;
                     isPacingScenario = true;
                 } else {
                     isPacingScenario = (state.originalRhythm === 'chb' || state.originalRhythm === 'brady' || state.originalRhythm === 'sinus_brady');
@@ -2343,7 +2513,7 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
         }
 
 
-        function quickSetRhythm(rhythm) {
+function quickSetRhythm(rhythm) {
             if (state.scenarioActive) {
                 setMessage('Cannot change rhythm during active scenario', '');
                 return;
@@ -2356,6 +2526,12 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
             state.roscAchieved = false;
             state.shockCount = 0;
             
+            // If switching to an arrest rhythm manually, assume arrest (reset ROSC state)
+            const vitals = rhythmVitals[rhythm];
+            if (vitals && !vitals.hasPulse) {
+                state.roscAchieved = false; 
+            }
+
             if (state.deviceMode === 'off') {
                 setMode('monitor');
             } else {
@@ -2369,6 +2545,11 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
                     btn.classList.add('active');
                 }
             });
+
+            // Trigger Arrest Panel Check immediately
+            if (typeof updateArrestPanel === 'function') {
+                updateArrestPanel();
+            }
         }
 
         function toggleInstructorPanel() {
@@ -2496,57 +2677,67 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
             summaryScreen.classList.remove('hidden');
         }
 
-        // --- AUDIO CONTEXT FIX ---
-// Defined outside the function so it persists
-let audioCtx;
+// --- AUDIO CONTEXT MANAGER ---
+        let audioCtx;
+        function getAudioContext() {
+            if (!audioCtx) {
+                const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                if (AudioCtx) {
+                    audioCtx = new AudioCtx();
+                }
+            }
+            if (audioCtx && audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+            return audioCtx;
+        }
 
-function playSound(type) {
-    const AudioCtx = window.AudioContext || window.webkitAudioContext;
-    if (!AudioCtx) return;
-    
-    // Initialize strictly once on first user interaction
-    if (!audioCtx) {
-        audioCtx = new AudioCtx();
-    }
-    // Browsers often suspend audio until user interaction; resume if needed
-    if (audioCtx.state === 'suspended') {
-        audioCtx.resume();
-    }
-
-    const oscillator = audioCtx.createOscillator();
-    const gainNode = audioCtx.createGain();
-    
-    oscillator.connect(gainNode);
-    gainNode.connect(audioCtx.destination);
-    
-    const now = audioCtx.currentTime;
-
-    switch(type) {
-        case 'charging':
-            oscillator.frequency.setValueAtTime(400, now);
-            oscillator.frequency.linearRampToValueAtTime(800, now + 2);
-            gainNode.gain.setValueAtTime(0.3, now);
-            oscillator.start(now);
-            oscillator.stop(now + 2);
-            break;
+        function playSound(type) {
+            const ctx = getAudioContext();
+            if (!ctx) return;
             
-        case 'charged':
-            oscillator.frequency.setValueAtTime(1000, now);
-            gainNode.gain.setValueAtTime(0.4, now);
-            gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
-            oscillator.start(now);
-            oscillator.stop(now + 0.5);
-            break;
+            const oscillator = ctx.createOscillator();
+            const gainNode = ctx.createGain();
             
-        case 'shock':
-            oscillator.frequency.setValueAtTime(800, now);
-            gainNode.gain.setValueAtTime(0.5, now);
-            gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
-            oscillator.start(now);
-            oscillator.stop(now + 0.3);
-            break;
-    }
-}
+            oscillator.connect(gainNode);
+            gainNode.connect(ctx.destination);
+            
+            const now = ctx.currentTime;
+
+            switch(type) {
+                case 'charging':
+                    oscillator.frequency.setValueAtTime(400, now);
+                    oscillator.frequency.linearRampToValueAtTime(800, now + 2);
+                    gainNode.gain.setValueAtTime(0.3, now);
+                    oscillator.start(now);
+                    oscillator.stop(now + 2);
+                    break;
+                    
+                case 'charged':
+                    oscillator.frequency.setValueAtTime(1000, now);
+                    gainNode.gain.setValueAtTime(0.4, now);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
+                    oscillator.start(now);
+                    oscillator.stop(now + 0.5);
+                    break;
+                    
+                case 'shock':
+                    oscillator.frequency.setValueAtTime(800, now);
+                    gainNode.gain.setValueAtTime(0.5, now);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+                    oscillator.start(now);
+                    oscillator.stop(now + 0.3);
+                    break;
+
+                case 'alarm':
+                    oscillator.frequency.setValueAtTime(1200, now);
+                    oscillator.type = 'square';
+                    gainNode.gain.setValueAtTime(0.1, now);
+                    oscillator.start(now);
+                    oscillator.stop(now + 0.3); 
+                    break;
+            }
+        }
 
         function cycleMode() {
             const order = ['monitor', 'defib', 'pacer', 'off'];
@@ -2783,7 +2974,7 @@ function playSound(type) {
             }
         }
 
-        function checkScenarioTrigger(actionType) {
+ function checkScenarioTrigger(actionType) {
             if (!state.customScenarioActive) return;
             const currentStep = state.customScenario[state.currentScenarioStep];
             if (currentStep && currentStep.trigger === actionType) {
@@ -2792,16 +2983,7 @@ function playSound(type) {
             }
         }
 
-        // --- NEW: Secondary Menu Toggle ---
-        const toggleBtn = document.getElementById('toggleSecondaryBtn');
-        if(toggleBtn) {
-            toggleBtn.addEventListener('click', function() {
-                document.getElementById('secondaryRhythms').classList.toggle('open');
-                this.textContent = document.getElementById('secondaryRhythms').classList.contains('open') 
-                    ? "▲ Hide Rhythms" 
-                    : "▼ Show More Rhythms";
-            });
-        }
+        // --- NEW: Info Icon Listeners ---
 
         // --- NEW: Info Icon Listeners ---
         document.addEventListener('click', (e) => {
@@ -2816,6 +2998,140 @@ function playSound(type) {
                 }
             }
         });
+
+// --- INSTRUCTOR / ASSESSOR PANEL LOGIC ---
+        let cycleTime = 120; // 2 minutes in seconds
+        let cycleInterval = null;
+        let metronomeInterval = null;
+        
+        function startCycleCountdown() {
+            if (cycleInterval) clearInterval(cycleInterval);
+            cycleTime = 120; 
+            
+            const display = document.getElementById('cycleTimerDisplay');
+            const container = document.getElementById('cycleTimerContainer');
+            
+            // Reset visuals
+            if (container) container.classList.remove('cycle-warning');
+            if (display) display.textContent = "02:00";
+            
+            cycleInterval = setInterval(() => {
+                cycleTime--;
+                
+                // Format MM:SS
+                const m = Math.floor(cycleTime / 60);
+                const s = cycleTime % 60;
+                if (display) display.textContent = `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+                
+                // Warning at 10 seconds
+                if (cycleTime <= 10 && container) {
+                    container.classList.add('cycle-warning');
+                }
+                
+                // Time Up
+                if (cycleTime <= 0) {
+                    clearInterval(cycleInterval);
+                    playSound('alarm'); // Use existing beep
+                    logAction('CYCLE ENDED', 'Assess Rhythm');
+                }
+            }, 1000);
+        }
+
+        function toggleMetronome() {
+            const btn = document.getElementById('metronomeBtn');
+            
+            if (metronomeInterval) {
+                clearInterval(metronomeInterval);
+                metronomeInterval = null;
+                btn.style.background = "#2c3e50";
+                logAction('Metronome', 'OFF');
+            } else {
+                logAction('Metronome', 'ON (110 bpm)');
+                btn.style.background = "#27ae60"; 
+                
+                // 110 BPM = 545ms interval
+                metronomeInterval = setInterval(() => {
+                    playMetronomeClick();
+                }, 545);
+            }
+        }
+
+function playMetronomeClick() {
+            const ctx = getAudioContext();
+            if (!ctx) return;
+            
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            
+            osc.frequency.value = 1000;
+            osc.type = 'square';
+            gain.gain.value = 0.05;
+            
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            
+            osc.start();
+            osc.stop(ctx.currentTime + 0.05);
+        }
+
+        // LISTENERS
+        const nextCycleBtn = document.getElementById('nextCycleBtn');
+        if (nextCycleBtn) {
+            nextCycleBtn.addEventListener('click', function() {
+                startCycleCountdown();
+                this.classList.remove('highlight-btn'); // Stop flashing
+                logAction('CYCLE RESET', '2 Minutes');
+            });
+        }
+
+        const metronomeBtn = document.getElementById('metronomeBtn');
+        if (metronomeBtn) metronomeBtn.addEventListener('click', toggleMetronome);
+
+        document.querySelectorAll('.cause-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                this.classList.toggle('checked');
+                const causeName = this.dataset.cause;
+                const status = this.classList.contains('checked') ? 'CONSIDERED' : 'UNCHECKED';
+                logAction('Differential', `${causeName} ${status}`);
+            });
+        });
+
+ // --- OPTIMISED ROSC LISTENER ---
+        const roscBtn = document.getElementById('roscBtn');
+        if (roscBtn) {
+            roscBtn.addEventListener('click', () => {
+                clearAllTimers(); // Use our new helper!
+
+                // State Updates
+                state.roscAchieved = true;
+                state.hasPulse = true;
+                state.cprActive = false;
+                state.arrestStartTime = null; 
+                
+                updateCprButton();
+                quickSetRhythm('nsr'); 
+                
+                // ROSC SPIKE LOGIC (Simulate CO2 washout)
+                state.etco2 = 6.8; 
+                logAction('ROSC CONFIRMED', 'ETCO2 Spike > 6.0kPa');
+                
+                // Settle ETCO2 logic
+                const settleInterval = setInterval(() => {
+                    if (state.etco2 > 5.1) {
+                        state.etco2 -= 0.05; 
+                    } else {
+                        state.etco2 = 5.1;
+                        clearInterval(settleInterval);
+                    }
+                }, 200);
+
+                setMessage('ROSC ACHIEVED - START POST-RESUS CARE', 'ready');
+                updateDisplays();
+                document.getElementById('cprPanel').classList.remove('active');
+            });
+        }
+        // ------------------------------------------
+        
         initCanvas(); 
         setMode('off'); 
 
@@ -2828,7 +3144,7 @@ function playSound(type) {
 
         // --- IMPROVED ARREST LOGIC ---
 
-        // 1. Check for Arrest on Rhythm Change
+// 1. Check for Arrest on Rhythm Change
         function updateArrestPanel() {
             const currentRhythm = state.rhythm;
             const vitals = rhythmVitals[currentRhythm];
@@ -2840,30 +3156,39 @@ function playSound(type) {
             if (isArrestRhythm && !state.roscAchieved) {
                 const panel = document.getElementById('cprPanel');
                 panel.classList.remove('hidden');
-                setTimeout(() => panel.classList.add('active'), 50);
                 
-                // CRITICAL FIX: Only set the start time if it's not already running.
-                // This ensures switching VF -> Asystole doesn't reset the timer.
+                // Add active class slightly later for CSS transition
+                setTimeout(() => {
+                    if (!panel.classList.contains('active')) {
+                        panel.classList.add('active');
+                        // Highlight the reset button
+                        const btn = document.getElementById('nextCycleBtn');
+                        if (btn) btn.classList.add('highlight-btn');
+                    }
+                }, 50);
+
                 if (!state.arrestStartTime) {
                     state.arrestStartTime = Date.now();
                     logAction('Cardiac Arrest Detected', 'Timer Started');
+                    
+                    // --- AUTO-START CYCLE TIMER ---
+                    if (typeof startCycleCountdown === 'function') {
+                        startCycleCountdown();
+                        logAction('CPR Cycle', '2 Minute Timer Auto-Started');
+                    }
                 }
                 
-                // Ensure the visual loop is running
                 if (!window.arrestTimerInterval) {
                     startArrestTimer();
                 }
             } else {
-                // We are not in arrest (or have ROSC).
-                // Hide the panel, but DO NOT clear the timer variable (state.arrestStartTime).
-                // This allows the timer to resume correctly if you switch back to an arrest rhythm.
                 document.getElementById('cprPanel').classList.remove('active');
                 state.cprActive = false;
                 updateCprButton();
             }
         }
 
-        // 2. Timer Logic (Timestamp based)
+// 2. Timer Logic (Timestamp based)
         function startArrestTimer() {
             if (window.arrestTimerInterval) clearInterval(window.arrestTimerInterval);
             
@@ -2879,16 +3204,8 @@ function playSound(type) {
                 const s = totalSeconds % 60;
                 
                 // Format: 02:30
-                timerDisplay.textContent = `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-                
-                // METRONOME LOGIC (110 bpm)
-                if (state.metronomeActive) {
-                    const beatInterval = 60000 / 110; // ms per beat
-                    const now = Date.now();
-                    if (!state.lastBeat || (now - state.lastBeat) > beatInterval) {
-                        playMetronomeTick();
-                        state.lastBeat = now;
-                    }
+                if (timerDisplay) {
+                    timerDisplay.textContent = `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
                 }
             }, 100); // Update frequently for accuracy
         }
@@ -2924,6 +3241,20 @@ function playSound(type) {
                 span.textContent = "START CPR";
             }
         }
+
+        // --- NEW: CPR Panel Minimise Logic ---
+        const cprPanel = document.getElementById('cprPanel');
+        const cprMinBtn = document.getElementById('cprMinimiseBtn');
+
+        if (cprMinBtn && cprPanel) {
+            cprMinBtn.addEventListener('click', () => {
+                cprPanel.classList.toggle('minimised');
+                const isMin = cprPanel.classList.contains('minimised');
+                cprMinBtn.textContent = isMin ? "◀" : "▶";
+            });
+        }
+
+        // 3. New Listeners for Panel Buttons
 
         // 3. New Listeners for Panel Buttons
         document.querySelectorAll('.cpr-action-btn').forEach(btn => {
@@ -2961,41 +3292,7 @@ function playSound(type) {
                 }
             });
         });
-
-        document.getElementById('roscBtn').addEventListener('click', () => {
-            state.roscAchieved = true;
-            state.hasPulse = true;
-            state.cprActive = false;
-            updateCprButton();
-            
-            quickSetRhythm('nsr'); 
-            
-            // Stop the timer visual loop
-            clearInterval(window.arrestTimerInterval);
-            window.arrestTimerInterval = null;
-            
-            // CRITICAL: Clear the start timestamp so the next arrest starts at 00:00
-            state.arrestStartTime = null; 
-            
-            logAction('ROSC CONFIRMED', 'Timer Stopped');
-            setMessage('ROSC ACHIEVED - START POST-RESUS CARE', 'ready');
-            updateDisplays();
-            
-            document.getElementById('cprPanel').classList.remove('active');
-        });
-
-        // 4. Overwrite quickSetRhythm to trigger the panel
-        const originalSetRhythm = quickSetRhythm;
-        quickSetRhythm = function(rhythm) {
-            originalSetRhythm(rhythm); 
-            const vitals = rhythmVitals[rhythm];
-            // If switching to an arrest rhythm manually, assume arrest (reset ROSC)
-            if (vitals && !vitals.hasPulse) {
-                state.roscAchieved = false; 
-            }
-            updateArrestPanel(); 
-        };
-    
+   
     }); // End of DOMContentLoaded
     </script>
 </body>
