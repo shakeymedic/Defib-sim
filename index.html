@@ -724,15 +724,7 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
             </div>
         </div>
     </div>
-            <div style="display: flex; gap: 15px; margin-top: 30px;">
-                <button class="menu-option" id="startCustomScenarioBtn" style="padding: 20px 40px; background: linear-gradient(180deg,#27ae60 0%,#229954 100%);">
-                    Start Custom Scenario
-                </button>
-                <button class="menu-option" id="cancelCustomScenarioBtn" style="padding: 20px 40px; background: linear-gradient(180deg,#e74c3c 0%,#c0392b 100%);">
-                    Cancel
-                </button>
-            </div>
-        </div>
+                    </div>
 
         <div class="menu-screen hidden" id="scenarioScreen">
             <div style="display: flex; align-items: center; justify-content: center; gap: 20px; margin-bottom: 30px;">
@@ -2361,7 +2353,7 @@ function chargeDefib() {
                         else setMessage('SHOCK DELIVERED - NO CHANGE', 'ready');
                     }
                     
-                    startCPRTimer();
+                    startArrestTimer();
                 }, 2000);
             }, delay);
         }
