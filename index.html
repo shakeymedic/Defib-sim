@@ -456,6 +456,7 @@ window.drawECGGrid = function(ctx, w, h) {
     gap: 12px;
     position: relative; /* Essential for the cover */
     overflow: hidden;
+    padding-bottom: 15px; /* ADDED: Creates space for the buttons */
 }
 
 .pacing-cover {
@@ -471,7 +472,8 @@ window.drawECGGrid = function(ctx, w, h) {
 
 .pacing-cover.open {
     opacity: 0; visibility: hidden; pointer-events: none;
-}.pacer-dial{background:#2a2a2a;border:5px solid #0a0a0a;border-radius:50%;width:100px;height:100px;margin:0 auto;position:relative;cursor:pointer;box-shadow:0 4px 8px rgba(0,0,0,0.5)}.pacer-dial::before{content:'';position:absolute;width:4px;height:35px;background:#17a2b8;top:15px;left:50%;transform:translateX(-50%) rotate(var(--dial-rotation,0deg));transform-origin:center 35px;border-radius:2px;transition:transform 0.3s ease}.pacer-label{text-align:center;color:#2a2a2a;font-size:11px;font-weight:bold;margin-top:8px}.pacer-value{text-align:center;color:#17a2b8;font-size:20px;font-weight:bold;margin-top:4px}.pacer-controls-btn{display:flex;gap:5px;justify-content:center;margin-top:8px}.pacer-btn{background:#7a8288;color:#fff;border:2px solid #6a7278;width:35px;height:35px;border-radius:5px;font-size:18px;cursor:pointer}.zoll-branding{background:linear-gradient(180deg,#e8eef3 0%,#d8dee3 100%);padding:20px;border-radius:0 0 15px 15px;margin:-30px -30px 0 -30px;text-align:center;box-shadow:0 -4px 10px rgba(0,0,0,0.1)}.zoll-logo-text{font-size:48px;font-weight:bold;color:#9a9a9a;letter-spacing:8px;text-shadow:2px 2px 4px rgba(0,0,0,0.1)}@media (max-width:1200px){.zoll-device{grid-template-columns:1fr}}@media print{body{background:white;padding:0}.menu-wrapper{min-height:0}.menu-screen{display:block !important;box-shadow:none;padding:0;background:white}.menu-option{display:none !important}#certificateContent{box-shadow:none}}
+}.pacer-dial{background:#2a2a2a;border:5px solid #0a0a0a;border-radius:50%;width:100px;height:100px;margin:0 auto;position:relative;cursor:pointer;box-shadow:0 4px 8px rgba(0,0,0,0.5)}.pacer-dial::before{content:'';position:absolute;width:4px;height:35px;background:#17a2b8;top:15px;left:50%;transform:translateX(-50%) rotate(var(--dial-rotation,0deg));transform-origin:center 35px;border-radius:2px;transition:transform 0.3s ease}.pacer-label{text-align:center;color:#2a2a2a;font-size:11px;font-weight:bold;margin-top:8px}.pacer-value{text-align:center;color:#17a2b8;font-size:20px;font-weight:bold;margin-top:4px}.pacer-controls-btn{display:flex;gap:5px;justify-content:center;margin-top: 5px; /* Reduced from 8px */
+    margin-bottom: 5px;}.pacer-btn{background:#7a8288;color:#fff;border:2px solid #6a7278;width:35px;height:35px;border-radius:5px;font-size:18px;cursor:pointer}.zoll-branding{background:linear-gradient(180deg,#e8eef3 0%,#d8dee3 100%);padding:20px;border-radius:0 0 15px 15px;margin:-10px -30px 0 -30px;text-align:center;box-shadow:0 -4px 10px rgba(0,0,0,0.1)}.zoll-logo-text{font-size:48px;font-weight:bold;color:#9a9a9a;letter-spacing:8px;text-shadow:2px 2px 4px rgba(0,0,0,0.1)}@media (max-width:1200px){.zoll-device{grid-template-columns:1fr}}@media print{body{background:white;padding:0}.menu-wrapper{min-height:0}.menu-screen{display:block !important;box-shadow:none;padding:0;background:white}.menu-option{display:none !important}#certificateContent{box-shadow:none}}
 
 /* --- Helper Styles --- */
 .splash-screen{position:absolute;top:0;left:0;right:0;bottom:0;background:#1a1a1a;display:flex;align-items:center;justify-content:center;z-index:100}
@@ -2438,79 +2440,79 @@ function chargeDefib() {
         }
 
         function adjustPacer(param, change) {
-            if (state.deviceMode === 'off') return;
-            if (state.deviceMode !== 'pacer') {
-                setMessage('Switch to PACER mode to adjust pacing', '');
-                return;
-            }
-            const scenario = scenarios[state.selectedScenario];
-            
-            if (param === 'output') {
-                state.pacerOutput = Math.max(0, Math.min(140, state.pacerOutput + change));
-                logAction('Pacing output adjusted', `${state.pacerOutput}mA`);
-                
-                const rotation = (state.pacerOutput / 140) * 270;
-                const dial = document.querySelector('.pacing-controls > div:first-child .pacer-dial');
-                if (dial) dial.style.setProperty('--dial-rotation', `${rotation}deg`);
-                
-let captureThreshold = 60; 
-                let isPacingScenario = false;
-                if (scenario && state.scenarioActive && scenario.requiresPacing) {
-                    // USE THE NEW RANDOMISED THRESHOLD
-                    captureThreshold = scenario.currentThreshold || scenario.captureThreshold;
-                    isPacingScenario = true;
-                } else {
-                    isPacingScenario = (state.originalRhythm === 'chb' || state.originalRhythm === 'brady' || state.originalRhythm === 'sinus_brady');
-                }
-
-                const nowCaptured = (state.pacerOutput >= captureThreshold) && isPacingScenario;
-
-                if (nowCaptured !== state.isCaptured) { 
-                    state.isCaptured = nowCaptured;
-                    
-                    if (nowCaptured) {
-                        const successVitals = (scenario && scenario.requiresPacing) ? scenario.successVitals : rhythmVitals['paced'];
-                        
-                        logAction('Pacing capture achieved', `at ${state.pacerOutput}mA`);
-                        state.rhythm = 'paced'; 
-                        state.hr = state.pacerRate; 
-                        
-                        // Use default paced vitals if no scenario specific ones exist
-                        if(successVitals) {
-                            state.spo2 = successVitals.spo2;
-                            state.etco2 = successVitals.etco2;
-                            state.bpSys = successVitals.bpSys;
-                            state.bpDia = successVitals.bpDia;
-                        }
-                        
-                        setMessage(`CAPTURE ACHIEVED AT ${state.pacerOutput}mA`, 'ready');
-                        
-                        // *** FIX: Trigger the scenario advance ***
-                        if (state.customScenarioActive) checkScenarioTrigger('pacing');
-                        
-                    } else {
-                        logAction('Pacing capture lost');
-                        setVitals(state.originalRhythm || 'nsr'); 
-                        setMessage('CAPTURE LOST', 'alert');
-                    }
-                    updateDisplays(); 
-                }
-                updateDisplays();
-                
-            } else if (param === 'rate') {
-                state.pacerRate = Math.max(30, Math.min(180, state.pacerRate + change));
-                logAction('Pacing rate adjusted', `${state.pacerRate}ppm`);
-                
-                const rotation = ((state.pacerRate - 30) / 150) * 270;
-                const dial = document.querySelector('.pacing-controls > div:last-child .pacer-dial');
-                if (dial) dial.style.setProperty('--dial-rotation', `${rotation}deg`);
-
-                if (state.isCaptured) {
-                    state.hr = state.pacerRate;
-                }
-                updateDisplays();
-            }
+    if (state.deviceMode === 'off') return;
+    if (state.deviceMode !== 'pacer') {
+        setMessage('Switch to PACER mode to adjust pacing', '');
+        return;
+    }
+    const scenario = scenarios[state.selectedScenario];
+    
+    if (param === 'output') {
+        // Update State
+        state.pacerOutput = Math.max(0, Math.min(140, state.pacerOutput + change));
+        logAction('Pacing output adjusted', `${state.pacerOutput}mA`);
+        
+        // --- VISUAL FIX: Target the correct dial (2nd child, because 1st is the cover) ---
+        const rotation = (state.pacerOutput / 140) * 270;
+        const dial = document.querySelector('.pacing-controls > div:nth-child(2) .pacer-dial');
+        if (dial) dial.style.setProperty('--dial-rotation', `${rotation}deg`);
+        // ---------------------------------------------------------------------------------
+        
+        let captureThreshold = 60; 
+        let isPacingScenario = false;
+        if (scenario && state.scenarioActive && scenario.requiresPacing) {
+            captureThreshold = scenario.currentThreshold || scenario.captureThreshold;
+            isPacingScenario = true;
+        } else {
+            isPacingScenario = (state.originalRhythm === 'chb' || state.originalRhythm === 'brady' || state.originalRhythm === 'sinus_brady');
         }
+
+        const nowCaptured = (state.pacerOutput >= captureThreshold) && isPacingScenario;
+
+        if (nowCaptured !== state.isCaptured) { 
+            state.isCaptured = nowCaptured;
+            
+            if (nowCaptured) {
+                const successVitals = (scenario && scenario.requiresPacing) ? scenario.successVitals : rhythmVitals['paced'];
+                logAction('Pacing capture achieved', `at ${state.pacerOutput}mA`);
+                state.rhythm = 'paced'; 
+                state.hr = state.pacerRate; 
+                
+                if(successVitals) {
+                    state.spo2 = successVitals.spo2;
+                    state.etco2 = successVitals.etco2;
+                    state.bpSys = successVitals.bpSys;
+                    state.bpDia = successVitals.bpDia;
+                }
+                setMessage(`CAPTURE ACHIEVED AT ${state.pacerOutput}mA`, 'ready');
+                if (state.customScenarioActive) checkScenarioTrigger('pacing');
+                
+            } else {
+                logAction('Pacing capture lost');
+                setVitals(state.originalRhythm || 'nsr'); 
+                setMessage('CAPTURE LOST', 'alert');
+            }
+            updateDisplays(); 
+        }
+        updateDisplays();
+        
+    } else if (param === 'rate') {
+        // Update State
+        state.pacerRate = Math.max(30, Math.min(180, state.pacerRate + change));
+        logAction('Pacing rate adjusted', `${state.pacerRate}ppm`);
+        
+        // --- VISUAL FIX: Target the correct dial (3rd child) ---
+        const rotation = ((state.pacerRate - 30) / 150) * 270;
+        const dial = document.querySelector('.pacing-controls > div:nth-child(3) .pacer-dial');
+        if (dial) dial.style.setProperty('--dial-rotation', `${rotation}deg`);
+        // -------------------------------------------------------
+
+        if (state.isCaptured) {
+            state.hr = state.pacerRate;
+        }
+        updateDisplays();
+    }
+}
 
 
 function quickSetRhythm(rhythm) {
