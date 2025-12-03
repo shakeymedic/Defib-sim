@@ -6,21 +6,13 @@
     <title>ZOLL R Series Simulator - WMEBEM | RCUK 2025</title>
     <link rel="manifest" href="manifest.json">
     <script>
-      // SERVICE WORKER DISABLED FOR DEVELOPMENT
-      // (Uncomment this block only when you are ready to publish the final version)
-      /*
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('sw.js')
-          .then(() => console.log('Service Worker Registered'));
-      }
-      */
-      
-      // Force unregister any existing workers to fix the grey screen immediately
+      // 1. Force remove any existing Service Workers to fix the "Grey Screen"
       if ('serviceWorker' in navigator) {
         navigator.serviceWorker.getRegistrations().then(function(registrations) {
           for(let registration of registrations) {
-            registration.unregister();
-            console.log("Service Worker Unregistered");
+            registration.unregister().then(function() {
+                console.log("Service Worker Unregistered (Fixing Cache)");
+            });
           }
         });
       }
@@ -2376,9 +2368,12 @@ function chargeDefib() {
             if (state.deviceMode === 'off') return;
             if (state.machineState !== APP_STATES.IDLE && state.machineState !== undefined) return;
 
+            // --- CUSTOM SCENARIO LOGIC ---
             if (state.customScenarioActive) {
                 logAction('Analyse pressed (Cycle ' + (state.currentScenarioStep + 1) + ')');
                 state.currentScenarioStep++;
+                
+                // Check if scenario is finished
                 if (state.currentScenarioStep >= state.customScenario.length) {
                     setMessage('CUSTOM SCENARIO COMPLETE', 'ready');
                     logAction('Custom Scenario complete');
@@ -2387,7 +2382,7 @@ function chargeDefib() {
                     return;
                 }
                 
-                // --- FIX: Accessed .rhythm instead of .initial ---
+                // *** FIX: Changed .initial to .rhythm to match the creator logic ***
                 const nextRhythm = state.customScenario[state.currentScenarioStep].rhythm; 
                 setVitals(nextRhythm);
                 logAction('Custom Scenario: Cycle ' + (state.currentScenarioStep + 1), 'Rhythm: ' + nextRhythm);
@@ -2396,7 +2391,8 @@ function chargeDefib() {
                 setMessage('ANALYSING... CYCLE ' + (state.currentScenarioStep + 1), '');
                 
                 setTimeout(() => {
-                    const vitals = rhythmVitals[nextRhythm] || rhythmVitals['nsr'];
+                    // Safety check if rhythm is missing
+                    const vitals = (window.rhythmVitals && window.rhythmVitals[nextRhythm]) ? window.rhythmVitals[nextRhythm] : { hasPulse: true };
                     
                     if (!vitals.hasPulse || nextRhythm === 'vtach' || nextRhythm === 'svt' || nextRhythm === 'afib') {
                         setMessage('SHOCKABLE RHYTHM DETECTED', 'alert');
@@ -2408,6 +2404,7 @@ function chargeDefib() {
                 return;
             }
 
+            // --- STANDARD LOGIC ---
             transitionTo(APP_STATES.ANALYSING);
             setMessage('ANALYSING... STAND CLEAR', 'alert');
             logAction('Rhythm analysed');
