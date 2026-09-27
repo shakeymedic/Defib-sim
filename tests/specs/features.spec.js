@@ -254,8 +254,10 @@ test.describe('Scenario builder', () => {
   test('invalid files are rejected', async ({ page }) => {
     await page.click('#openScenarioCreatorBtn');
     await page.click('#addStepBtn');
+    const alert = page.waitForEvent('dialog');
     await page.setInputFiles('#importScenarioInput', { name: 'bad.json', mimeType: 'application/json',
       buffer: Buffer.from(JSON.stringify({ steps: [{ rhythm: '<img src=x>', trigger: 'manual' }] })) });
+    expect((await alert).message()).toContain('not a valid scenario file');
     await expect(page.locator('.scenario-step-card')).toHaveCount(1);
   });
 });

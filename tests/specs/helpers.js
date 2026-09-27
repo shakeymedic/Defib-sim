@@ -6,7 +6,7 @@ async function openApp(page, { clock = true } = {}) {
   const errors = [];
   page.on('pageerror', e => errors.push(e.message));
   // Prompts get page.promptValue (set by a test); confirms/alerts are accepted
-  page.on('dialog', d => d.type() === 'prompt' ? d.accept(page.promptValue || '') : d.accept());
+  page.on('dialog', d => (d.type() === 'prompt' ? d.accept(page.promptValue || '') : d.accept()).catch(() => {}));
   await page.route('**/fonts.googleapis.com/**', r => r.abort());
   await page.route('**/fonts.gstatic.com/**', r => r.abort());
   if (clock) await page.clock.install();
