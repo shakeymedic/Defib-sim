@@ -1,0 +1,11 @@
+{
+  "name": "defib-sim-tests",
+  "private": true,
+  "description": "Browser tests for the ZOLL R Series simulator",
+  "scripts": {
+    "test": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.56.1"
+  }
+}

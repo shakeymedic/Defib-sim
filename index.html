@@ -5,687 +5,34 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ZOLL R Series Simulator V2 - WMEBEM | RCUK 2025</title>
     <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/png" href="images/logo-192.png">
+    <link rel="apple-touch-icon" href="images/logo-192.png">
+    <meta name="theme-color" content="#2c3e50">
     <script>
       if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('sw.js')
-          .then(() => console.log('Service Worker Registered'));
+          .then(() => console.log('Service Worker Registered'))
+          .catch(err => console.warn('Service Worker registration failed:', err));
       }
     </script>
     
-    <script>
-(function(){'use strict';
-
-// --- GLOBAL SETTINGS ---
-// Exposed globally to prevent "variable not found" errors
-window.PX_PER_BIG = 25; 
-window.PX_PER_MM = 5;   
-window.PX_PER_MV = 50;  // 10mm/mV standard calibration
-window.ecgSpeed = 125;  // 25mm/sec * 5px/mm = 125 px/sec
-window.waveformX = 0;   // GLOBAL X POSITION
-
-function setSpeed(pxPerSec){ window.ecgSpeed = pxPerSec; }
-
-// --- STABLE MATH HELPERS ---
-// Gaussian Bell Curve: Renders a smooth spike that never "bounces" between pixels
-function gaussian(t, center, width, amp) {
-    var x = (t - center);
-    return -amp * Math.exp(-0.5 * (x * x) / (width * width));
-}
-
-// --- SHAPES ---
-function getP(t) { return gaussian(t, 0.15, 0.04, window.PX_PER_MV * 0.15); }
-
-function getQRSNarrow(t) {
-    // A stable, narrow complex (approx 80ms)
-    var q = gaussian(t, 0.23, 0.008, -window.PX_PER_MV * 0.1); 
-    var r = gaussian(t, 0.25, 0.015, window.PX_PER_MV * 1.5);   
-    var s = gaussian(t, 0.27, 0.010, -window.PX_PER_MV * 0.3); 
-    return q + r + s;
-}
-
-function getQRSWide(t) { 
-    return gaussian(t, 0.25, 0.05, window.PX_PER_MV * 1.2); 
-}
-
-function getT(t) { return gaussian(t, 0.55, 0.09, window.PX_PER_MV * 0.3); }
-
-// --- RHYTHM LOGIC ---
-
-// 1. Sinus Rhythms
-function sinusTemplate(x, hr, c, opts) {
-    opts = opts || {};
-    var baseline = (c.height || 300) / 2;
-    var bpm = hr || 75;
-    
-    var cyclePx = (60 / bpm) * window.ecgSpeed;
-    var t = (x % cyclePx) / cyclePx; 
-
-    var y = 0;
-    if (!opts.hideP) y += getP(t);
-    y += getQRSNarrow(t);
-    y += getT(t);
-    return baseline + y;
-}
-
-// 2. SVT: Fast, Narrow, No P-wave
-function svt(x, hr, c) {
-    var baseline = (c.height || 300) / 2;
-    var bpm = 180; // Fixed rate for SVT stability
-    var cyclePx = (60 / bpm) * window.ecgSpeed;
-    var t = (x % cyclePx) / cyclePx;
-
-    var qrs = gaussian(t, 0.15, 0.02, window.PX_PER_MV * 1.1); 
-    var twave = gaussian(t, 0.50, 0.08, window.PX_PER_MV * 0.2); 
-
-    return baseline + qrs + twave;
-}
-
-// 3. VT: Monomorphic, Broad
-function vtach(x, hr, c) {
-    var baseline = (c.height || 300) / 2;
-    var bpm = 160;
-    var cyclePx = (60 / bpm) * window.ecgSpeed;
-    var t = (x % cyclePx) / cyclePx;
-
-    var val = Math.sin(2 * Math.PI * t) - 0.2 * Math.sin(4 * Math.PI * t - 0.2);
-    return baseline - (val * window.PX_PER_MV * 1.4);
-}
-
-// 4. VF: Fine, Chaotic
-function vfib(x, hr, c) {
-    var baseline = (c.height || 300) / 2;
-    var y = 0;
-    y += Math.sin(x * 0.15) * 3.0;
-    y += Math.sin(x * 0.22) * 2.0;
-    y += Math.sin(x * 0.09) * 1.5;
-    var ampWander = (Math.sin(x * 0.002) * 0.2) + 0.6; 
-    return baseline + (y * (window.PX_PER_MV/15) * ampWander);
-}
-
-// 5. AFib: Irregular
-function afib(x, hr, c) {
-    var baseline = (c.height || 300) / 2;
-    var fWaves = Math.sin(x * 0.15) * 1.5 + Math.sin(x * 0.08) * 1.0;
-    var cyclePx = (60 / 140) * window.ecgSpeed;
-    var phaseNoise = Math.sin(x * 0.005) * cyclePx * 0.6; 
-    var t = ((x + phaseNoise) % cyclePx) / cyclePx;
-    
-    var qrs = 0;
-    if(t > 0.2 && t < 0.4) {
-        var localT = (t - 0.2) / 0.2;
-        qrs = -window.PX_PER_MV * 1.0 * Math.exp(-0.5 * Math.pow(localT - 0.5, 2) / 0.005);
-    }
-    return baseline + fWaves + qrs;
-}
-
-// 6. Asystole
-function asystole(x, hr, c) {
-    return (c.height/2) + Math.sin(x * 0.002) * 4;
-}
-
-// 7. CHB: Dissociated
-function chb(x, hr, c) {
-    var baseline = (c.height || 300) / 2;
-    var aCycle = (60 / 75) * window.ecgSpeed;
-    var vCycle = (60 / 35) * window.ecgSpeed;
-    var aT = (x % aCycle) / aCycle;
-    var vT = (x % vCycle) / vCycle;
-    return baseline + getP(aT) + getQRSWide(vT) + getT(vT);
-}
-
-// 8. Paced
-function paced(x, hr, c) {
-    var baseline = (c.height || 300) / 2;
-    var bpm = hr || 70;
-    var cyclePx = (60 / bpm) * window.ecgSpeed;
-    var t = (x % cyclePx) / cyclePx;
-    
-    var y = 0;
-    // FIXED: Shifted QRS closer to t=0 to align with pacer spike drawn in animate loop
-    // Spike is at t=0. QRS starts at t=0.08 (simulating 80ms latency)
-    y += gaussian(t, 0.12, 0.05, window.PX_PER_MV * 1.1); // Wide QRS
-    y += gaussian(t, 0.40, 0.09, window.PX_PER_MV * 0.3); // T Wave
-    return baseline + y;
-}
-
-// --- MAPPING ---
-var rhythms = {
-    nsr: function(x,h,t,c){ return sinusTemplate(x, h, c, {}); },
-    sinus_brady: function(x,h,t,c){ return sinusTemplate(x, 45, c, {}); },
-    sinus_tach: function(x,h,t,c){ return sinusTemplate(x, 120, c, {hideP:true}); },
-    svt: function(x,h,t,c){ return svt(x, h, c); },
-    vtach: function(x,h,t,c){ return vtach(x, h, c); },
-    vt_pulseless: function(x,h,t,c){ return vtach(x, 180, c); },
-    vfib: function(x,h,t,c){ return vfib(x, h, c); },
-    afib: function(x,h,t,c){ return afib(x, h, c); },
-    chb: function(x,h,t,c){ return chb(x, h, c); },
-    paced: function(x,h,t,c){ return paced(x, h, c); },
-    asystole: function(x,h,t,c){ return asystole(x, h, c); },
-    brady: function(x,h,t,c){ return sinusTemplate(x, 40, c, {}); },
-    idioventricular: function(x,h,t,c){ return sinusTemplate(x, 30, c, {hideP:true, rAmp:0.8}); },
-    sinus: function(x,h,t,c){ return sinusTemplate(x, 75, c, {}); }
-};
-
-// --- UPDATED ARTEFACT LOGIC ---
-function withArtefacts(fn){
-    return function(x, hr, tSeconds, canvasInfo){
-        // 1. Calculate underlying rhythm
-        var y = fn(x, hr, tSeconds, canvasInfo); 
-        
-        var st = window.state || {};
-        var flags = (st.noise || {});
-        var baseline = (canvasInfo.height || 300) / 2;
-
-        // 2. REALISTIC CPR ARTEFACT (Broad, VT-like shape)
-        if (st.cprActive) {
-            // Frequency: 110 bpm = ~1.83 Hz
-            var freq = 1.83; 
-            var ang = tSeconds * freq * 2 * Math.PI;
-
-            // Shape: Sharp upstroke, slower downstroke (Sawtooth/VT style)
-            // Using a combination of sine waves to create a more mechanical "thrust" shape
-            var cprWave = (Math.sin(ang) - 0.4 * Math.sin(2 * ang)) * (window.PX_PER_MV * 4.0);
-            
-            // Add some high-frequency muscle noise from the physical effort
-            var noise = (Math.random() - 0.5) * (window.PX_PER_MV * 0.4);
-
-            // Heavily dampen the underlying rhythm (0.1x) so CPR totally dominates
-            y = baseline + ((y - baseline) * 0.1) + cprWave + noise;
-        }
-
-        // 3. Other Noise
-        if(flags.movement) y += Math.sin(tSeconds * 0.5 + x * 0.005) * (window.PX_PER_MM * 1.5);
-        if(flags.leadoff) y += Math.sin(tSeconds * 50) * (window.PX_PER_MM * 4.0);
-        
-        return y;
-    }
-}
-
-var wrapped = {};
-Object.keys(rhythms).forEach(function(k){ wrapped[k] = withArtefacts(rhythms[k]); });
-
-window.rhythms = wrapped;
-window.cleanRhythms = rhythms; 
-window.__setECGSpeed = setSpeed;
-window.PX_PER_MV = window.PX_PER_MV;
-
-// --- GRID DRAWER (High Visibility) ---
-window.drawECGGrid = function(ctx, w, h) {
-    // Force Black Background
-    ctx.fillStyle = '#050505'; 
-    ctx.fillRect(0, 0, w, h);
-
-    // Dimmed Small Grid
-    ctx.lineWidth = 1;
-    ctx.strokeStyle = 'rgba(0, 255, 50, 0.07)'; // Brightness reduced
-    ctx.beginPath();
-    for (var x=0; x<=w; x+=window.PX_PER_MM) { ctx.moveTo(x+0.5,0); ctx.lineTo(x+0.5,h); }
-    for (var y=0; y<=h; y+=window.PX_PER_MM) { ctx.moveTo(0,y+0.5); ctx.lineTo(w,y+0.5); }
-    ctx.stroke();
-
-    // Dimmed Large Grid
-    ctx.lineWidth = 1.5;
-    ctx.strokeStyle = 'rgba(0, 255, 50, 0.12)'; // Brightness reduced
-    ctx.beginPath();
-    for (var x=0; x<=w; x+=window.PX_PER_BIG) { ctx.moveTo(x+0.5,0); ctx.lineTo(x+0.5,h); }
-    for (var y=0; y<=h; y+=window.PX_PER_BIG) { ctx.moveTo(0,y+0.5); ctx.lineTo(w,y+0.5); }
-    ctx.stroke();
-};
-})();
-</script>
-    
-    <style>  /* Import a digital-style font */
-@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
-
-*{margin:0;padding:0;box-sizing:border-box}body{font-family:Arial,sans-serif;background:#2a2a2a;padding:20px;min-height:100vh}
-
-/* --- FIXED Quick Access Panel --- */
-.quick-rhythm-panel {
-    background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
-    border-radius: 8px;
-    padding: 15px;
-    margin: 0 auto 20px auto;
-    max-width: 1600px;
-    border: 2px solid #1a252f;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-}
-
-.quick-rhythm-panel h4 {
-    color: #3498db;
-    font-size: 12px;
-    margin-bottom: 10px;
-    text-transform: uppercase;
-    text-align: center;
-    letter-spacing: 1px;
-}
-
-/* Primary Grid Layout */
-.rhythm-grid-primary {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    justify-content: center;
-}
-
-/* Rhythm Buttons */
-.rhythm-btn {
-    background: #34495e;
-    color: #ecf0f1;
-    border: 2px solid #455a64; /* Default border */
-    padding: 8px 16px;
-    border-radius: 6px;
-    font-size: 11px;
-    font-weight: bold;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    min-width: 70px;
-    text-transform: uppercase;
-}
-
-.rhythm-btn:hover {
-    transform: translateY(-2px);
-    background: #3e5871;
-}
-
-.rhythm-btn.active {
-    background: #3498db;
-    border-color: #2980b9 !important;
-    color: white;
-    box-shadow: 0 0 10px rgba(52, 152, 219, 0.4);
-}
-
-/* Specific Border Colors */
-.btn-red { border-color: #c0392b; }
-.btn-orange { border-color: #f39c12; }
-
-/* The Dropdown Menu - FIXING THE VISIBILITY BUG */
-#secondaryRhythms {
-    display: none; /* Hidden by default */
-    flex-wrap: wrap;
-    gap: 8px;
-    justify-content: center;
-    margin-top: 15px;
-    padding-top: 15px;
-    border-top: 1px solid rgba(255,255,255,0.1);
-    animation: fadeIn 0.3s ease;
-}
-
-#secondaryRhythms.open {
-    display: flex; /* Only shows when 'open' class is added */
-}
-
-/* Toggle Button */
-.toggle-secondary-btn {
-    background: none;
-    border: none;
-    color: #bdc3c7;
-    font-size: 10px;
-    width: 100%;
-    margin-top: 10px;
-    cursor: pointer;
-    text-transform: uppercase;
-    font-weight: bold;
-}
-.toggle-secondary-btn:hover { color: white; }
-
-/* Guideline Hint Buttons */
-.guideline-hints-panel {
-    display: flex;
-    justify-content: center;
-    gap: 10px;
-    margin-bottom: 20px;
-    flex-wrap: wrap;
-}
-.hint-btn {
-    background: #17a2b8;
-    color: white;
-    border: 1px solid #138496;
-    padding: 8px 15px;
-    border-radius: 4px;
-    font-size: 11px;
-    font-weight: bold;
-    cursor: pointer;
-}
-.hint-btn:hover { background: #138496; }
-
-@keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
-
-
-/* --- Rest of Original Styles --- */
-.menu-wrapper{display:flex;justify-content:center;align-items:center}
-.menu-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;background:linear-gradient(135deg,#2c3e50 0%,#34495e 100%);border-radius:15px;padding:60px;max-width:800px;box-shadow:0 20px 60px rgba(0,0,0,0.5)}
-#modeSelectScreen{display:block;padding:30px;max-width:1600px;margin:0 auto 20px auto;border-radius:10px}#modeSelectScreen .menu-title{margin-bottom:30px}#modeSelectScreen .menu-option{padding:25px 20px;font-size:20px}.menu-logo{margin-bottom:30px}.menu-logo img{height:80px;background:white;padding:15px 25px;border-radius:10px}.menu-title{text-align:center;margin-bottom:50px}.menu-title h1{color:#ecf0f1;font-size:36px;margin-bottom:15px}.menu-title p{color:#bdc3c7;font-size:18px}.menu-options{display:grid;grid-template-columns:1fr 1fr;gap:30px;width:100%}.menu-option{background:linear-gradient(180deg,#3498db 0%,#2874a6 100%);color:white;border:none;padding:50px 40px;border-radius:15px;font-size:24px;font-weight:bold;cursor:pointer;transition:all 0.3s;box-shadow:0 10px 25px rgba(0,0,0,0.3);text-align:center}.menu-option:hover{transform:translateY(-5px);box-shadow:0 15px 35px rgba(0,0,0,0.4)}.menu-option.single-column{grid-column:1 / -1}.menu-option .subtitle{font-size:14px;margin-top:10px;opacity:0.9;font-weight:normal}.simulator-container{max-width:1600px;width:100%;margin:0 auto}.back-button{background:#e74c3c;color:white;border:none;padding:15px 30px;border-radius:8px;font-size:16px;font-weight:bold;cursor:pointer;margin-bottom:20px;display:inline-flex;align-items:center;gap:10px;box-shadow:0 4px 10px rgba(0,0,0,0.3)}.back-button:hover{background:#c0392b}.reset-button{background:#3498db;margin-left:10px}.reset-button:hover{background:#2980b9}.instructor-panel{background:linear-gradient(135deg,#2c3e50 0%,#34495e 100%);border-radius:10px;padding:25px;margin-bottom:20px;border:3px solid #1a252f;transition:all 0.3s ease}.instructor-panel.minimised{padding:12px 18px}.instructor-panel.minimised .control-grid{display:none !important}.minimise-btn{background:#34495e;color:#ecf0f1;border:2px solid #2c3e50;padding:8px 16px;border-radius:6px;font-size:12px;cursor:pointer;transition:all 0.3s}.minimise-btn:hover{background:#3a4f5e}.instructor-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:15px}.instructor-logo{display:flex;align-items:center;gap:15px}.instructor-logo img{height:40px;background:white;padding:6px;border-radius:8px}.instructor-title h2{color:#ecf0f1;font-size:18px}.instructor-title p{color:#bdc3c7;font-size:12px;margin-top:4px}.control-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:15px;margin-top:10px}.control-section{background:#2c3e50;padding:15px;border-radius:8px}.control-section h4{color:#3498db;font-size:13px;margin-bottom:10px;text-transform:uppercase}.control-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;padding:8px;background:#34495e;border-radius:6px}.control-row label{color:#ecf0f1;font-size:12px;font-weight:bold;display:flex;align-items:center;gap:6px}.control-row input,.control-row select{width:100px;padding:6px;border-radius:4px;border:1px solid #2c3e50;background:#2c3e50;color:#00ff00;font-weight:bold}.rhythm-buttons{display:grid;grid-template-columns:repeat(auto-fit,minmax(80px,1fr));gap:6px}.rhythm-btn.instructor{background:#34495e;color:#ecf0f1;border:2px solid #2c3e50;padding:8px;border-radius:6px;font-size:11px;cursor:pointer;transition:all 0.2s}
-
-/* --- DEVICE CONTAINER --- */
-.zoll-device {
-    background: linear-gradient(to bottom, #dbe4ea 0%, #c8d0d8 100%);
-    box-shadow: 
-        0 20px 50px rgba(0,0,0,0.6),
-        inset 0 2px 5px rgba(255,255,255,0.5),
-        inset 0 -2px 5px rgba(0,0,0,0.1);
-    border: 20px solid #2b7bbf;
-    border-radius: 25px;
-    padding: 30px;
-    position: relative;
-    display: grid;
-    grid-template-columns: 1.2fr 0.8fr;
-    gap: 20px;
-    max-width: 1400px;
-    margin: 0 auto;
-}
-
-.zoll-top-logo{position:absolute;top:25px;right:30px;height:40px;background:white;padding:6px;border-radius:8px;z-index:10}
-.device-screen-section{background:#a8b0b8;padding:25px;border-radius:15px;box-shadow:inset 0 4px 10px rgba(0,0,0,0.2)}
-
-/* --- SCREEN STYLES (Scanlines & Bloom) --- */
-.screen {
-    background-color: #050505;
-    background-image: 
-        linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), 
-        linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
-    background-size: 100% 2px, 3px 100%;
-    border-radius: 10px;
-    padding: 15px;
-    margin-bottom: 15px;
-    box-shadow: inset 0 0 40px rgba(0,0,0,0.8);
-    position: relative;
-    border: 1px solid #333;
-    font-family: 'Share Tech Mono', 'Courier New', monospace;
-}
-
-/* Glass Reflection Overlay */
-.screen::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(135deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0) 40%);
-    pointer-events: none;
-    z-index: 10;
-}
-
-.screen-header{display:flex;justify-content:space-between;padding:8px;background:rgba(0,0,0,0.6);border-radius:5px;margin-bottom:10px}
-
-/* Glowing Screen Info */
-.screen-info {
-    color: #00ffff;
-    font-size: 13px;
-    font-family: 'Share Tech Mono', 'Courier New', monospace;
-    text-shadow: 0 0 5px currentColor;
-}
-.screen-info.sync-indicator{color:#ffff00;font-weight:bold;animation:blink 1s infinite}
-.ecg-canvas-container{background:#000;height:300px;border-radius:8px;position:relative;overflow:hidden;margin-bottom:15px}canvas{width:100%;height:100%;display:block}.vitals-display{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:15px;background:rgba(0,0,0,0.6);border-radius:8px}.vital-item{text-align:center}.vital-label{color:#888;font-size:10px;margin-bottom:5px}
-
-/* Glowing Vital Values */
-.vital-value {
-    color: #00ff00;
-    font-size: 36px;
-    font-weight: bold;
-    font-family: 'Share Tech Mono', 'Courier New', monospace;
-    text-shadow: 0 0 5px currentColor;
-}
-/* Specific Colours */
-#hrDisplay { color: #39ff14; text-shadow: 0 0 10px rgba(57, 255, 20, 0.6); }
-#spo2Display { color: #00ffff; text-shadow: 0 0 10px rgba(0, 255, 255, 0.6); }
-#etco2Display { color: #ffff00; text-shadow: 0 0 10px rgba(255, 255, 0, 0.6); }
-#bpDisplay { color: #ff3333; text-shadow: 0 0 10px rgba(255, 51, 51, 0.6); }
-
-.vital-value.critical{color:#ff0000;animation:blink 1s infinite}.vital-unit{color:#888;font-size:11px;margin-top:3px}@keyframes blink{0%,50%{opacity:1}51%,100%{opacity:0.3}}
-
-/* Glowing Message Bar */
-.message-bar {
-    background: rgba(0,0,0,0.8);
-    color: #ffff00;
-    padding: 12px;
-    text-align: center;
-    border-radius: 6px;
-    font-family: 'Share Tech Mono', 'Courier New', monospace;
-    font-size: 14px;
-    font-weight: bold;
-    margin-top: 10px;
-    text-shadow: 0 0 5px currentColor;
-}
-
-/* --- Controls & Buttons --- */
-.message-bar.ready{color:#00ff00;text-shadow:0 0 5px rgba(0,255,0,0.5)}.message-bar.alert{color:#ff0000;animation:blink 1s infinite;text-shadow:0 0 5px rgba(255,0,0,0.5)}.softkeys{display:flex;gap:10px;margin-top:15px}.softkey{flex:1;background:#7a8288;color:#fff;border:2px solid #6a7278;padding:12px;border-radius:6px;font-size:11px;cursor:pointer;text-align:center;font-weight:bold}.softkey:hover{background:#8a9298}.softkey.active{background:#27ae60}.device-controls-section{display:flex;flex-direction:column;gap:15px}.top-buttons{display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:start}.btn-teal{background:#17a2b8;color:white;border:3px solid #138496;padding:15px 20px;border-radius:8px;font-size:13px;font-weight:bold;cursor:pointer;box-shadow:0 4px 8px rgba(0,0,0,0.3)}.btn-sync{background:#f39c12;color:white;border:3px solid #d68910;padding:15px 20px;border-radius:8px;font-size:13px;font-weight:bold;cursor:pointer;box-shadow:0 4px 8px rgba(0,0,0,0.3);transition:all 0.3s}.btn-sync.active{background:#e67e22;box-shadow:0 0 15px rgba(230,126,34,0.7)}.btn-shock{background:linear-gradient(135deg,#ff6347 0%,#ff4520 100%);color:white;border:5px solid #cc4f39;width:120px;height:120px;border-radius:50%;font-size:20px;font-weight:bold;cursor:pointer;box-shadow:0 6px 12px rgba(0,0,0,0.4);display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;overflow:hidden}.btn-shock::before{content:'⚡';position:absolute;font-size:80px;opacity:0.15;color:#fff;z-index:0}.btn-shock span{position:relative;z-index:1}.btn-shock:disabled{opacity:0.5;cursor:not-allowed}.btn-shock .number{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);font-size:18px;color:#fff}.side-buttons{display:grid;grid-template-columns:1fr 1fr;gap:10px}.side-btn{background:#7a8288;color:#fff;border:3px solid #6a7278;padding:12px;border-radius:8px;font-size:12px;font-weight:bold;cursor:pointer;box-shadow:0 3px 6px rgba(0,0,0,0.3)}.side-btn:hover{background:#8a9298}.action-buttons-group{display:flex;flex-direction:column;gap:10px}.btn-analyze,.btn-charge{background:linear-gradient(180deg,#ff9933 0%,#ff7700 100%);color:#000;border:4px solid #cc6600;padding:16px;border-radius:10px;font-size:15px;font-weight:bold;cursor:pointer;box-shadow:0 4px 8px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:space-between}.btn-number{background:#fff;color:#ff7700;width:30px;height:30px;border-radius:50%;display:flex;align:items:center;justify-content:center;font-size:18px;font-weight:bold}.energy-selector{background:linear-gradient(180deg,#dc3545 0%,#c82333 100%);color:#fff;border:4px solid #a71d2a;padding:16px;border-radius:10px;cursor:pointer;box-shadow:0 4px 8px rgba(0,0,0,0.3);display:flex;flex-direction:column;align-items:center;gap:8px}.energy-display{font-size:32px;font-weight:bold;text-shadow:0 2px 4px rgba(0,0,0,0.3)}.energy-arrows{display:flex;gap:15px}.energy-arrow{background:#fff;color:#dc3545;width:40px;height:40px;border-radius:50%;border:none;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center}.mode-dial-container{text-align:center;padding:15px;background:#a8b0b8;border-radius:12px}.mode-dial{width:150px;height:150px;background:radial-gradient(circle,#2a2a2a 0%,#1a1a1a 100%);border:6px solid #0a0a0a;border-radius:50%;margin:0 auto 15px;position:relative;cursor:pointer;box-shadow:0 6px 12px rgba(0,0,0,0.5)}.mode-dial::before{content:'';position:absolute;width:8px;height:60px;background:#fff;top:20px;left:50%;transform:translateX(-50%) rotate(var(--dial-rotation,0deg));transform-origin:center bottom;border-radius:4px}.mode-labels{display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:11px;font-weight:bold;color:#2a2a2a}.mode-label{padding:12px 16px;border-radius:8px;cursor:pointer;background:#34495e;color:#ecf0f1;border:3px solid #2c3e50;font-weight:bold;transition:all 0.3s;text-transform:uppercase;font-size:13px}.mode-label:hover{background:#3a4f5e;transform:translateY(-2px)}.mode-label.active{background:linear-gradient(180deg,#3498db 0%,#2874a6 100%);color:white;border-color:#1f5f8b;box-shadow:0 0 15px rgba(52,152,219,0.5)}/* UPDATED PACING CONTROLS & COVER */
-.pacing-controls {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
-    position: relative; /* Essential for the cover */
-    overflow: hidden;
-    padding-bottom: 15px; /* ADDED: Creates space for the buttons */
-}
-
-.pacing-cover {
-    position: absolute;
-    top: 0; left: 0; width: 100%; height: 100%;
-    background: rgba(44, 62, 80, 0.96);
-    z-index: 20;
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    color: #bdc3c7; font-size: 13px; font-weight: bold; text-align: center;
-    transition: all 0.3s ease;
-    opacity: 1; visibility: visible; pointer-events: auto;
-}
-
-.pacing-cover.open {
-    opacity: 0; visibility: hidden; pointer-events: none;
-}.pacer-dial{background:#2a2a2a;border:5px solid #0a0a0a;border-radius:50%;width:100px;height:100px;margin:0 auto;position:relative;cursor:pointer;box-shadow:0 4px 8px rgba(0,0,0,0.5)}.pacer-dial::before{content:'';position:absolute;width:4px;height:35px;background:#17a2b8;top:15px;left:50%;transform:translateX(-50%) rotate(var(--dial-rotation,0deg));transform-origin:center 35px;border-radius:2px;transition:transform 0.3s ease}.pacer-label{text-align:center;color:#2a2a2a;font-size:11px;font-weight:bold;margin-top:8px}.pacer-value{text-align:center;color:#17a2b8;font-size:20px;font-weight:bold;margin-top:4px}.pacer-controls-btn{display:flex;gap:5px;justify-content:center;margin-top: 5px; /* Reduced from 8px */
-    margin-bottom: 5px;}.pacer-btn{background:#7a8288;color:#fff;border:2px solid #6a7278;width:35px;height:35px;border-radius:5px;font-size:18px;cursor:pointer}.zoll-branding{background:linear-gradient(180deg,#e8eef3 0%,#d8dee3 100%);padding:20px;border-radius:0 0 15px 15px;margin:-10px -30px 0 -30px;text-align:center;box-shadow:0 -4px 10px rgba(0,0,0,0.1)}.zoll-logo-text{font-size:48px;font-weight:bold;color:#9a9a9a;letter-spacing:8px;text-shadow:2px 2px 4px rgba(0,0,0,0.1)}@media (max-width:1200px){.zoll-device{grid-template-columns:1fr}}@media print{body{background:white;padding:0}.menu-wrapper{min-height:0}.menu-screen{display:block !important;box-shadow:none;padding:0;background:white}.menu-option{display:none !important}#certificateContent{box-shadow:none}}
-
-/* --- Helper Styles --- */
-.splash-screen{position:absolute;top:0;left:0;right:0;bottom:0;background:#1a1a1a;display:flex;align-items:center;justify-content:center;z-index:100}
-.splash-screen img{max-width:50%; height:auto; background:white; padding:15px 25px; border-radius:10px}
-.screen.screen-off .screen-header,
-.screen.screen-off .ecg-canvas-container,
-.screen.screen-off .vitals-display,
-.screen.screen-off .message-bar{visibility:hidden}
-.screen.screen-off{background:#1a1a1a}
-.hidden { display: none !important; }
-
-/* --- CPR Panel Styles (UPDATED) --- */
-#cprPanel {
-    position: fixed; 
-    top: 100px; 
-    right: -320px; /* Hidden state: completely off screen */
-    width: 300px;
-    background: linear-gradient(135deg, #c0392b 0%, #922b21 100%);
-    border-radius: 10px 0 0 10px; 
-    padding: 20px;
-    border: 3px solid #e74c3c; 
-    border-right: none;
-    box-shadow: -10px 10px 30px rgba(0,0,0,0.5);
-    transition: right 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    z-index: 2000; 
-    text-align: center; 
-    color: white;
-}
-/* State 1: Active (Fully Visible) */
-#cprPanel.active { right: 0; }
-
-/* State 2: Active BUT Minimised (Slides almost away) */
-#cprPanel.active.minimised { right: -300px; }
-
-.cpr-action-btn {
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.4);
-    color: white;
-    padding: 10px 5px;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-.cpr-action-btn:hover { background: rgba(255, 255, 255, 0.25); transform: translateY(-2px); }
-.cpr-action-btn:active { transform: translateY(0); }
-.cpr-action-btn span { font-weight: bold; font-size: 13px; display: block; }
-.btn-subtext { font-size: 9px; opacity: 0.8; margin-top: 2px; }
-
-.rosc-btn {
-    width: 100%;
-    background: #27ae60;
-    color: white;
-    border: none;
-    padding: 12px;
-    border-radius: 8px;
-    font-weight: bold;
-    font-size: 16px;
-    cursor: pointer;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
-    margin-top: 10px;
-}
-.rosc-btn:hover { background: #2ecc71; }
-
-.cpr-header { font-size: 14px; font-weight: bold; margin-bottom: 5px; opacity: 0.9; }
-.cpr-timer { font-size: 42px; font-family: 'Share Tech Mono', monospace; font-weight: bold; margin: 10px 0; text-shadow: 0 2px 4px rgba(0,0,0,0.3); }
-        
-/* --- Guideline Modal Styles --- */
-#modalOverlay {
-    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-    background: rgba(0, 0, 0, 0.85);
-    display: flex; align-items: center; justify-content: center;
-    z-index: 1000; padding: 20px;
-}
-.modal-content {
-    background: linear-gradient(135deg, #34495e 0%, #2c3e50 100%);
-    padding: 30px 35px;
-    border-radius: 15px;
-    max-width: 800px; width: 100%;
-    color: #ecf0f1; border: 3px solid #3498db;
-    box-shadow: 0 10px 40px rgba(0,0,0,0.5);
-    position: relative; max-height: 90vh; overflow-y: auto;
-}
-.modal-header { display: flex; align-items: center; gap: 20px; margin-bottom: 25px; padding-bottom: 20px; border-bottom: 2px solid #34495e; }
-.modal-header img { height: 50px; background: white; padding: 8px; border-radius: 10px; }
-.modal-content h2 { color: #fff; font-size: 24px; margin: 0; }
-.modal-content ul { list-style-type: none; padding-left: 0; margin: 0; }
-.modal-content li { background: #34495e; padding: 15px; border-radius: 8px; margin-bottom: 12px; font-size: 15px; line-height: 1.6; }
-.modal-content li strong { color: #3498db; font-weight: bold; }
-#closeModalBtn {
-    position: absolute; top: 15px; right: 15px;
-    background: #e74c3c; color: white; border: none;
-    width: 35px; height: 35px; border-radius: 50%;
-    font-size: 18px; font-weight: bold; cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
-    line-height: 1; transition: background 0.2s;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-}
-#closeModalBtn:hover { background: #c0392b; }
-
-/* --- Custom Scenario Creator Styles --- */
-.scenario-cycle { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; background: #2c3e50; padding: 20px; border-radius: 8px; }
-.scenario-cycle > div { display: flex; flex-direction: column; gap: 5px; }
-.scenario-cycle label { color: #bdc3c7; font-size: 14px; font-weight: bold; }
-.scenario-rhythm-select { width: 100%; padding: 10px 12px; border-radius: 6px; border: 2px solid #34495e; background: #34495e; color: #ecf0f1; font-size: 16px; font-weight: bold; }
-
-/* --- Mobile Usability Enhancements --- */
-button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-btn, .rhythm-btn, .back-button {
-    -webkit-touch-callout: none; -webkit-user-select: none; -moz-user-select: none; -ms-user-select: none; user-select: none; touch-action: manipulation;
-}
-/* --- FOOTER STYLE --- */
-.app-footer {
-    text-align: center;
-    color: #5d6d7e;
-    font-size: 12px;
-    padding: 20px;
-    margin-top: 30px;
-    border-top: 1px solid #2c3e50;
-    font-family: Arial, sans-serif;
-}
-
-/* --- OPTIMISED RESPONSIVE DESIGN --- */
-
-/* 1. Small Laptops (Height constrained) */
-@media (max-height: 800px) {
-    .zoll-device { transform: scale(0.9); transform-origin: top center; margin-bottom: -50px; }
-    .ecg-canvas-container { height: 220px; }
-    .btn-shock { width: 100px; height: 100px; font-size: 16px; }
-    .btn-shock::before { font-size: 40px; }
-}
-
-/* 2. Laptops & Landscape Tablets (900px - 1200px) */
-@media (max-width: 1200px) {
-    .zoll-device {
-        max-width: 100%;
-        grid-template-columns: 1.1fr 0.9fr; 
-        gap: 15px;
-        padding: 15px;
-        border-width: 10px;
-    }
-    .device-screen-section, .device-controls-section { padding: 10px; }
-    .energy-display { font-size: 24px; }
-}
-
-/* 3. Portrait Tablets & Large Phones (600px - 900px) */
-@media (max-width: 900px) {
-    .zoll-device {
-        grid-template-columns: 1fr; 
-        gap: 15px;
-        transform: none; /* Reset scaling */
-        margin: 10px auto;
-        max-width: 650px;
-    }
-    .ecg-canvas-container { height: 200px; }
-    .top-buttons { justify-content: center; gap: 20px; }
-    .zoll-top-logo { display: none; }
-    .side-buttons { grid-template-columns: repeat(4, 1fr); }
-}
-
-/* 4. Mobile Phones (< 600px) */
-@media (max-width: 600px) {
-    body { padding: 5px; } 
-    .main-header h1 { font-size: 18px; }
-    .main-header img { height: 35px; }
-    .menu-option { padding: 15px; font-size: 14px; }
-    
-    .zoll-device {
-        padding: 8px;
-        border-width: 5px;
-        border-radius: 10px;
-    }
-    
-    /* Critical space savers */
-    .ecg-canvas-container { height: 160px; }
-    .screen { padding: 5px; }
-    .softkeys { display: none; } /* Hide softkeys on very small screens to save space */
-    .vitals-display { padding: 5px; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 2px; }
-    .vital-value { font-size: 24px; }
-    .vital-label { font-size: 8px; }
-    
-    .device-controls-section { gap: 8px; }
-    .action-buttons-group { flex-direction: row; flex-wrap: wrap; }
-    .btn-analyze, .btn-charge { flex: 1; min-width: 100px; padding: 8px; }
-    
-    .mode-dial { width: 70px; height: 70px; }
-    .pacing-controls { display: none; } /* Hide pacing on smallest screens if needed, or stack */
-    .zoll-branding { display: none; }
-    
-    /* Fix CPR Panel position */
-    #cprPanel { 
-        width: 100% !important; 
-        left: 0 !important; 
-        border-radius: 15px 15px 0 0; 
-        bottom: -100%;
-    }
-    #cprPanel.active { bottom: 0 !important; }
-}
-    </style>
+    <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
-    <div class="main-header" style="display: flex; justify-content: space-between; align-items: center; max-width: 1600px; margin: 0 auto 20px auto; padding: 10px 20px; background: linear-gradient(135deg,#2c3e50 0%,#34495e 100%); border-radius: 10px; border: 3px solid #1a252f;">
-        <div style="display: flex; align-items: center; justify-content: center; gap: 20px;">
-            <img src="images/logo.png" alt="WMEBEM Logo" style="height: 60px; background: white; padding: 10px; border-radius: 10px;">
-            <div class="menu-title" style="margin-bottom: 0; text-align: left;">
-                <h1 style="margin-bottom: 5px; font-size: 32px;">ZOLL R Series Simulator</h1>
-                <p style="color: #bdc3c7; font-size: 16px;">RCUK 2025 Guidelines Simulator</p>
+    <header class="main-header">
+        <div class="main-header-brand">
+            <img src="images/logo-192.png" alt="WMEBEM Logo">
+            <div>
+                <h1>ZOLL R Series Simulator</h1>
+                <p>RCUK 2025 Guidelines Simulator</p>
             </div>
         </div>
         
-        <button class="menu-option" id="openScenarioCreatorBtn" style="padding: 20px 30px; font-size: 16px; margin: 0;">
-            Create Custom Scenario
-        </button>
-    </div>
+        <div class="header-actions">
+            <button class="menu-option" id="openScenariosBtn">Training Scenarios</button>
+            <button class="menu-option" id="openScenarioCreatorBtn">Create Custom Scenario</button>
+        </div>
+    </header>
 
     <div class="quick-rhythm-panel">
         <h4>Quick Rhythm Select</h4>
@@ -712,6 +59,9 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
             <button class="rhythm-btn" data-rhythm="paced">Paced</button>
             <button class="rhythm-btn" data-rhythm="idioventricular">Idioventricular</button>
             <button class="rhythm-btn" data-rhythm="brady">Junctional Brady</button>
+            <button class="rhythm-btn" data-rhythm="mobitz2">Mobitz II</button>
+            <button class="rhythm-btn" data-rhythm="flutter">Flutter</button>
+            <button class="rhythm-btn" data-rhythm="vfib_fine">Fine VF</button>
         </div>
     </div>
 
@@ -720,42 +70,70 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
         <button class="hint-btn" data-guideline="nonshockable">RCUK Hint: Non-Shockable Arrest</button>
         <button class="hint-btn" data-guideline="tachy">RCUK Hint: Tachycardia</button>
         <button class="hint-btn" data-guideline="brady">RCUK Hint: Bradycardia</button>
+        <button class="hint-btn" data-guideline="postrosc">RCUK Hint: Post-ROSC</button>
     </div>
 
     <div class="menu-wrapper hidden" id="menuWrapper">
+
+        <div class="menu-screen hidden" id="modeSelectScreen">
+            <div class="menu-title">
+                <h1>Training Scenarios</h1>
+                <p>Choose how the scenario will be run</p>
+            </div>
+            <div class="menu-options">
+                <button class="menu-option" data-select-mode="education">
+                    Education Mode
+                    <div class="subtitle">Instructor controls visible during the scenario</div>
+                </button>
+                <button class="menu-option" data-select-mode="assessment">
+                    Assessment Mode
+                    <div class="subtitle">Instructor controls hidden - learner runs the device</div>
+                </button>
+                <button class="back-button single-column" id="backToFreePlayBtn" style="justify-self: center;">
+                    ◀ Back to Free Play
+                </button>
+            </div>
+        </div>
         
         <div class="menu-screen hidden" id="scenarioCreatorScreen" style="max-width: 900px;">
-        <div class="menu-title">
-            <h1>Advanced Scenario Creator</h1>
-            <p>Build a custom sequence. Simulator advances when trigger is met.</p>
-        </div>
-        
-        <div style="display: flex; gap: 20px; width: 100%; height: 60vh;">
-            <div id="customScenarioSteps" style="flex: 2; overflow-y: auto; padding-right: 10px; border-right: 1px solid #465a6e;">
-                <div style="color: #bdc3c7; text-align: center; margin-top: 50px;">Click "Add Step" to begin</div>
+            <div class="menu-title">
+                <h1>Advanced Scenario Creator</h1>
+                <p>Build a custom sequence. Simulator advances when trigger is met.</p>
             </div>
+            
+            <div class="creator-layout">
+                <div id="customScenarioSteps" class="creator-steps">
+                    <div class="steps-placeholder">Click "Add Step" to begin</div>
+                </div>
 
-            <div style="flex: 1; display: flex; flex-direction: column; gap: 15px;">
-                <button class="menu-option" id="addStepBtn" style="padding: 15px; font-size: 16px; background: #34495e;">+ Add Step</button>
-                <div style="flex-grow: 1;"></div>
-                <button class="menu-option" id="startCustomScenarioBtn" style="padding: 20px; background: linear-gradient(180deg,#27ae60 0%,#229954 100%);">START</button>
-                <button class="menu-option" id="cancelCustomScenarioBtn" style="padding: 15px; background: #c0392b;">Cancel</button>
-            </div>
-        </div>
-    </div>
-            <div style="display: flex; gap: 15px; margin-top: 30px;">
-                <button class="menu-option" id="startCustomScenarioBtn" style="padding: 20px 40px; background: linear-gradient(180deg,#27ae60 0%,#229954 100%);">
-                    Start Custom Scenario
-                </button>
-                <button class="menu-option" id="cancelCustomScenarioBtn" style="padding: 20px 40px; background: linear-gradient(180deg,#e74c3c 0%,#c0392b 100%);">
-                    Cancel
-                </button>
+                <div class="creator-actions">
+                    <button class="menu-option" id="addStepBtn" style="padding: 15px; font-size: 16px; background: #34495e;">+ Add Step</button>
+                    <div class="saved-scenarios">
+                        <label for="savedScenarioSelect">Saved scenarios (this browser)</label>
+                        <select id="savedScenarioSelect" class="scenario-rhythm-select">
+                            <option value="">- None saved -</option>
+                        </select>
+                        <div class="saved-scenario-buttons">
+                            <button type="button" class="small-btn" id="saveScenarioBtn">Save</button>
+                            <button type="button" class="small-btn" id="loadScenarioBtn">Load</button>
+                            <button type="button" class="small-btn" id="deleteScenarioBtn">Delete</button>
+                        </div>
+                        <div class="saved-scenario-buttons">
+                            <button type="button" class="small-btn" id="exportScenarioBtn">Export file</button>
+                            <button type="button" class="small-btn" id="importScenarioBtn">Import file</button>
+                            <input type="file" id="importScenarioInput" accept="application/json,.json" hidden>
+                        </div>
+                    </div>
+                    <div style="flex-grow: 1;"></div>
+                    <button class="menu-option" id="startCustomScenarioBtn" style="padding: 20px; background: linear-gradient(180deg,#27ae60 0%,#229954 100%);">START</button>
+                    <button class="menu-option" id="cancelCustomScenarioBtn" style="padding: 15px; background: #c0392b;">Cancel</button>
+                </div>
             </div>
         </div>
 
         <div class="menu-screen hidden" id="scenarioScreen">
             <div style="display: flex; align-items: center; justify-content: center; gap: 20px; margin-bottom: 30px;">
-                <img src="images/logo.png" alt="WMEBEM Logo" style="height: 60px; background: white; padding: 10px; border-radius: 10px;">
+                <img src="images/logo-192.png" alt="WMEBEM Logo" style="height: 60px; background: white; padding: 10px; border-radius: 10px;">
                 <div class="menu-title" style="margin-bottom: 0; text-align: left;">
                     <h1 id="modeTitle" style="margin-bottom: 5px; font-size: 32px;">Education Mode</h1>
                     <p>Select a clinical scenario</p>
@@ -781,14 +159,14 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
                     <div style="display: grid; gap: 10px;">
                         <button class="menu-option" style="padding: 20px; text-align: left;" data-scenario="unstable-vt">
                             <div style="font-size: 16px;">VT with Pulse (Unstable)</div>
-                            <div class="subtitle">Conscious patient with adverse features - needs synchronised shock</div>
+                            <div class="subtitle">Conscious patient with life-threatening features - needs synchronised shock</div>
                         </button>
                         <button class="menu-option" style="padding: 20px; text-align: left;" data-scenario="unstable-svt">
-                            <div style="font-size: 16px;">SVT with Adverse Features</div>
+                            <div style="font-size: 16px;">SVT with Life-Threatening Features</div>
                             <div class="subtitle">Narrow complex tachycardia causing haemodynamic compromise</div>
                         </button>
                         <button class="menu-option" style="padding: 20px; text-align: left;" data-scenario="fast-af">
-                            <div style="font-size: 16px;">Fast AF with Adverse Features</div>
+                            <div style="font-size: 16px;">Fast AF with Life-Threatening Features</div>
                             <div class="subtitle">Rapid atrial fibrillation with shock or heart failure</div>
                         </button>
                     </div>
@@ -799,7 +177,7 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
                     <div style="display: grid; gap: 10px;">
                         <button class="menu-option" style="padding: 20px; text-align: left;" data-scenario="complete-hb">
                             <div style="font-size: 16px;">Complete Heart Block</div>
-                            <div class="subtitle">3rd degree AV block with adverse features requiring pacing</div>
+                            <div class="subtitle">3rd degree AV block with broad QRS and life-threatening features - requires pacing</div>
                         </button>
                         <button class="menu-option" style="padding: 20px; text-align: left;" data-scenario="symptomatic-brady">
                             <div style="font-size: 16px;">Symptomatic Bradycardia</div>
@@ -815,7 +193,7 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
         
         <div class="menu-screen hidden" id="summaryScreen">
             <div style="display: flex; align-items: center; justify-content: center; gap: 20px; margin-bottom: 30px;">
-                <img src="images/logo.png" alt="WMEBEM Logo" style="height: 60px; background: white; padding: 10px; border-radius: 10px;">
+                <img src="images/logo-192.png" alt="WMEBEM Logo" style="height: 60px; background: white; padding: 10px; border-radius: 10px;">
                 <div class="menu-title" style="margin-bottom: 0; text-align: left;">
                     <h1 style="margin-bottom: 5px; font-size: 32px;">Scenario Complete</h1>
                     <p>Defibrillator Performance Summary</p>
@@ -860,13 +238,13 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
             <div id="certificateContent" style="background: white; padding: 60px; border-radius: 15px; color: #2c3e50; position: relative;">
                 <div style="border: 8px solid #3498db; padding: 40px; border-radius: 10px;">
                     <div style="text-align: center; margin-bottom: 30px;">
-                        <img src="images/logo.png" alt="WMEBEM Logo" style="height: 60px; margin-bottom: 20px;">
+                        <img src="images/logo-192.png" alt="WMEBEM Logo" style="height: 60px; margin-bottom: 20px;">
                         <h1 style="color: #2c3e50; font-size: 42px; margin-bottom: 10px;">Certificate of Completion</h1>
                         <div style="width: 100px; height: 3px; background: #3498db; margin: 20px auto;"></div>
                     </div>
                     
                     <div style="text-align: center; margin: 40px 0;">
-                        <p style="font-size: 18px; color: #7f8c8d; margin-bottom: 20px;">This certifies that the learner has successfully completed</p>
+                        <p style="font-size: 18px; color: #7f8c8d; margin-bottom: 20px;">This certifies that the learner has completed</p>
                         <h2 id="certScenarioName" style="color: #2c3e50; font-size: 32px; margin: 20px 0; font-weight: bold;"></h2>
                         <p style="font-size: 16px; color: #7f8c8d;">ZOLL R Series Defibrillator Training</p>
                     </div>
@@ -909,7 +287,7 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
 
 <div class="simulator-container" id="simulatorContainer">
         <div id="cprPanel" class="hidden">
-            <button id="cprMinimiseBtn" style="position: absolute; left: -30px; top: 10px; width: 30px; height: 40px; background: #c0392b; border: 3px solid #e74c3c; border-right: none; border-radius: 8px 0 0 8px; color: white; cursor: pointer; font-weight: bold; box-shadow: -2px 2px 5px rgba(0,0,0,0.2);">▶</button>
+            <button id="cprMinimiseBtn" aria-label="Minimise CPR panel">▶</button>
             
             <div class="cpr-header" style="border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 5px; margin-bottom: 10px;">
                 INSTRUCTOR CONTROL
@@ -928,7 +306,7 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
 
             <div style="display: flex; gap: 5px; margin-bottom: 10px;">
                 <button class="cpr-action-btn" id="cprToggleBtn" data-action="cpr-toggle" style="flex: 2;">
-                    <span>START CPR (LOG)</span>
+                    <span>START CPR</span>
                 </button>
                 <button class="cpr-action-btn" id="metronomeBtn" style="flex: 1; background: #2c3e50; border-color: #34495e;">
                     <span>🔊 110</span>
@@ -944,12 +322,12 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px;">
                     <button class="cause-btn" data-cause="Hypoxia">Hypoxia</button>
                     <button class="cause-btn" data-cause="Hypovolaemia">Hypovolaemia</button>
-                    <button class="cause-btn" data-cause="Hypothermia">Hypothermia</button>
-                    <button class="cause-btn" data-cause="Hyperkalemia">H+ / K+</button>
+                    <button class="cause-btn" data-cause="Hypo/hyperthermia">Hypo/hyperthermia</button>
+                    <button class="cause-btn" data-cause="Hyper/hypokalaemia / metabolic">K+ / metabolic</button>
                     <button class="cause-btn" data-cause="Toxins">Toxins</button>
-                    <button class="cause-btn" data-cause="Tamponade">Tamponade</button>
+                    <button class="cause-btn" data-cause="Tamponade (cardiac)">Tamponade</button>
                     <button class="cause-btn" data-cause="Tension Pneumo">Tension PTX</button>
-                    <button class="cause-btn" data-cause="Thrombosis">Thrombosis</button>
+                    <button class="cause-btn" data-cause="Thrombosis (coronary/pulmonary)">Thrombosis</button>
                 </div>
             </div>
 
@@ -962,6 +340,12 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
                     <span>AMIODARONE</span>
                     <div class="btn-subtext">300mg IV/IO</div>
                 </button>
+            </div>
+
+            <div class="drug-status">
+                <div>Adrenaline: <span id="adrenalineStatus">not given</span></div>
+                <div>Amiodarone: <span id="amiodaroneStatus">not given</span></div>
+                <div id="drugPrompt" class="drug-prompt hidden" role="status" aria-live="polite"></div>
             </div>
 
             <div id="cprLog" style="
@@ -978,7 +362,7 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
                 flex-direction: column-reverse;
                 border: 1px solid #444;
             ">
-                <div style="color: #666; text-align: center; padding: 10px;">Waiting for start...</div>
+                <div class="log-placeholder">Waiting for start...</div>
             </div>
 
             <button id="roscBtn" class="rosc-btn" style="margin-top: 10px;">
@@ -996,7 +380,7 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
         <div class="instructor-panel hidden" id="instructorPanel">
             <div class="instructor-header">
                 <div class="instructor-logo">
-                    <img src="images/logo.png" alt="WMEBEM Logo">
+                    <img src="images/logo-192.png" alt="WMEBEM Logo">
                     <div class="instructor-title">
                         <h2>Instructor Controls</h2>
                         <p id="instructorSubtitle">Scenario in Progress</p>
@@ -1021,6 +405,11 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
                         <button class="rhythm-btn" data-rhythm="chb">CHB</button>
                         <button class="rhythm-btn" data-rhythm="paced">PACED</button>
                         <button class="rhythm-btn" data-rhythm="idioventricular">IVR</button>
+                        <button class="rhythm-btn" data-rhythm="vfib_fine">Fine VF</button>
+                        <button class="rhythm-btn" data-rhythm="pea">PEA</button>
+                        <button class="rhythm-btn" data-rhythm="flutter">Flutter</button>
+                        <button class="rhythm-btn" data-rhythm="mobitz2">Mobitz II</button>
+                        <button class="rhythm-btn" data-rhythm="brady">JUNCT</button>
                     </div>
                 </div>
 
@@ -1031,6 +420,38 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
                         <div>Sync mode: <strong id="syncStatus">OFF</strong></div>
                         <div>Pacing: <strong id="pacingStatus">OFF</strong></div>
                     </div>
+                </div>
+
+                <div class="control-section">
+                    <h4>Shock Response</h4>
+                    <div class="control-row">
+                        <label for="shockResponseSelect">Converts on</label>
+                        <select id="shockResponseSelect" style="width: 150px;">
+                            <option value="auto">Auto (arrest: 3rd, cardioversion: 1st)</option>
+                            <option value="1">1st adequate shock</option>
+                            <option value="2">2nd adequate shock</option>
+                            <option value="3">3rd adequate shock</option>
+                            <option value="4">4th adequate shock</option>
+                            <option value="5">5th adequate shock</option>
+                            <option value="never">Never (refractory)</option>
+                        </select>
+                    </div>
+                    <div class="control-row">
+                        <label for="rOnTSelect">Unsync shock with pulse</label>
+                        <select id="rOnTSelect" style="width: 150px;">
+                            <option value="always">Always causes VF</option>
+                            <option value="sometimes">Sometimes (1 in 3)</option>
+                            <option value="never">No effect</option>
+                        </select>
+                    </div>
+                    <div class="control-row">
+                        <label for="refibSelect">After ROSC</label>
+                        <select id="refibSelect" style="width: 150px;">
+                            <option value="off">Stays in ROSC</option>
+                            <option value="once">VF recurs once (30-90s)</option>
+                        </select>
+                    </div>
+                    <div style="color: #bdc3c7; font-size: 11px; line-height: 1.5;">Adequate = at least 150J for VF/pVT; synchronised and at least 70J for tachycardias with a pulse.</div>
                 </div>
 
                 <div class="control-section">
@@ -1058,13 +479,10 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
         </div>
 
         <div class="zoll-device" id="zollDevice" style="display: grid;">
-            <img src="images/logo.png" alt="WMEBEM Logo" class="zoll-top-logo">
+            <img src="images/logo-192.png" alt="WMEBEM Logo" class="zoll-top-logo">
             
             <div class="device-screen-section">
                 <div class="screen">
-                    <div class="splash-screen" id="splashScreen" style="display: none;">
-                        <img src="images/logo.png" alt="WMEBEM Logo">
-                    </div>
 
                     <div class="screen-header">
                         <div class="screen-info" id="leadInfo">LEAD: II</div>
@@ -1074,7 +492,7 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
                     </div>
                     
                     <div class="ecg-canvas-container">
-                        <canvas id="ecgCanvas"></canvas>
+                        <canvas id="ecgCanvas" role="img" aria-label="ECG trace"></canvas>
                     </div>
 
                     <div class="vitals-display">
@@ -1100,14 +518,14 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
                         </div>
                     </div>
 
-                    <div class="message-bar ready" id="messageBar">SIMULATOR READY</div>
+                    <div class="message-bar ready" id="messageBar" role="status" aria-live="polite">SIMULATOR READY</div>
                 </div>
 
                 <div class="softkeys">
                     <button class="softkey" id="checkPulseBtn">Check Pulse</button>
-                    <button class="softkey">Param</button>
-                    <button class="softkey">Marker</button>
-                    <button class="softkey">Alarms</button>
+                    <button class="softkey" disabled title="Not simulated">Param</button>
+                    <button class="softkey" id="markerBtn" title="Log an event marker">Marker</button>
+                    <button class="softkey" disabled title="Not simulated">Alarms</button>
                 </div>
             </div>
 
@@ -1121,10 +539,10 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
                 </div>
 
                 <div class="side-buttons">
-                    <button class="side-btn">LEAD</button>
-                    <button class="side-btn">SIZE</button>
-                    <button class="side-btn">ALARM SUSPEND</button>
-                    <button class="side-btn">RECORDER</button>
+                    <button class="side-btn" id="leadBtn" title="Change monitoring lead">LEAD</button>
+                    <button class="side-btn" id="sizeBtn" title="Change ECG size (gain)">SIZE</button>
+                    <button class="side-btn" disabled title="Not simulated">ALARM SUSPEND</button>
+                    <button class="side-btn" id="recorderBtn" title="Log an ECG strip print">RECORDER</button>
                 </div>
 
                 <div class="action-buttons-group">
@@ -1141,8 +559,8 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
                         <div class="energy-display" id="energyDisplay">120</div>
                         <div style="font-size: 12px;">JOULES</div>
                         <div class="energy-arrows">
-                            <button class="energy-arrow" data-energy-dir="-1">▼</button>
-                            <button class="energy-arrow" data-energy-dir="1">▲</button>
+                            <button class="energy-arrow" data-energy-dir="-1" aria-label="Decrease energy">▼</button>
+                            <button class="energy-arrow" data-energy-dir="1" aria-label="Increase energy">▲</button>
                         </div>
                         <div class="btn-number" style="margin-top: -5px;">1</div>
                     </div>
@@ -1151,10 +569,10 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
                 <div class="mode-dial-container">
                     <div class="mode-dial" id="modeDial" style="--dial-rotation: 0deg;"></div>
                     <div class="mode-labels">
-                        <div class="mode-label active" data-mode="monitor">MONITOR</div>
-                        <div class="mode-label" data-mode="defib">DEFIB</div>
-                        <div class="mode-label" data-mode="pacer">PACER</div>
-                        <div class="mode-label" data-mode="off">OFF</div>
+                        <button type="button" class="mode-label active" data-mode="monitor">MONITOR</button>
+                        <button type="button" class="mode-label" data-mode="defib">DEFIB</button>
+                        <button type="button" class="mode-label" data-mode="pacer">PACER</button>
+                        <button type="button" class="mode-label" data-mode="off">OFF</button>
                     </div>
                 </div>
 
@@ -1166,24 +584,25 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
 
                     <div>
                         <div class="pacer-label">OUTPUT</div>
-                        <div class="pacer-dial" style="--dial-rotation: 0deg;"></div>
+                        <div class="pacer-dial" data-pacer-dial="output" style="--dial-rotation: 0deg;"></div>
                         <div class="pacer-value" id="outputDisplay">0</div>
                         <div class="pacer-label">mA</div>
                         <div class="pacer-controls-btn">
-                            <button class="pacer-btn" data-pacer-param="output" data-pacer-dir="-5">-</button>
-                            <button class="pacer-btn" data-pacer-param="output" data-pacer-dir="5">+</button>
+                            <button class="pacer-btn" data-pacer-param="output" data-pacer-dir="-5" aria-label="Decrease pacing output">-</button>
+                            <button class="pacer-btn" data-pacer-param="output" data-pacer-dir="5" aria-label="Increase pacing output">+</button>
                         </div>
                     </div>
                     <div>
                         <div class="pacer-label">RATE</div>
-                        <div class="pacer-dial" style="--dial-rotation: 0deg;"></div>
+                        <div class="pacer-dial" data-pacer-dial="rate" style="--dial-rotation: 0deg;"></div>
                         <div class="pacer-value" id="rateDisplay">60</div>
                         <div class="pacer-label">ppm</div>
                         <div class="pacer-controls-btn">
-                            <button class="pacer-btn" data-pacer-param="rate" data-pacer-dir="-5">-</button>
-                            <button class="pacer-btn" data-pacer-param="rate" data-pacer-dir="5">+</button>
+                            <button class="pacer-btn" data-pacer-param="rate" data-pacer-dir="-5" aria-label="Decrease pacing rate">-</button>
+                            <button class="pacer-btn" data-pacer-param="rate" data-pacer-dir="5" aria-label="Increase pacing rate">+</button>
                         </div>
                     </div>
+                    <button class="pacer-mode-btn" id="pacerModeBtn" title="Switch between demand and asynchronous (fixed-rate) pacing">MODE: DEMAND</button>
                 </div>
 
             <div class="zoll-branding">
@@ -1191,2111 +610,25 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
             </div>
         </div>
     </div>
-        <footer class="app-footer">
+</div>
+
+    <footer class="app-footer">
         © 2025 West Midlands Evidence Based Emergency Medicine. Author: Dr Jake Turner.
     </footer>
 
     <div id="modalOverlay" class="hidden">
-        <div class="modal-content">
-            <button id="closeModalBtn">×</button>
+        <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+            <button id="closeModalBtn" aria-label="Close">×</button>
             <div class="modal-header">
-                <img src="images/logo.png" alt="WMEBEM Logo">
+                <img src="images/logo-192.png" alt="WMEBEM Logo">
                 <h2 id="modalTitle">RCUK 2025 Guideline Hint</h2>
             </div>
             <div id="modalBody"></div>
         </div>
     </div>
 
-    <script>
-    document.addEventListener('DOMContentLoaded', () => {
-
-        const clamp=(v,lo,hi)=>Math.max(lo,Math.min(hi,v));
-
-        // --- FIX: VISIBILITY FOR DROPDOWN ---
-        const toggleBtn = document.getElementById('toggleSecondaryBtn');
-        const secondaryMenu = document.getElementById('secondaryRhythms');
-
-        if(toggleBtn && secondaryMenu) {
-            toggleBtn.addEventListener('click', function() {
-                secondaryMenu.classList.toggle('open');
-                this.textContent = secondaryMenu.classList.contains('open') 
-                    ? "▲ Hide Rhythms" 
-                    : "▼ Show More Rhythms";
-            });
-        }
-        // ------------------------------------
-
-        const scenarios = {
-            'vf-arrest': {
-                name: 'Ventricular Fibrillation',
-                description: 'Patient in cardiac arrest. Monitor shows coarse VF. No pulse, not breathing. Requires immediate defibrillation.',
-                category: 'defibrillation',
-                initialRhythm: 'vfib',
-                initialVitals: { hr: 0, spo2: 0, etco2: 0, bpSys: 0, bpDia: 0 },
-                hasPulse: false,
-                shockable: true,
-                recommendedEnergy: 150,
-                successEnergy: 150,
-                successRhythm: 'nsr',
-                successVitals: { hr: 82, spo2: 94, etco2: 4.7, bpSys: 110, bpDia: 70 },
-                requiresSync: false,
-                shockToConvert: 3
-            },
-            'pulseless-vt': {
-                name: 'Pulseless Ventricular Tachycardia',
-                description: 'Patient in cardiac arrest. Monitor shows broad complex tachycardia. CONFIRM NO PULSE - this is a shockable arrest.',
-                category: 'defibrillation',
-                initialRhythm: 'vt_pulseless',
-                initialVitals: { hr: 0, spo2: 0, etco2: 0, bpSys: 0, bpDia: 0 },
-                hasPulse: false,
-                shockable: true,
-                recommendedEnergy: 150,
-                successEnergy: 150,
-                successRhythm: 'nsr',
-                successVitals: { hr: 78, spo2: 93, etco2: 4.5, bpSys: 108, bpDia: 68 },
-                requiresSync: false,
-                shockToConvert: 3
-            },
-            'unstable-vt': {
-                name: 'VT with Pulse - Unstable',
-                description: 'Patient conscious but severely unwell. Broad complex tachycardia at 180/min. Pulse present. BP 82/48. Requires SYNCHRONISED cardioversion.',
-                category: 'cardioversion',
-                initialRhythm: 'vtach',
-                initialVitals: { hr: 180, spo2: 88, etco2: 3.7, bpSys: 82, bpDia: 48 },
-                hasPulse: true,
-                shockable: true,
-                recommendedEnergy: 120,
-                successEnergy: 120,
-                successRhythm: 'nsr',
-                successVitals: { hr: 76, spo2: 97, etco2: 4.8, bpSys: 118, bpDia: 74 },
-                requiresSync: true,
-                shockToConvert: 1
-            },
-            'unstable-svt': {
-                name: 'SVT with Adverse Features',
-                description: 'Patient with palpitations and chest pain. Narrow complex tachycardia at 190/min. BP 80/54. Requires SYNCHRONISED cardioversion.',
-                category: 'cardioversion',
-                initialRhythm: 'svt',
-                initialVitals: { hr: 190, spo2: 90, etco2: 3.5, bpSys: 80, bpDia: 54 },
-                hasPulse: true,
-                shockable: true,
-                recommendedEnergy: 100,
-                successEnergy: 100,
-                successRhythm: 'nsr',
-                successVitals: { hr: 74, spo2: 98, etco2: 4.8, bpSys: 120, bpDia: 76 },
-                requiresSync: true,
-                shockToConvert: 1
-            },
-            'fast-af': {
-                name: 'Fast AF with Adverse Features',
-                description: 'Patient with fast irregular rhythm. Atrial fibrillation at 155/min. BP 82/48, pulmonary oedema developing. Requires SYNCHRONISED cardioversion.',
-                category: 'cardioversion',
-                initialRhythm: 'afib',
-                initialVitals: { hr: 155, spo2: 88, etco2: 4.0, bpSys: 82, bpDia: 48 },
-                hasPulse: true,
-                shockable: true,
-                recommendedEnergy: 120,
-                successEnergy: 120,
-                successRhythm: 'nsr',
-                successVitals: { hr: 80, spo2: 96, etco2: 4.7, bpSys: 118, bpDia: 72 },
-                requiresSync: true,
-                shockToConvert: 1
-            },
-            'complete-hb': {
-                name: 'Complete Heart Block',
-                description: 'Patient syncopal and hypotensive. Complete dissociation between P waves and QRS. HR 32/min. BP 86/50. Requires transcutaneous pacing.',
-                category: 'pacing',
-                initialRhythm: 'chb',
-                initialVitals: { hr: 32, spo2: 92, etco2: 4.0, bpSys: 86, bpDia: 50 },
-                hasPulse: true,
-                shockable: false,
-                captureThreshold: 60,
-                successRate: 70,
-                successVitals: { hr: 70, spo2: 97, etco2: 4.8, bpSys: 115, bpDia: 72 },
-                requiresPacing: true
-            },
-            'symptomatic-brady': {
-                name: 'Symptomatic Bradycardia',
-                description: 'Patient unwell with dizziness and hypotension. Bradycardia at 38/min. BP 84/52. Failed atropine. Requires pacing.',
-                category: 'pacing',
-                initialRhythm: 'brady',
-                initialVitals: { hr: 38, spo2: 93, etco2: 4.1, bpSys: 84, bpDia: 52 },
-                hasPulse: true,
-                shockable: false,
-                captureThreshold: 60,
-                successRate: 70,
-                successVitals: { hr: 70, spo2: 97, etco2: 4.7, bpSys: 112, bpDia: 70 },
-                requiresPacing: true
-            }
-        };
-
-        const APP_STATES = {
-            IDLE: 'IDLE',           // Off or Monitor Mode
-            ANALYSING: 'ANALYSING', // Hands off
-            CHARGING: 'CHARGING',   // Building energy
-            READY: 'READY',         // Shock button active
-            PACING: 'PACING'        // Pacer active
-        };
-
-        const state = {
-            machineState: APP_STATES.IDLE, 
-            selectedMode: null,
-            selectedScenario: null,
-            scenarioActive: false,
-            scenarioStartTime: null,
-            deviceMode: 'off', 
-            rhythm: 'nsr',
-            hr: 75,
-            spo2: 98,
-            etco2: 5.1,
-            bpSys: 120,
-            bpDia: 80,
-            energy: 120,
-            energyLevels: [50, 70, 85, 100, 120, 150, 170, 200],
-            charged: false,
-            syncMode: false,
-            shockCount: 0,
-            pacerOutput: 0,
-            pacerRate: 60,
-            pacingActive: false,
-            isCaptured: false,
-            originalRhythm: null,
-            lastCardiacEvent: -1000, 
-            actions: [],
-            hasPulse: true,
-            roscAchieved: false,
-            noise: {
-                movement: false,
-                cpr: false,
-                leadoff: false
-            },
-            lastSensedQRS_X: -1000,
-            firedSpikes: [], 
-            pacerStartTime: 0, 
-            syncMarkers: [], 
-            customScenario: [],
-            customScenarioActive: false,
-            currentScenarioStep: 0,
-        };
-        window.state = state; 
-
-        // --- HELPER: Global Timer Cleanup ---
-        function clearAllTimers() {
-            // Clear Animation Loops
-            if (animationId) {
-                cancelAnimationFrame(animationId);
-                animationId = null;
-            }
-            // Clear Intervals
-            if (typeof cycleInterval !== 'undefined' && cycleInterval) clearInterval(cycleInterval);
-            if (typeof metronomeInterval !== 'undefined' && metronomeInterval) clearInterval(metronomeInterval);
-            if (typeof window.arrestTimerInterval !== 'undefined' && window.arrestTimerInterval) clearInterval(window.arrestTimerInterval);
-            if (state.chargeTimer) clearTimeout(state.chargeTimer);
-            
-            // Reset Interval Variables to null so checks fail safely
-            cycleInterval = null;
-            metronomeInterval = null;
-            window.arrestTimerInterval = null;
-            state.chargeTimer = null;
-
-            // Reset Audio Visuals
-            const metronomeBtn = document.getElementById('metronomeBtn');
-            if(metronomeBtn) metronomeBtn.style.background = "#2c3e50";
-        }
-        
-        // --- STATE MACHINE LOGIC ---
-        function transitionTo(newState) {
-            console.log(`State Transition: ${state.machineState} -> ${newState}`);
-            
-            // Exit Logic (Clean up old state)
-            if (state.machineState === APP_STATES.READY) {
-                document.getElementById('shockBtn').disabled = true;
-                state.charged = false;
-            }
-
-            state.machineState = newState;
-
-            // Entry Logic (Setup new state)
-            if (newState === APP_STATES.READY) {
-                document.getElementById('shockBtn').disabled = false;
-                playSound('charged');
-                setMessage(`${state.energy}J READY - ${state.syncMode ? 'SYNC' : 'UNSYNC'}`, 'alert');
-            }
-            
-            if (newState === APP_STATES.IDLE) {
-                setMessage('SIMULATOR READY', 'ready');
-                state.charged = false;
-                document.getElementById('shockBtn').disabled = true;
-            }
-        }
-
-        let canvas, ctx, animationId; 
-        let lastTimestamp = 0;
-        const ecgSpeed = 125; 
-
-        const menuWrapper = document.getElementById('menuWrapper');
-        const scenarioScreen = document.getElementById('scenarioScreen');
-        const summaryScreen = document.getElementById('summaryScreen');
-        const certificateScreen = document.getElementById('certificateScreen');
-        const scenarioCreatorScreen = document.getElementById('scenarioCreatorScreen'); 
-        const simulatorContainer = document.getElementById('simulatorContainer');
-        const instructorPanel = document.getElementById('instructorPanel');
-        const endScenarioBtn = document.getElementById('endScenarioBtn');
-        const resetScenarioBtn = document.getElementById('resetScenarioBtn');
-        const zollDevice = document.getElementById('zollDevice');
-
-        const modalOverlay = document.getElementById('modalOverlay');
-        const modalTitle = document.getElementById('modalTitle');
-        const modalBody = document.getElementById('modalBody');
-        const closeModalBtn = document.getElementById('closeModalBtn');
-        const hintButtons = document.querySelectorAll('.hint-btn');
-        
-        const guidelineData = {
-            'shockable': {
-                title: 'Shockable Arrest (VF / pVT)',
-                content: `
-                    <ul>
-                        <li><strong>1.</strong> Confirm arrest. Start CPR (30:2) and attach pads.</li>
-                        <li><strong>2.</strong> Analyse rhythm. If shockable (VF/pVT), continue CPR.</li>
-                        <li><strong>3.</strong> Charge and deliver <strong>1 Shock</strong> (e.g., 150J biphasic).</li>
-                        <li><strong>4.</strong> Immediately resume <strong>2 minutes</strong> of CPR. Do not check rhythm.</li>
-                        <li><strong>5.</strong> Repeat cycle (Analyse, Shock, 2 min CPR).</li>
-                        <li><strong>6.</strong> Give <strong>Amiodarone 300mg</strong> after the 3rd shock.</li>
-                    </ul>
-                `
-            },
-            'nonshockable': {
-                title: 'Non-Shockable Arrest (Asystole / PEA)',
-                content: `
-                    <ul>
-                        <li><strong>1.</strong> Confirm arrest. Start CPR (30:2) and attach pads.</li>
-                        <li><strong>2.</strong> Analyse rhythm. If non-shockable (Asystole/PEA), do <strong>NOT</strong> shock.</li>
-                        <li><strong>3.</strong> Immediately resume <strong>2 minutes</strong> of CPR.</li>
-                        <li><strong>4.</strong> Give <strong>Adrenaline 1mg IV/IO</strong> as soon as possible.</li>
-                        <li><strong>5.</strong> Repeat cycle (Analyse, 2 min CPR).</li>
-                        <li><strong>6.</strong> Repeat Adrenaline 1mg every 3-5 minutes (every 2 cycles).</li>
-                        <li><strong>7.</strong> Search for and treat reversible causes (4 H's, 4 T's).</li>
-                    </ul>
-                `
-            },
-            'tachy': {
-                title: 'Tachycardia Algorithm (Pulse)',
-                content: `
-                    <ul>
-                        <li><strong>1.</strong> Assess patient. Check for <strong>Adverse Features</strong>:
-                            <br>(Shock, Syncope, Myocardial Ischaemia, Heart Failure)</li>
-                        <li><strong>2. IF UNSTABLE (Adverse Features):</strong>
-                            <br>• <strong>Synchronised DC Shock</strong> (Cardioversion).
-                            <br>• Start at 100-120J (SVT/AF) or 120-150J (VT).</li>
-                        <li><strong>3. IF STABLE:</strong>
-                            <br>• <strong>Narrow QRS:</strong> Vagal manoeuvres, then Adenosine.
-                            <br>• <strong>Broad QRS:</strong> Treat as VT. Amiodarone 300mg.</li>
-                    </ul>
-                `
-            },
-            'brady': {
-                title: 'Bradycardia Algorithm (Pulse)',
-                content: `
-                    <ul>
-                        <li><strong>1.</strong> Assess patient. Check for <strong>Adverse Features</strong>:
-                            <br>(Shock, Syncope, Myocardial Ischaemia, Heart Failure)</li>
-                        <li><strong>2. IF UNSTABLE (Adverse Features):</strong>
-                            <br>• Give <strong>Atropine 500mcg IV</strong> (repeat up to 3mg).</li>
-                        <li><strong>3. IF ATROPINE FAILS (or high-risk block):</strong>
-                            <br>• Start <strong>Transcutaneous Pacing (TCP)</strong>.
-                            <br>• Set rate to 60-70/min, increase output (mA) until capture.
-                            <br>• Consider interim drugs (e.g., Adrenaline/Dopamine infusion).</li>
-                        <li><strong>4. IF STABLE:</strong> Monitor and investigate.</li>
-                    </ul>
-                `
-            }
-        };
-
-        function resizeCanvas() {
-            if (!canvas || !ctx) return;
-            
-            const dpr = window.devicePixelRatio || 1;
-            const rect = canvas.getBoundingClientRect();
-            
-            const newWidth = Math.round(rect.width * dpr);
-            const newHeight = Math.round(rect.height * dpr);
-
-            if (canvas.width !== newWidth || canvas.height !== newHeight) {
-                canvas.width = newWidth;
-                canvas.height = newHeight;
-                ctx.scale(dpr, dpr);
-
-                ctx.lineJoin = 'round';
-                ctx.lineCap = 'round';
-                ctx.imageSmoothingEnabled = false;
-            }
-            canvas.style.width = '100%';
-            canvas.style.height = '100%';
-        }
-
-        function initCanvas() {
-            canvas = document.getElementById('ecgCanvas');
-            if (!canvas) {
-                console.error('Canvas element not found!');
-                return;
-            }
-            window.__ecgCanvas = canvas;
-            ctx = canvas.getContext('2d');
-            resizeCanvas(); 
-            if (animationId) {
-                cancelAnimationFrame(animationId);
-                animationId = null;
-            }
-            lastTimestamp = 0;
-            window.waveformX = 0; // Use global
-        }
-
-        const rhythmVitals = {
-            nsr:             { hr: 75,  spo2: 98, etco2: 5.1, bpSys: 120, bpDia: 80, hasPulse: true },
-            pea:             { hr: 70,  spo2: 0,  etco2: 2.5, bpSys: 0,   bpDia: 0,  hasPulse: false }, 
-            vfib:            { hr: 0,   spo2: 0,  etco2: 0,   bpSys: 0,   bpDia: 0,  hasPulse: false },
-            vtach:           { hr: 180, spo2: 88, etco2: 3.7, bpSys: 82,  bpDia: 48, hasPulse: true },
-            vt_pulseless:    { hr: 0,   spo2: 0,  etco2: 0,   bpSys: 0,   bpDia: 0,  hasPulse: false },
-            svt:             { hr: 190, spo2: 90, etco2: 3.5, bpSys: 80,  bpDia: 54, hasPulse: true },
-            afib:            { hr: 155, spo2: 88, etco2: 4.0, bpSys: 82,  bpDia: 48, hasPulse: true },
-            sinus_brady:     { hr: 45,  spo2: 96, etco2: 4.7, bpSys: 90,  bpDia: 50, hasPulse: true },
-            sinus_tach:      { hr: 120, spo2: 97, etco2: 4.8, bpSys: 110, bpDia: 70, hasPulse: true },
-            asystole:        { hr: 0,   spo2: 0,  etco2: 0,   bpSys: 0,   bpDia: 0,  hasPulse: false },
-            chb:             { hr: 32,  spo2: 92, etco2: 4.0, bpSys: 86,  bpDia: 50, hasPulse: true },
-            paced:           { hr: 70,  spo2: 97, etco2: 4.8, bpSys: 115, bpDia: 72, hasPulse: true },
-            idioventricular: { hr: 40,  spo2: 93, etco2: 4.3, bpSys: 88,  bpDia: 50, hasPulse: true },
-            brady:           { hr: 38,  spo2: 93, etco2: 4.1, bpSys: 84,  bpDia: 52, hasPulse: true }
-        };
-        const treatmentGuides = {
-        vf: "<h3>Shockable Arrest (VF/pVT)</h3><ul><li><b>CPR:</b> 30:2 immediately.</li><li><b>Shock:</b> >120J Biphasic (150J recommended).</li><li><b>Drugs:</b> Adrenaline 1mg every 3-5min. Amiodarone 300mg after 3 shocks.</li></ul>",
-        nonshock: "<h3>Non-Shockable (PEA/Asystole)</h3><ul><li><b>CPR:</b> 30:2 immediately.</li><li><b>Shock:</b> DO NOT SHOCK.</li><li><b>Drugs:</b> Adrenaline 1mg immediately. Treat reversible causes (4Hs 4Ts).</li></ul>",
-        tachy: "<h3>Tachycardia Algorithm</h3><ul><li><b>Unstable:</b> Synchronised Cardioversion (up to 3 attempts). Sedation/GA if conscious.</li><li><b>Stable:</b> Vagal manoeuvres -> Adenosine (SVT) or Amiodarone (VT).</li></ul>",
-        brady: "<h3>Bradycardia Algorithm</h3><ul><li><b>Drugs:</b> Atropine 500mcg IV (Max 3mg).</li><li><b>Pacing:</b> Indicated for Mobitz II, CHB, or Pause >3s. Set rate 60-90. Increase mA until capture.</li></ul>"
-    };
-        // Map PEA to Sinus visual
-        window.rhythms.pea = window.rhythms.nsr;
-
-        function setVitals(rhythm) {
-            const vitals = rhythmVitals[rhythm] || rhythmVitals['nsr'];
-            state.rhythm = rhythm;
-            state.hr = vitals.hr;
-            state.spo2 = vitals.spo2;
-            state.etco2 = vitals.etco2;
-            state.bpSys = vitals.bpSys;
-            state.bpDia = vitals.bpDia;
-            state.hasPulse = vitals.hasPulse;
-            state.lastSensedQRS_X = -1000;
-        }
-
-        function animate(timestamp) {
-            if (!canvas || !ctx) { requestAnimationFrame(animate); return; }
-            
-            if (lastTimestamp === 0) lastTimestamp = timestamp;
-            const deltaTime = (timestamp - lastTimestamp) / 1000;
-            lastTimestamp = timestamp;
-
-            const dpr = window.devicePixelRatio || 1;
-            const logicalW = canvas.width / dpr;
-            const logicalH = canvas.height / dpr;
-
-            // 1. Draw Grid
-            if (window.drawECGGrid) {
-                ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-                window.drawECGGrid(ctx, logicalW, logicalH);
-            } else {
-                ctx.fillStyle = '#000';
-                ctx.fillRect(0, 0, logicalW, logicalH);
-            }
-
-            // 2. Draw Trace
-            const simTime = state.scenarioStartTime ? (Date.now() - state.scenarioStartTime)/1000 : 0;
-            const baselineY = logicalH / 2;
-            
-            ctx.strokeStyle = '#39ff14'; 
-            ctx.lineWidth = 2.5;
-            ctx.lineJoin = 'round';
-            ctx.lineCap = 'round';
-            ctx.shadowBlur = 10;          
-            ctx.shadowColor = 'rgba(57, 255, 20, 0.8)'; 
-            
-            ctx.beginPath();
-
-            const rhythmFn = window.rhythms && window.rhythms[state.rhythm];
-            
-            if (rhythmFn) {
-                if (typeof window.waveformX === 'undefined') window.waveformX = 0;
-
-                const step = 0.5;
-                const startGlobalX = Math.floor(window.waveformX / step) * step;
-                const endGlobalX = window.waveformX + logicalW;
-                
-                let firstPoint = true;
-                
-                // --- PASS 1: DRAW GREEN TRACE ---
-                for (let gx = startGlobalX; gx <= endGlobalX + step; gx += step) {
-                    const screenX = gx - window.waveformX;
-                    let yVal = rhythmFn(gx, state.hr, simTime, {height: logicalH});
-                    
-                    if (!isFinite(yVal)) yVal = baselineY;
-                    
-                    if (firstPoint) {
-                        ctx.moveTo(screenX, yVal);
-                        firstPoint = false;
-                    } else {
-                        ctx.lineTo(screenX, yVal);
-                    }
-                }
-                ctx.stroke(); 
-
-                // --- PASS 2: OVERLAYS (Pacer & Sync) ---
-                for (let gx = startGlobalX; gx <= endGlobalX + step; gx += step) {
-                    const screenX = gx - window.waveformX;
-                    
-                    // 1. Pacer Spikes (Pink Line)
-                    if (state.pacingActive) {
-                        const pacerCycle = (60 / state.pacerRate) * window.ecgSpeed;
-                        const pacerPhase = (gx % pacerCycle) / pacerCycle;
-                        
-                        if (pacerPhase < (step/pacerCycle)) {
-                            ctx.save();
-                            ctx.strokeStyle = '#ff00ff'; 
-                            ctx.lineWidth = 2;
-                            ctx.beginPath();
-                            ctx.moveTo(screenX, baselineY - 60); 
-                            ctx.lineTo(screenX, baselineY + 60);
-                            ctx.stroke();
-                            ctx.restore();
-                        }
-                    }
-
-                    // 2. Sync Markers (White Bar at Top of Screen)
-                    if (state.syncMode && state.hasPulse && state.rhythm !== 'vfib' && state.rhythm !== 'asystole') {
-                        let peakT = 0.25; 
-                        
-                        // FIX: Use the EXACT BPMs defined in the rhythm generator functions to prevent drift
-                        let syncBPM = state.hr || 75; 
-
-                        if (state.rhythm === 'svt') { 
-                            peakT = 0.15; 
-                            syncBPM = 180; // Matches svt() function
-                        } else if (state.rhythm === 'vtach') {
-                            syncBPM = 160; // Matches vtach() function
-                        } else if (state.rhythm === 'afib') {
-                            peakT = 0.25;
-                            syncBPM = 140; // Matches afib() function
-                        } else if (state.rhythm === 'paced') {
-                            peakT = 0.12;
-                            syncBPM = state.pacerRate; 
-                        }
-
-                        const cycle = (60 / syncBPM) * window.ecgSpeed;
-                        const t = (gx % cycle) / cycle;
-                        
-                        // Check if we are at the peak phase
-                        if (t >= peakT && (t - (step/cycle)) < peakT) {
-                            ctx.save();
-                            ctx.fillStyle = '#ffffff'; // Pure White
-                            ctx.shadowBlur = 5;
-                            ctx.shadowColor = 'white';
-                            
-                            // Draw Rect at TOP of screen (y=30), centered on X
-                            ctx.beginPath();
-                            ctx.fillRect(screenX - 3, 30, 6, 20); 
-                            ctx.restore();
-                        }
-                    }
-                }
-            }
-            
-            // 3. Move Paper
-            const speed = window.ecgSpeed || 125;
-            const logicalMove = speed * deltaTime;
-            
-            if (typeof window.waveformX !== 'undefined') {
-                window.waveformX += logicalMove;
-            }
-
-            animationId = requestAnimationFrame(animate);
-        }
-
-        function updateDisplays() {
-            if (state.deviceMode === 'off') return; 
-
-            const scenario = scenarios[state.selectedScenario];
-            let displayHR = state.hr;
-            
-            if (state.isCaptured) {
-                displayHR = state.pacerRate; 
-            } else if (state.customScenarioActive) { 
-                 displayHR = state.hr; 
-            } else if (scenario && state.scenarioActive && !scenario.hasPulse && !state.roscAchieved) {
-                displayHR = 0; 
-            } else if (!state.hasPulse && !state.roscAchieved) {
-                displayHR = 0; 
-            } else {
-                displayHR = state.hr; 
-            }
-            
-            document.getElementById('hrDisplay').textContent = displayHR;
-            document.getElementById('spo2Display').textContent = state.spo2;
-
-            // --- ETCO2 LOGIC UPDATE ---
-            let displayEtco2 = state.etco2;
-            // If CPR is active and no ROSC, simulate perfusion boost (2.8 - 3.0 range)
-            if (state.cprActive && !state.roscAchieved && displayEtco2 < 2.5) {
-                displayEtco2 = 2.8 + (Math.random() * 0.2);
-            }
-            document.getElementById('etco2Display').textContent = displayEtco2.toFixed(1);
-            // --------------------------
-
-            document.getElementById('bpDisplay').textContent = `${state.bpSys}/${state.bpDia}`;
-            document.getElementById('energyDisplay').textContent = state.energy;
-            document.getElementById('outputDisplay').textContent = state.pacerOutput;
-            document.getElementById('rateDisplay').textContent = state.pacerRate;
-            document.getElementById('modeInfo').textContent = `MODE: ${state.deviceMode.toUpperCase()}`;
-            
-            document.getElementById('syncIndicator').textContent = state.syncMode ? 'SYNC' : '';
-            document.getElementById('syncIndicator').className = state.syncMode ? 'screen-info sync-indicator' : 'screen-info';
-            
-            const hrEl = document.getElementById('hrDisplay');
-            hrEl.className = 'vital-value';
-            if (displayHR === 0 || (state.hasPulse === false && !state.roscAchieved)) {
-                hrEl.classList.add('critical');
-            }
-            
-            const spo2El = document.getElementById('spo2Display');
-            spo2El.className = 'vital-value';
-            if (state.spo2 === 0) {
-                spo2El.classList.add('critical');
-            }
-            
-            if (document.getElementById('shockCounter')) {
-                document.getElementById('shockCounter').textContent = state.shockCount;
-            }
-            if (document.getElementById('syncStatus')) {
-                document.getElementById('syncStatus').textContent = state.syncMode ? 'ON' : 'OFF';
-            }
-            if (document.getElementById('pacingStatus')) {
-                document.getElementById('pacingStatus').textContent = state.pacingActive ? 'ACTIVE' : 'OFF';
-
-            }
-        }
-
-        function setMessage(text, type = 'ready') {
-            if (state.deviceMode === 'off') return;
-            const msgEl = document.getElementById('messageBar');
-            if (!msgEl) return;
-            msgEl.textContent = text;
-            msgEl.className = 'message-bar ' + type;
-        }
-
-        function logAction(action, details = '') {
-            const timestamp = state.scenarioStartTime ? 
-                Math.floor((Date.now() - state.scenarioStartTime) / 1000) : 0;
-            state.actions.push({
-                time: timestamp,
-                action: action,
-                details: details
-            });
-            console.log(`[${timestamp}s] ${action}${details ? ': ' + details : ''}`);
-
-            // Update Visual Log in CPR Panel
-            const cprLog = document.getElementById('cprLog');
-            if (cprLog) {
-                const timeStr = document.getElementById('cprTimerDisplay').textContent || "00:00";
-                const entry = document.createElement('div');
-                entry.style.borderBottom = '1px solid rgba(255,255,255,0.1)';
-                entry.style.padding = '2px 0';
-                entry.innerHTML = `<span style="color:#f1c40f; font-weight:bold;">[${timeStr}]</span> ${action} <span style="opacity:0.7">${details}</span>`;
-                // Insert at the beginning so it stays at the top (due to flex-direction: column-reverse)
-                cprLog.prepend(entry); 
-            }
-        }
-
-        function backToModeSelect() {
-            scenarioScreen.classList.add('hidden');
-            menuWrapper.classList.add('hidden'); 
-            state.selectedMode = null;
-            
-            endScenarioBtn.classList.add('hidden');
-            resetScenarioBtn.classList.add('hidden');
-        }
-
-function selectScenario(scenarioId) {
-    clearAllTimers();
-            const scenario = scenarios[scenarioId];
-            if (!scenario) return;
-            
-            state.selectedScenario = scenarioId;
-            state.actions = [];
-            state.shockCount = 0;
-            state.syncMode = false;
-            state.pacingActive = false;
-            state.charged = false;
-            state.roscAchieved = false;
-            state.customScenarioActive = false; 
-            
-            // --- NEW: RANDOMISE CAPTURE THRESHOLD ---
-            // Adds variance (+/- 15mA) to the scenario default so students must "hunt"
-            if (scenario.captureThreshold) {
-                const variance = Math.floor(Math.random() * 30) - 15; 
-                scenario.currentThreshold = Math.max(30, scenario.captureThreshold + variance);
-                console.log("Sim Capture Threshold set to:", scenario.currentThreshold); // For debugging
-            }
-            // ----------------------------------------
-
-            setVitals(scenario.initialRhythm);
-            state.hr = scenario.initialVitals.hr;
-            state.spo2 = scenario.initialVitals.spo2;
-            state.etco2 = scenario.initialVitals.etco2;
-            state.bpSys = scenario.initialVitals.bpSys;
-            state.bpDia = scenario.initialVitals.bpDia;
-            state.hasPulse = scenario.hasPulse;
-            
-            scenarioScreen.classList.add('hidden');
-            menuWrapper.classList.add('hidden'); 
-            simulatorContainer.classList.remove('hidden');
-            
-            if (state.selectedMode === 'education') {
-                const btn = document.getElementById('minimiseBtn');
-                instructorPanel.classList.remove('hidden');
-                instructorPanel.classList.add('minimised');
-                if (btn) btn.textContent = '▼ Show';
-                document.getElementById('instructorSubtitle').textContent = scenario.name;
-            } else {
-                instructorPanel.classList.add('hidden');
-            }
-
-            setMode('monitor'); 
-
-            state.scenarioActive = false;
-            let countdown = 3;
-            setMessage(`SCENARIO STARTING IN ${countdown}...`, 'ready');
-
-            const countdownInterval = setInterval(() => {
-                countdown--;
-                if (countdown > 0) {
-                    setMessage(`SCENARIO STARTING IN ${countdown}...`, 'ready');
-                } else {
-                    clearInterval(countdownInterval);
-                    state.scenarioStartTime = Date.now();
-                    state.scenarioActive = true;
-
-                    let msg = scenario.description.toUpperCase();
-                    if (!scenario.hasPulse) {
-                        setMessage(msg, 'alert');
-                    } else {
-                        setMessage(msg, 'ready');
-                    }
-                    logAction('Scenario started', scenario.name);
-                }
-            }, 1000);
-        }
-
-        function endScenario() {
-            if (!state.scenarioActive) {
-                returnToMenu();
-                return;
-            }
-            
-            if (!window.confirm('End the current scenario?')) {
-                 return;
-            }
-            
-            state.scenarioActive = false;
-            logAction('Scenario ended');
-            
-            if (animationId) {
-                cancelAnimationFrame(animationId);
-                animationId = null;
-            }
-            
-            if (state.selectedScenario) {
-                showSummary();
-            } else {
-                returnToMenu(); 
-            }
-        }
-
-        function resetScenario() {
-            if (state.customScenarioActive) {
-                if (!window.confirm('Reset this custom scenario?')) return;
-                startCustomScenario(); 
-            } else if (state.selectedScenario) {
-                if (!window.confirm('Reset this scenario?')) return;
-                selectScenario(state.selectedScenario);
-            }
-        }
-
-        function showSummary() {
-            const scenario = scenarios[state.selectedScenario];
-            if (!scenario) {
-                returnToMenu();
-                return;
-            }
-            
-            simulatorContainer.classList.add('hidden');
-            menuWrapper.classList.remove('hidden');
-            summaryScreen.classList.remove('hidden');
-            
-            document.getElementById('summaryScenarioName').textContent = scenario.name;
-            document.getElementById('summaryScenarioDesc').textContent = scenario.description;
-            
-            let actionsHTML = '';
-            if (state.actions.length > 0) {
-                actionsHTML = '<div style="display: grid; gap: 8px;">';
-                state.actions.forEach(action => {
-                    const timestamp = action.time ? `${Math.floor(action.time / 60)}:${String(action.time % 60).padStart(2, '0')}` : '0:00';
-                    actionsHTML += `<div style="padding: 10px; background: #34495e; border-radius: 5px;">
-                        <strong style="color: #3498db;">${timestamp}</strong> - ${action.action}${action.details ? ': ' + action.details : ''}
-                    </div>`;
-                });
-                actionsHTML += '</div>';
-            } else {
-                actionsHTML = '<div style="color: #e74c3c;">No actions recorded</div>';
-            }
-            document.getElementById('summaryActions').innerHTML = actionsHTML;
-            
-            const feedback = generateFeedback(scenario);
-            document.getElementById('summaryFeedback').innerHTML = feedback;
-            
-            const outcome = generateOutcome(scenario);
-            document.getElementById('summaryOutcome').innerHTML = outcome;
-        }
-
-        function generateFeedback(scenario) {
-            let html = '';
-            const goodPoints = [];
-            const improvementPoints = [];
-            
-            const modeChanges = state.actions.filter(a => a.action === 'Mode changed');
-            const shocks = state.actions.filter(a => a.action.includes('delivered'));
-            const syncActivated = state.actions.find(a => a.action === 'Sync mode activated');
-            const pacingActions = state.actions.filter(a => a.action.includes('Pacing'));
-            const pulseChecks = state.actions.filter(a => a.action === 'Pulse check performed');
-            
-            if (pulseChecks.length > 0) {
-                goodPoints.push(`✓ Pulse checked ${pulseChecks.length} time(s)`);
-                
-                if (pulseChecks[0].time <= 30) {
-                    goodPoints.push('✓ Early pulse assessment performed');
-                }
-            } else {
-                improvementPoints.push('⚠ No pulse check documented - critical for choosing correct intervention');
-            }
-            
-            if (scenario.category === 'defibrillation') {
-                const defibMode = modeChanges.find(m => m.details === 'DEFIB');
-                if (defibMode) {
-                    goodPoints.push('✓ Defibrillator mode selected correctly');
-                } else {
-                    improvementPoints.push('✗ Should switch to DEFIB mode for cardiac arrest');
-                }
-                
-                if (syncActivated) {
-                    improvementPoints.push('✗ Sync mode should NOT be used for cardiac arrest (no pulse)');
-                } else {
-                    goodPoints.push('✓ Correctly used unsynchronised shocks (no sync)');
-                }
-                
-                if (shocks.length > 0) {
-                    goodPoints.push(`✓ ${shocks.length} shock(s) delivered`);
-                    
-                    const firstShock = shocks[0];
-                    if (firstShock.details.includes(`${scenario.recommendedEnergy}J`) || 
-                        firstShock.details.includes('150J') || 
-                        firstShock.details.includes('200J')) {
-                        goodPoints.push('✓ Appropriate energy level selected');
-                    } else {
-                        improvementPoints.push(`⚠ Recommended energy: ${scenario.recommendedEnergy}J or higher`);
-                    }
-                    
-                    const timeToShock = firstShock.time;
-                    if (timeToShock <= 60) {
-                        goodPoints.push(`✓ Rapid defibrillation (${timeToShock}s) - excellent`);
-                    } else if (timeToShock <= 180) {
-                        goodPoints.push(`✓ Timely defibrillation (${timeToShock}s)`);
-                    } else {
-                        improvementPoints.push(`⚠ Delay to first shock: ${timeToShock}s (aim for <60s in witnessed arrest)`);
-                    }
-                } else {
-                    improvementPoints.push('✗ No shocks delivered - shockable rhythm requires defibrillation');
-                }
-                
-            } else if (scenario.category === 'cardioversion') {
-                if (syncActivated) {
-                    goodPoints.push('✓ Sync mode activated correctly');
-                } else {
-                    improvementPoints.push('✗ CRITICAL: Must use SYNC mode for cardioversion (patient has pulse)');
-                }
-                
-                const defibMode = modeChanges.find(m => m.details === 'DEFIB');
-                if (defibMode) {
-                    goodPoints.push('✓ Defibrillator mode selected');
-                }
-                
-                if (shocks.length > 0) {
-                    goodPoints.push('✓ Cardioversion attempted');
-                    
-                    const firstShock = shocks[0];
-                    const energyUsed = parseInt(firstShock.details.match(/(\d+)J/)?.[1] || '0');
-                    if (Math.abs(energyUsed - scenario.recommendedEnergy) <= 30) {
-                        goodPoints.push(`✓ Appropriate energy used (${energyUsed}J)`);
-                    } else {
-                        improvementPoints.push(`⚠ Recommended energy: ${scenario.recommendedEnergy}J for this rhythm`);
-                    }
-                    
-                    const timeToShock = firstShock.time;
-                    if (timeToShock <= 60) {
-                        goodPoints.push(`✓ Rapid cardioversion (${timeToShock}s)`);
-                    } else {
-                        improvementPoints.push(`⚠ Time to cardioversion: ${timeToShock}s (aim for <60s when unstable)`);
-                    }
-                } else {
-                    improvementPoints.push('✗ No cardioversion attempted - patient has adverse features');
-                }
-                
-            } else if (scenario.category === 'pacing') {
-                const pacerMode = modeChanges.find(m => m.details === 'PACER');
-                if (pacerMode) {
-                    goodPoints.push('✓ Pacing mode selected');
-                } else {
-                    improvementPoints.push('✗ Should switch to PACER mode');
-                }
-                
-                const outputAdjusted = pacingActions.find(a => a.action.includes('output'));
-                if (outputAdjusted) {
-                    goodPoints.push('✓ Pacing output adjusted');
-                    
-                    const captureAchieved = pacingActions.find(a => a.action.includes('capture'));
-                    if (captureAchieved) {
-                        goodPoints.push('✓ Electrical and mechanical capture achieved');
-                    } else {
-                        improvementPoints.push('⚠ Increase output until capture achieved (check for palpable pulse)');
-                    }
-                }
-                
-                const rateAdjusted = pacingActions.find(a => a.action.includes('rate'));
-                if (rateAdjusted) {
-                    goodPoints.push('✓ Pacing rate set appropriately');
-                }
-            }
-            
-            if (goodPoints.length > 0) {
-                html += '<div style="background: rgba(39, 174, 96, 0.1); border-left: 4px solid #27ae60; padding: 15px; margin: 10px 0; border-radius: 5px;">';
-                html += '<strong style="color: #27ae60;">Good Practice:</strong><ul style="margin: 10px 0; padding-left: 20px; color: #ecf0f1;">';
-                goodPoints.forEach(p => html += `<li style="margin: 5px 0;">${p}</li>`);
-                html += '</ul></div>';
-            }
-            
-            if (improvementPoints.length > 0) {
-                html += '<div style="background: rgba(231, 76, 60, 0.1); border-left: 4px solid #e74c3c; padding: 15px; margin: 10px 0; border-radius: 5px;">';
-                html += '<strong style="color: #e74c3c;">Areas for Improvement:</strong><ul style="margin: 10px 0; padding-left: 20px; color: #ecf0f1;">';
-                improvementPoints.forEach(i => html += `<li style="margin: 5px 0;">${i}</li>`);
-                html += '</ul></div>';
-            }
-            
-            if (html === '') {
-                html = '<div style="color: #f39c12;">No device actions performed</div>';
-            }
-            
-            return html;
-        }
-
-        function generateOutcome(scenario) {
-            let html = '';
-            
-            if (scenario.category === 'defibrillation' || scenario.category === 'cardioversion') {
-                const converted = state.rhythm === 'nsr' || state.hr < 100 || state.roscAchieved;
-                if (converted) {
-                    html = `<div style="color: #27ae60; font-size: 18px; font-weight: bold;">✓ RHYTHM CONVERTED</div>
-                        <div style="color: #ecf0f1; margin-top: 10px;">Patient now in sinus rhythm. Vital signs improving.</div>`;
-                } else {
-                    html = `<div style="color: #f39c12; font-size: 18px; font-weight: bold;">⚠ Rhythm not converted</div>
-                        <div style="color: #ecf0f1; margin-top: 10px;">Patient remains in abnormal rhythm. Continue management.</div>`;
-                }
-            } else if (scenario.category === 'pacing') {
-                const captureAchieved = state.actions.find(a => a.action.includes('capture'));
-                if (captureAchieved) {
-                    html = `<div style="color: #27ae60; font-size: 18px; font-weight: bold;">✓ PACING SUCCESSFUL</div>
-                        <div style="color: #ecf0f1; margin-top: 10px;">Electrical and mechanical capture achieved. Patient stabilised.</div>`;
-                } else {
-                    html = `<div style="color: #f39c12; font-size: 18px; font-weight: bold;">⚠ Pacing not successful</div>
-                        <div style="color: #ecf0f1; margin-top: 10px;">Capture not yet achieved. Continue to increase output.</div>`;
-                }
-            }
-            
-            return html;
-        }
-
-        function returnToMenu() {
-            clearAllTimers();
-            summaryScreen.classList.add('hidden');
-            certificateScreen.classList.add('hidden');
-            scenarioScreen.classList.add('hidden');
-            menuWrapper.classList.add('hidden');
-            simulatorContainer.classList.remove('hidden');
-            
-            endScenarioBtn.classList.add('hidden');
-            resetScenarioBtn.classList.add('hidden');
-            
-            state.scenarioActive = false;
-            state.syncMode = false;
-            state.pacingActive = false;
-            state.charged = false;
-            state.shockCount = 0;
-            state.selectedMode = null;
-            state.selectedScenario = null;
-            state.actions = [];
-            state.roscAchieved = false;
-            
-            state.customScenario = [];
-            state.customScenarioActive = false;
-            state.currentScenarioStep = 0;
-            
-            setMode('off'); 
-        }
-
-        function showSplashScreen(callback) {
-            const splash = document.getElementById('splashScreen');
-            const screenEl = document.querySelector('.screen');
-            if (!splash || !screenEl) {
-                callback();
-                return;
-            }
-            
-            screenEl.classList.add('screen-off');
-            splash.style.display = 'flex';
-            
-            setTimeout(() => {
-                splash.style.display = 'none';
-                screenEl.classList.remove('screen-off');
-                callback();
-            }, 1000); 
-        }
-
-        function setMode(mode) {
-            const labels = document.querySelectorAll('.mode-label');
-            labels.forEach(l => l.classList.remove('active'));
-            const activeLabel = document.querySelector(`.mode-label[data-mode="${mode}"]`);
-            if(activeLabel) activeLabel.classList.add('active');
-            
-            const rotations = { monitor: 0, defib: 90, pacer: 180, off: 270 };
-            document.getElementById('modeDial').style.setProperty('--dial-rotation', `${rotations[mode]}deg`);
-
-            // NEW: Toggle Pacing Cover
-            const cover = document.getElementById('pacingCover');
-            if (cover) {
-                if (mode === 'pacer') {
-                    cover.classList.add('open');
-                } else {
-                    cover.classList.remove('open');
-                    state.isCaptured = false; 
-                }
-            }
-
-            const screenEl = document.querySelector('.screen');
-            state.deviceMode = mode; 
-            
-            if (mode === 'off') {
-                if (animationId) {
-                    cancelAnimationFrame(animationId);
-                    animationId = null;
-                }
-                screenEl.classList.add('screen-off');
-                document.getElementById('hrDisplay').textContent = '--';
-                document.getElementById('spo2Display').textContent = '--';
-                document.getElementById('etco2Display').textContent = '--';
-                document.getElementById('bpDisplay').textContent = '--/--';
-                document.getElementById('messageBar').textContent = '';
-                document.getElementById('messageBar').className = 'message-bar';
-                document.getElementById('leadInfo').textContent = 'LEAD: II';
-                document.getElementById('syncIndicator').textContent = '';
-                document.getElementById('modeInfo').textContent = 'MODE: OFF';
-                
-                if (ctx) {
-                    const dpr = window.devicePixelRatio || 1;
-                    ctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);
-                }
-                logAction('Mode changed', 'OFF');
-            } else {
-                screenEl.classList.remove('screen-off');
-                logAction('Mode changed', mode.toUpperCase());
-                updateDisplays();
-                if (!animationId) { 
-                    lastTimestamp = 0;
-                    window.waveformX = 0;
-                    animationId = requestAnimationFrame(animate);
-                }
-            }
-            
-            if (mode === 'pacer') {
-                state.pacingActive = true;
-                if (!state.originalRhythm) state.originalRhythm = state.rhythm;
-                state.pacerStartTime = window.waveformX; 
-            } else {
-                state.pacingActive = false;
-                if (state.isCaptured) {
-                    setVitals(state.originalRhythm || 'nsr');
-                    updateDisplays();
-                }
-                state.originalRhythm = null;
-                state.isCaptured = false;
-            }
-            if (mode !== 'off') updateDisplays();
-        }
-
-        function toggleSync() {
-            if (state.deviceMode === 'off') return;
-            state.syncMode = !state.syncMode;
-            const btn = document.getElementById('syncBtn');
-            if (state.syncMode) {
-                btn.classList.add('active');
-                setMessage('SYNC MODE ON - SYNCHRONISED CARDIOVERSION', 'ready');
-                logAction('Sync mode activated');
-            } else {
-                btn.classList.remove('active');
-                setMessage('SYNC MODE OFF', 'ready');
-                logAction('Sync mode deactivated');
-                state.syncMarkers = []; 
-            }
-            updateDisplays();
-        }
-
-        function adjustEnergy(dir) {
-            if (state.deviceMode === 'off') return;
-            const idx = state.energyLevels.indexOf(state.energy);
-            if (dir > 0 && idx < state.energyLevels.length - 1) {
-                state.energy = state.energyLevels[idx + 1];
-            } else if (dir < 0 && idx > 0) {
-                state.energy = state.energyLevels[idx - 1];
-            }
-            state.charged = false;
-            document.getElementById('shockBtn').disabled = true;
-            logAction('Energy adjusted', `${state.energy}J`);
-            updateDisplays();
-        }
-
-function chargeDefib() {
-            if (state.deviceMode !== 'defib') {
-                setMessage('SWITCH TO DEFIB MODE', '');
-                return;
-            }
-            if (state.machineState === APP_STATES.CHARGING || state.machineState === APP_STATES.READY) return;
-            
-            transitionTo(APP_STATES.CHARGING);
-            setMessage('CHARGING...', 'alert');
-            logAction('Charge initiated', `${state.energy}J`);
-            playSound('charging');
-            
-            setTimeout(() => {
-                state.charged = true; 
-                transitionTo(APP_STATES.READY);
-                logAction('Charged', `${state.energy}J ready`);
-                
-                // --- SAFETY DUMP TIMER ---
-                // Auto-disarm after 60 seconds if shock not delivered
-                if (state.chargeTimer) clearTimeout(state.chargeTimer);
-                state.chargeTimer = setTimeout(() => {
-                    if (state.charged) {
-                        state.charged = false;
-                        document.getElementById('shockBtn').disabled = true;
-                        transitionTo(APP_STATES.IDLE);
-                        setMessage('CHARGE DUMPED - SAFETY TIMEOUT', 'ready');
-                        logAction('Safety', 'Charge dumped (Timeout)');
-                        playSound('alarm');
-                    }
-                }, 60000);
-                // -------------------------
-                
-            }, 2000);
-        }
-
-        function deliverShock() {
-            if (state.machineState !== APP_STATES.READY) return;
-            
-            // Clear safety timer if it exists
-            if (state.chargeTimer) clearTimeout(state.chargeTimer);
-
-            const energy = state.energy;
-            const sync = state.syncMode;
-            const rhythm = state.rhythm;
-
-            // --- REALISTIC SYNC DELAY ---
-            // If in SYNC mode, simulate the delay while waiting for R-wave
-            let delay = 0;
-            if (sync) {
-                // Random delay between 200ms and 800ms to mimic waiting for next QRS
-                delay = Math.floor(Math.random() * 600) + 200;
-                setMessage('SYNC... WAITING FOR R-WAVE...', 'alert');
-            }
-
-            setTimeout(() => {
-                state.shockCount++;
-                playSound('shock');
-                logAction(`Shock ${state.shockCount} delivered`, `${energy}J (${sync ? 'SYNC' : 'UNSYNC'})`);
-                
-                // --- AUTO-RESET CYCLE TIMER ---
-                if (typeof startCycleCountdown === 'function') {
-                    startCycleCountdown();
-                    logAction('Shock Delivered', 'Cycle Timer Reset');
-                }
-
-                if (canvas) {
-                    canvas.style.background = '#fff';
-                    setTimeout(() => canvas.style.background = '#000', 100);
-                }
-                
-                setMessage(`SHOCK DELIVERED`, 'alert');
-                transitionTo(APP_STATES.IDLE);
-                
-                // --- SMART ALS LOGIC ---
-                setTimeout(() => {
-                    let success = false;
-                    let failReason = "";
-
-                    // 1. VF / pVT Criteria
-                    if (rhythm === 'vfib' || rhythm === 'vt_pulseless') {
-                        if (energy >= 120) success = true; 
-                        else failReason = "ENERGY TOO LOW";
-                    }
-                    // 2. Unstable SVT / AFib / VT Criteria
-                    else if (rhythm === 'svt' || rhythm === 'afib' || rhythm === 'vtach') {
-                        if (sync && energy >= 70) success = true; 
-                        else if (!sync) failReason = "R-ON-T HAZARD (NO SYNC)";
-                        else failReason = "ENERGY TOO LOW";
-                    }
-
-                    if (success) {
-                        setMessage('RHYTHM CONVERTING...', 'ready');
-                        setTimeout(() => {
-                            quickSetRhythm('nsr');
-                            state.roscAchieved = true;
-                            updateDisplays();
-                        }, 1000);
-                        
-                        if (state.customScenarioActive) checkScenarioTrigger('shock');
-                    } else {
-                        if (failReason) setMessage(`SHOCK FAILED: ${failReason}`, 'alert');
-                        else setMessage('SHOCK DELIVERED - NO CHANGE', 'ready');
-                    }
-                    
-                    startCPRTimer();
-                }, 2000);
-            }, delay);
-        }
-
-        function analyseRhythm() {
-            if (state.deviceMode === 'off') return;
-            if (state.machineState !== APP_STATES.IDLE && state.machineState !== undefined) return;
-
-            if (state.customScenarioActive) {
-                logAction('Analyse pressed (Cycle ' + (state.currentScenarioStep + 1) + ')');
-                state.currentScenarioStep++;
-                if (state.currentScenarioStep >= state.customScenario.length) {
-                    setMessage('CUSTOM SCENARIO COMPLETE', 'ready');
-                    logAction('Custom Scenario complete');
-                    state.scenarioActive = false; 
-                    state.customScenarioActive = false;
-                    return;
-                }
-                const nextRhythm = state.customScenario[state.currentScenarioStep].initial;
-                setVitals(nextRhythm);
-                logAction('Custom Scenario: Cycle ' + (state.currentScenarioStep + 1), 'Rhythm: ' + nextRhythm);
-                
-                transitionTo(APP_STATES.ANALYSING);
-                setMessage('ANALYSING... CYCLE ' + (state.currentScenarioStep + 1), '');
-                
-                setTimeout(() => {
-                    const vitals = rhythmVitals[nextRhythm];
-                    if (!vitals.hasPulse || nextRhythm === 'vtach' || nextRhythm === 'svt' || nextRhythm === 'afib') {
-                        setMessage('SHOCKABLE RHYTHM DETECTED', 'alert');
-                    } else {
-                        setMessage('ORGANISED RHYTHM', 'ready');
-                    }
-                    transitionTo(APP_STATES.IDLE);
-                }, 1500); 
-                return;
-            }
-
-            transitionTo(APP_STATES.ANALYSING);
-            setMessage('ANALYSING... STAND CLEAR', 'alert');
-            logAction('Rhythm analysed');
-            
-            setTimeout(() => {
-                let currentRhythm = state.rhythm;
-                let currentPulse = state.hasPulse;
-                if (state.selectedScenario && state.scenarioActive) {
-                    const scenario = scenarios[state.selectedScenario];
-                    currentPulse = scenario.hasPulse || state.roscAchieved;
-                }
-                
-                if (currentRhythm === 'vfib' || (currentRhythm === 'vtach' && !currentPulse) || currentRhythm === 'vt_pulseless') {
-                    setMessage('SHOCKABLE RHYTHM DETECTED', 'alert');
-                } else {
-                    setMessage('ORGANISED RHYTHM', 'ready');
-                }
-                transitionTo(APP_STATES.IDLE);
-            }, 2500);
-        }
-
-        function adjustPacer(param, change) {
-    if (state.deviceMode === 'off') return;
-    if (state.deviceMode !== 'pacer') {
-        setMessage('Switch to PACER mode to adjust pacing', '');
-        return;
-    }
-    const scenario = scenarios[state.selectedScenario];
-    
-    if (param === 'output') {
-        // Update State
-        state.pacerOutput = Math.max(0, Math.min(140, state.pacerOutput + change));
-        logAction('Pacing output adjusted', `${state.pacerOutput}mA`);
-        
-        // --- VISUAL FIX: Target the correct dial (2nd child, because 1st is the cover) ---
-        const rotation = (state.pacerOutput / 140) * 270;
-        const dial = document.querySelector('.pacing-controls > div:nth-child(2) .pacer-dial');
-        if (dial) dial.style.setProperty('--dial-rotation', `${rotation}deg`);
-        // ---------------------------------------------------------------------------------
-        
-        let captureThreshold = 60; 
-        let isPacingScenario = false;
-        if (scenario && state.scenarioActive && scenario.requiresPacing) {
-            captureThreshold = scenario.currentThreshold || scenario.captureThreshold;
-            isPacingScenario = true;
-        } else {
-            isPacingScenario = (state.originalRhythm === 'chb' || state.originalRhythm === 'brady' || state.originalRhythm === 'sinus_brady');
-        }
-
-        const nowCaptured = (state.pacerOutput >= captureThreshold) && isPacingScenario;
-
-        if (nowCaptured !== state.isCaptured) { 
-            state.isCaptured = nowCaptured;
-            
-            if (nowCaptured) {
-                const successVitals = (scenario && scenario.requiresPacing) ? scenario.successVitals : rhythmVitals['paced'];
-                logAction('Pacing capture achieved', `at ${state.pacerOutput}mA`);
-                state.rhythm = 'paced'; 
-                state.hr = state.pacerRate; 
-                
-                if(successVitals) {
-                    state.spo2 = successVitals.spo2;
-                    state.etco2 = successVitals.etco2;
-                    state.bpSys = successVitals.bpSys;
-                    state.bpDia = successVitals.bpDia;
-                }
-                setMessage(`CAPTURE ACHIEVED AT ${state.pacerOutput}mA`, 'ready');
-                if (state.customScenarioActive) checkScenarioTrigger('pacing');
-                
-            } else {
-                logAction('Pacing capture lost');
-                setVitals(state.originalRhythm || 'nsr'); 
-                setMessage('CAPTURE LOST', 'alert');
-            }
-            updateDisplays(); 
-        }
-        updateDisplays();
-        
-    } else if (param === 'rate') {
-        // Update State
-        state.pacerRate = Math.max(30, Math.min(180, state.pacerRate + change));
-        logAction('Pacing rate adjusted', `${state.pacerRate}ppm`);
-        
-        // --- VISUAL FIX: Target the correct dial (3rd child) ---
-        const rotation = ((state.pacerRate - 30) / 150) * 270;
-        const dial = document.querySelector('.pacing-controls > div:nth-child(3) .pacer-dial');
-        if (dial) dial.style.setProperty('--dial-rotation', `${rotation}deg`);
-        // -------------------------------------------------------
-
-        if (state.isCaptured) {
-            state.hr = state.pacerRate;
-        }
-        updateDisplays();
-    }
-}
-
-
-function quickSetRhythm(rhythm) {
-            if (state.scenarioActive) {
-                setMessage('Cannot change rhythm during active scenario', '');
-                return;
-            }
-
-            setVitals(rhythm); 
-            state.syncMarkers = []; 
-            state.originalRhythm = rhythm;
-            state.isCaptured = false; 
-            state.roscAchieved = false;
-            state.shockCount = 0;
-            
-            // If switching to an arrest rhythm manually, assume arrest (reset ROSC state)
-            const vitals = rhythmVitals[rhythm];
-            if (vitals && !vitals.hasPulse) {
-                state.roscAchieved = false; 
-            }
-
-            if (state.deviceMode === 'off') {
-                setMode('monitor');
-            } else {
-                updateDisplays();
-            }
-
-            const allButtons = document.querySelectorAll('.rhythm-btn');
-            allButtons.forEach(btn => {
-                btn.classList.remove('active');
-                if (btn.dataset.rhythm === rhythm) {
-                    btn.classList.add('active');
-                }
-            });
-
-            // Trigger Arrest Panel Check immediately
-            if (typeof updateArrestPanel === 'function') {
-                updateArrestPanel();
-            }
-        }
-
-        function toggleInstructorPanel() {
-            if (!instructorPanel) return;
-            const btn = document.getElementById('minimiseBtn');
-            
-            instructorPanel.classList.toggle('minimised');
-            if (instructorPanel.classList.contains('minimised')) {
-                btn.textContent = '▼ Show';
-            } else {
-                btn.textContent = '▲ Hide';
-            }
-        }
-
-        function toggleArtefact(type, isOn) {
-            if (!state.noise.hasOwnProperty(type)) return;
-            state.noise[type] = isOn;
-        }
-
-        function checkPulse() {
-            if (state.deviceMode === 'off') return;
-            
-            let currentPulseState = state.hasPulse;
-            
-            if (state.customScenarioActive) {
-                currentPulseState = rhythmVitals[state.rhythm].hasPulse;
-            } else if (state.selectedScenario && state.scenarioActive) {
-                const scenario = scenarios[state.selectedScenario];
-                currentPulseState = scenario.hasPulse || state.roscAchieved;
-            }
-            
-            logAction('Pulse check performed');
-            setMessage('CHECKING FOR PULSE...', '');
-
-            setTimeout(() => {
-                if (currentPulseState) {
-                    setMessage('PULSE PRESENT - CAROTID PULSE PALPABLE', 'ready');
-                    logAction('Pulse check result', 'Pulse present');
-                } else {
-                    setMessage('NO PULSE DETECTED - CARDIAC ARREST CONFIRMED', 'alert');
-                    logAction('Pulse check result', 'No pulse - cardiac arrest');
-                }
-            }, 1500);
-        }
-
-        function tryAgain() {
-            const scenarioId = state.selectedScenario;
-            if (!scenarioId) {
-                returnToMenu();
-                return;
-            }
-            summaryScreen.classList.add('hidden');
-            menuWrapper.classList.add('hidden');
-            selectScenario(scenarioId);
-        }
-
-        function printCertificate() {
-            const scenario = scenarios[state.selectedScenario];
-            if (!scenario) return;
-            
-            summaryScreen.classList.add('hidden');
-            certificateScreen.classList.remove('hidden');
-            
-            document.getElementById('certScenarioName').textContent = scenario.name;
-            
-            const now = new Date();
-            document.getElementById('certDate').textContent = now.toLocaleDateString('en-GB', {
-                day: 'numeric',
-                month: 'long',
-                year: 'numeric'
-            });
-            
-            let perfHTML = '<div style="display: grid; gap: 10px;">';
-            
-            const shocks = state.actions.filter(a => a.action.includes('delivered'));
-            const syncUsed = state.actions.find(a => a.action === 'Sync mode activated');
-            const pulseChecks = state.actions.filter(a => a.action === 'Pulse check performed');
-            const pacingActions = state.actions.filter(a => a.action.includes('Pacing'));
-            
-            if (shocks.length > 0) {
-                perfHTML += `<div><strong>Shocks Delivered:</strong> ${shocks.length}</div>`;
-            }
-            
-            if (scenario.requiresSync) {
-                perfHTML += `<div><strong>Sync Mode:</strong> ${syncUsed ? '✓ Used correctly' : '✗ Not used'}</div>`;
-            }
-            
-            if (pulseChecks.length > 0) {
-                perfHTML += `<div><strong>Pulse Checks:</strong> ${pulseChecks.length} performed</div>`;
-            }
-            
-            if (scenario.category === 'pacing') {
-                const captureAchieved = pacingActions.find(a => a.action.includes('capture'));
-                perfHTML += `<div><strong>Pacing:</strong> ${captureAchieved ? '✓ Capture achieved' : 'Attempted'}</div>`;
-            }
-            
-            const converted = state.rhythm === 'nsr' || state.hr < 100 || state.roscAchieved;
-            if (scenario.category === 'defibrillation' || scenario.category === 'cardioversion') {
-                perfHTML += `<div><strong>Outcome:</strong> ${converted ? '✓ Rhythm converted' : 'Rhythm not converted'}</div>`;
-            }
-            
-            perfHTML += `<div><strong>Total Actions:</strong> ${state.actions.length}</div>`;
-            
-            let firstIntervention = null;
-            if (shocks.length > 0) {
-                firstIntervention = shocks[0];
-            } else if (pacingActions.length > 0) {
-                firstIntervention = pacingActions[0];
-            }
-            
-            if (firstIntervention) {
-                const timeToIntervention = firstIntervention.time;
-                const minutes = Math.floor(timeToIntervention / 60);
-                const seconds = timeToIntervention % 60;
-                perfHTML += `<div><strong>Time to First Intervention:</strong> ${minutes}:${String(seconds).padStart(2, '0')}</div>`;
-            }
-            
-            perfHTML += '</div>';
-            
-            document.getElementById('certPerformance').innerHTML = perfHTML;
-        }
-
-        function backToSummary() {
-            certificateScreen.classList.add('hidden');
-            summaryScreen.classList.remove('hidden');
-        }
-
-// --- AUDIO CONTEXT MANAGER ---
-        let audioCtx;
-        function getAudioContext() {
-            if (!audioCtx) {
-                const AudioCtx = window.AudioContext || window.webkitAudioContext;
-                if (AudioCtx) {
-                    audioCtx = new AudioCtx();
-                }
-            }
-            if (audioCtx && audioCtx.state === 'suspended') {
-                audioCtx.resume();
-            }
-            return audioCtx;
-        }
-
-        function playSound(type) {
-            const ctx = getAudioContext();
-            if (!ctx) return;
-            
-            const oscillator = ctx.createOscillator();
-            const gainNode = ctx.createGain();
-            
-            oscillator.connect(gainNode);
-            gainNode.connect(ctx.destination);
-            
-            const now = ctx.currentTime;
-
-            switch(type) {
-                case 'charging':
-                    oscillator.frequency.setValueAtTime(400, now);
-                    oscillator.frequency.linearRampToValueAtTime(800, now + 2);
-                    gainNode.gain.setValueAtTime(0.3, now);
-                    oscillator.start(now);
-                    oscillator.stop(now + 2);
-                    break;
-                    
-                case 'charged':
-                    oscillator.frequency.setValueAtTime(1000, now);
-                    gainNode.gain.setValueAtTime(0.4, now);
-                    gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
-                    oscillator.start(now);
-                    oscillator.stop(now + 0.5);
-                    break;
-                    
-                case 'shock':
-                    oscillator.frequency.setValueAtTime(800, now);
-                    gainNode.gain.setValueAtTime(0.5, now);
-                    gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
-                    oscillator.start(now);
-                    oscillator.stop(now + 0.3);
-                    break;
-
-                case 'alarm':
-                    oscillator.frequency.setValueAtTime(1200, now);
-                    oscillator.type = 'square';
-                    gainNode.gain.setValueAtTime(0.1, now);
-                    oscillator.start(now);
-                    oscillator.stop(now + 0.3); 
-                    break;
-            }
-        }
-
-        function cycleMode() {
-            const order = ['monitor', 'defib', 'pacer', 'off'];
-            let idx = order.indexOf(state.deviceMode);
-            if (idx === -1) idx = 0;
-            const next = order[(idx + 1) % order.length];
-            setMode(next);
-        }
-
-        // --- Keyboard Shortcuts ---
-        document.addEventListener('keydown', (e) => {
-            const key = e.key.toLowerCase();
-
-            if (key === 'c') {
-                e.preventDefault();
-                chargeDefib();
-            } else if (key === 's') {
-                e.preventDefault();
-                deliverShock();
-            } else if (key === 'p') {
-                e.preventDefault();
-                checkPulse();
-            } else if (key === 'm') {
-                e.preventDefault();
-                cycleMode();
-            } else if (e.key === 'ArrowUp') {
-                e.preventDefault();
-                adjustEnergy(1);
-            } else if (e.key === 'ArrowDown') {
-                e.preventDefault();
-                adjustEnergy(-1);
-            }
-        });
-
-        // --- Timers ---
-        setInterval(() => {
-            const now = new Date();
-            const timeEl = document.getElementById('timeInfo');
-            if (timeEl) {
-                timeEl.textContent = now.toTimeString().split(' ')[0];
-            }
-        }, 1000);
-
-        // --- EVENT LISTENERS ---
-        
-        // --- NEW: Guideline Modal Listeners ---
-        hintButtons.forEach(btn => {
-            btn.addEventListener('click', () => {
-                const guidelineKey = btn.dataset.guideline;
-                const data = guidelineData[guidelineKey];
-                
-                if (data) {
-                    modalTitle.textContent = data.title;
-                    modalBody.innerHTML = data.content;
-                    modalOverlay.classList.remove('hidden');
-                }
-            });
-        });
-
-        closeModalBtn.addEventListener('click', () => {
-            modalOverlay.classList.add('hidden');
-        });
-
-        modalOverlay.addEventListener('click', (e) => {
-            if (e.target === modalOverlay) {
-                modalOverlay.classList.add('hidden');
-            }
-        });
-        // --- End of Modal Listeners ---
-
-
-        // --- New Scenario Creator Listeners ---
-        document.getElementById('openScenarioCreatorBtn').addEventListener('click', () => {
-            menuWrapper.classList.remove('hidden');
-            scenarioCreatorScreen.classList.remove('hidden');
-            scenarioScreen.classList.add('hidden'); // Hide other menus
-            summaryScreen.classList.add('hidden');
-            certificateScreen.classList.add('hidden');
-            simulatorContainer.classList.add('hidden'); // <<< THIS IS THE FIX
-        });
-        document.getElementById('cancelCustomScenarioBtn').addEventListener('click', () => {
-            menuWrapper.classList.add('hidden');
-            scenarioCreatorScreen.classList.add('hidden');
-            simulatorContainer.classList.remove('hidden'); // <<< THIS IS THE FIX
-        });
-
-        // Quick Rhythm Panel
-        document.querySelectorAll('.quick-rhythm-panel .rhythm-btn').forEach(btn => {
-            btn.addEventListener('click', () => quickSetRhythm(btn.dataset.rhythm));
-        });
-
-        // Scenario Screen
-        document.querySelectorAll('#scenarioScreen .menu-option').forEach(btn => {
-            btn.addEventListener('click', () => selectScenario(btn.dataset.scenario));
-        });
-        document.getElementById('backToModeSelectBtn').addEventListener('click', backToModeSelect);
-
-        // Summary Screen
-        document.getElementById('tryAgainBtn').addEventListener('click', tryAgain);
-        document.getElementById('printCertBtn').addEventListener('click', printCertificate);
-        document.getElementById('returnToMenuBtn').addEventListener('click', returnToMenu);
-
-        // Certificate Screen
-        document.getElementById('printBtn').addEventListener('click', () => window.print());
-        document.getElementById('backToSummaryBtn').addEventListener('click', backToSummary);
-
-        // Simulator Container Buttons
-        document.getElementById('endScenarioBtn').addEventListener('click', endScenario);
-        document.getElementById('resetScenarioBtn').addEventListener('click', resetScenario);
-
-        // Instructor Panel
-        document.getElementById('minimiseBtn').addEventListener('click', toggleInstructorPanel);
-        document.querySelectorAll('#instructorPanel .rhythm-btn').forEach(btn => {
-            btn.addEventListener('click', () => quickSetRhythm(btn.dataset.rhythm));
-        });
-        document.querySelectorAll('#instructorPanel input[type="checkbox"]').forEach(box => {
-            box.addEventListener('change', (e) => toggleArtefact(e.target.dataset.artefact, e.target.checked));
-        });
-
-        // Device Controls - Softkeys
-        document.getElementById('checkPulseBtn').addEventListener('click', checkPulse);
-
-        // Device Controls - Main Buttons
-        document.getElementById('syncBtn').addEventListener('click', toggleSync);
-        document.getElementById('shockBtn').addEventListener('click', deliverShock);
-        document.getElementById('analyseBtn').addEventListener('click', analyseRhythm);
-        document.getElementById('chargeBtn').addEventListener('click', chargeDefib);
-        
-        // Device Controls - Energy
-        document.querySelectorAll('.energy-arrow').forEach(btn => {
-            btn.addEventListener('click', () => adjustEnergy(parseInt(btn.dataset.energyDir)));
-        });
-
-        // Device Controls - Mode Dial
-        document.querySelectorAll('.mode-label').forEach(label => {
-            label.addEventListener('click', () => setMode(label.dataset.mode));
-        });
-
-        // Device Controls - Pacer
-        document.querySelectorAll('.pacer-btn').forEach(btn => {
-            btn.addEventListener('click', () => adjustPacer(btn.dataset.pacerParam, parseInt(btn.dataset.pacerDir)));
-        });
-
-        // --- INITIALISATION ---
-                // --- NEW: Custom Scenario Logic ---
-        function getScenarioStepHTML(index) {
-            // Clone the existing select options so we don't have to hardcode them
-            const rhythmOpts = document.querySelector('.rhythm-btn') ? 
-                `<option value="nsr">NSR</option>
-                 <option value="vfib">VF</option>
-                 <option value="vt_pulseless">pVT</option>
-                 <option value="svt">SVT</option>
-                 <option value="chb">CHB</option>
-                 <option value="asystole">Asystole</option>` 
-                 : "";
-
-            return `
-            <div class="scenario-step-card" id="step-${index}">
-                <h5>Step ${index + 1}</h5>
-                <div>
-                    <label style="color:#bdc3c7; font-size:10px;">Rhythm</label>
-                    <select class="scenario-rhythm-select step-rhythm">
-                        ${rhythmOpts}
-                    </select>
-                </div>
-                <div>
-                    <label style="color:#bdc3c7; font-size:10px;">Trigger to Next</label>
-                    <select class="step-trigger" style="width:100%; padding:5px;">
-                        <option value="manual">Manual Only</option>
-                        <option value="shock">On Shock Success</option>
-                        <option value="pacing">On Pacing Capture</option>
-                        <option value="timer_30">Timer: 30s</option>
-                        <option value="timer_60">Timer: 60s</option>
-                        <option value="timer_120">Timer: 2m</option>
-                    </select>
-                </div>
-            </div>`;
-        }
-
-        const addStepBtn = document.getElementById('addStepBtn');
-        if(addStepBtn) {
-            addStepBtn.addEventListener('click', () => {
-                const container = document.getElementById('customScenarioSteps');
-                const count = container.children.length;
-                if (count >= 5) return;
-                
-                const div = document.createElement('div');
-                div.innerHTML = getScenarioStepHTML(count);
-                container.appendChild(div);
-            });
-        }
-
-        const startScenBtn = document.getElementById('startCustomScenarioBtn');
-        if(startScenBtn) {
-            startScenBtn.addEventListener('click', () => {
-                state.customScenario = [];
-                document.querySelectorAll('.scenario-step-card').forEach(card => {
-                    state.customScenario.push({
-                        rhythm: card.querySelector('.step-rhythm').value,
-                        trigger: card.querySelector('.step-trigger').value
-                    });
-                });
-
-                if (state.customScenario.length === 0) return;
-
-                state.customScenarioActive = true;
-                state.currentScenarioStep = 0;
-                
-                activateScenarioStep(0);
-                
-                menuWrapper.classList.add('hidden');
-                scenarioCreatorScreen.classList.add('hidden');
-                simulatorContainer.classList.remove('hidden');
-            });
-        }
-
-        function activateScenarioStep(index) {
-            if (index >= state.customScenario.length) {
-                setMessage('SCENARIO COMPLETE', 'ready');
-                return;
-            }
-            const step = state.customScenario[index];
-            quickSetRhythm(step.rhythm);
-            setMessage(`SCENARIO STEP ${index+1}/${state.customScenario.length}`, 'ready');
-            
-            if (step.trigger.startsWith('timer_')) {
-                const seconds = parseInt(step.trigger.split('_')[1]);
-                setTimeout(() => {
-                    if (state.customScenarioActive && state.currentScenarioStep === index) {
-                        state.currentScenarioStep++;
-                        activateScenarioStep(state.currentScenarioStep);
-                    }
-                }, seconds * 1000);
-            }
-        }
-
- function checkScenarioTrigger(actionType) {
-            if (!state.customScenarioActive) return;
-            const currentStep = state.customScenario[state.currentScenarioStep];
-            if (currentStep && currentStep.trigger === actionType) {
-                state.currentScenarioStep++;
-                activateScenarioStep(state.currentScenarioStep);
-            }
-        }
-
-        // --- NEW: Info Icon Listeners ---
-
-        // --- NEW: Info Icon Listeners ---
-        document.addEventListener('click', (e) => {
-            if (e.target.classList.contains('info-icon')) {
-                e.stopPropagation(); 
-                const guideKey = e.target.dataset.guide;
-                const content = treatmentGuides[guideKey];
-                if (content) {
-                    document.getElementById('modalTitle').textContent = "Treatment Guideline";
-                    document.getElementById('modalBody').innerHTML = content;
-                    document.getElementById('modalOverlay').classList.remove('hidden');
-                }
-            }
-        });
-
-// --- INSTRUCTOR / ASSESSOR PANEL LOGIC ---
-        let cycleTime = 120; // 2 minutes in seconds
-        let cycleInterval = null;
-        let metronomeInterval = null;
-        
-        function startCycleCountdown() {
-            if (cycleInterval) clearInterval(cycleInterval);
-            cycleTime = 120; 
-            
-            const display = document.getElementById('cycleTimerDisplay');
-            const container = document.getElementById('cycleTimerContainer');
-            
-            // Reset visuals
-            if (container) container.classList.remove('cycle-warning');
-            if (display) display.textContent = "02:00";
-            
-            cycleInterval = setInterval(() => {
-                cycleTime--;
-                
-                // Format MM:SS
-                const m = Math.floor(cycleTime / 60);
-                const s = cycleTime % 60;
-                if (display) display.textContent = `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-                
-                // Warning at 10 seconds
-                if (cycleTime <= 10 && container) {
-                    container.classList.add('cycle-warning');
-                }
-                
-                // Time Up
-                if (cycleTime <= 0) {
-                    clearInterval(cycleInterval);
-                    playSound('alarm'); // Use existing beep
-                    logAction('CYCLE ENDED', 'Assess Rhythm');
-                }
-            }, 1000);
-        }
-
-        function toggleMetronome() {
-            const btn = document.getElementById('metronomeBtn');
-            
-            if (metronomeInterval) {
-                clearInterval(metronomeInterval);
-                metronomeInterval = null;
-                btn.style.background = "#2c3e50";
-                logAction('Metronome', 'OFF');
-            } else {
-                logAction('Metronome', 'ON (110 bpm)');
-                btn.style.background = "#27ae60"; 
-                
-                // 110 BPM = 545ms interval
-                metronomeInterval = setInterval(() => {
-                    playMetronomeClick();
-                }, 545);
-            }
-        }
-
-function playMetronomeClick() {
-            const ctx = getAudioContext();
-            if (!ctx) return;
-            
-            const osc = ctx.createOscillator();
-            const gain = ctx.createGain();
-            
-            osc.frequency.value = 1000;
-            osc.type = 'square';
-            gain.gain.value = 0.05;
-            
-            osc.connect(gain);
-            gain.connect(ctx.destination);
-            
-            osc.start();
-            osc.stop(ctx.currentTime + 0.05);
-        }
-
-        // LISTENERS
-        const nextCycleBtn = document.getElementById('nextCycleBtn');
-        if (nextCycleBtn) {
-            nextCycleBtn.addEventListener('click', function() {
-                startCycleCountdown();
-                this.classList.remove('highlight-btn'); // Stop flashing
-                logAction('CYCLE RESET', '2 Minutes');
-            });
-        }
-
-        const metronomeBtn = document.getElementById('metronomeBtn');
-        if (metronomeBtn) metronomeBtn.addEventListener('click', toggleMetronome);
-
-        document.querySelectorAll('.cause-btn').forEach(btn => {
-            btn.addEventListener('click', function() {
-                this.classList.toggle('checked');
-                const causeName = this.dataset.cause;
-                const status = this.classList.contains('checked') ? 'CONSIDERED' : 'UNCHECKED';
-                logAction('Differential', `${causeName} ${status}`);
-            });
-        });
-
- // --- OPTIMISED ROSC LISTENER ---
-        const roscBtn = document.getElementById('roscBtn');
-        if (roscBtn) {
-            roscBtn.addEventListener('click', () => {
-                clearAllTimers(); // Use our new helper!
-
-                // State Updates
-                state.roscAchieved = true;
-                state.hasPulse = true;
-                state.cprActive = false;
-                state.arrestStartTime = null; 
-                
-                updateCprButton();
-                quickSetRhythm('nsr'); 
-                
-                // ROSC SPIKE LOGIC (Simulate CO2 washout)
-                state.etco2 = 6.8; 
-                logAction('ROSC CONFIRMED', 'ETCO2 Spike > 6.0kPa');
-                
-                // Settle ETCO2 logic
-                const settleInterval = setInterval(() => {
-                    if (state.etco2 > 5.1) {
-                        state.etco2 -= 0.05; 
-                    } else {
-                        state.etco2 = 5.1;
-                        clearInterval(settleInterval);
-                    }
-                }, 200);
-
-                setMessage('ROSC ACHIEVED - START POST-RESUS CARE', 'ready');
-                updateDisplays();
-                document.getElementById('cprPanel').classList.remove('active');
-            });
-        }
-        // ------------------------------------------
-        
-        initCanvas(); 
-        setMode('off'); 
-
-        // --- MOBILE ENHANCEMENT: Add window resize listener ---
-        window.addEventListener('resize', resizeCanvas);
-        // --- UPDATED CARDIAC ARREST LOGIC ---
-        
-        // Ensure cprActive is tracked
-        state.cprActive = false;
-
-        // --- IMPROVED ARREST LOGIC ---
-
-// 1. Check for Arrest on Rhythm Change
-        function updateArrestPanel() {
-            const currentRhythm = state.rhythm;
-            const vitals = rhythmVitals[currentRhythm];
-            
-            // Check if this is an arrest rhythm (No pulse)
-            const isArrestRhythm = vitals && vitals.hasPulse === false;
-            
-            // If we are in arrest AND we haven't achieved ROSC
-            if (isArrestRhythm && !state.roscAchieved) {
-                const panel = document.getElementById('cprPanel');
-                panel.classList.remove('hidden');
-                
-                // Add active class slightly later for CSS transition
-                setTimeout(() => {
-                    if (!panel.classList.contains('active')) {
-                        panel.classList.add('active');
-                        // Highlight the reset button
-                        const btn = document.getElementById('nextCycleBtn');
-                        if (btn) btn.classList.add('highlight-btn');
-                    }
-                }, 50);
-
-                if (!state.arrestStartTime) {
-                    state.arrestStartTime = Date.now();
-                    logAction('Cardiac Arrest Detected', 'Timer Started');
-                    
-                    // --- AUTO-START CYCLE TIMER ---
-                    if (typeof startCycleCountdown === 'function') {
-                        startCycleCountdown();
-                        logAction('CPR Cycle', '2 Minute Timer Auto-Started');
-                    }
-                }
-                
-                if (!window.arrestTimerInterval) {
-                    startArrestTimer();
-                }
-            } else {
-                document.getElementById('cprPanel').classList.remove('active');
-                state.cprActive = false;
-                updateCprButton();
-            }
-        }
-
-// 2. Timer Logic (Timestamp based)
-        function startArrestTimer() {
-            if (window.arrestTimerInterval) clearInterval(window.arrestTimerInterval);
-            
-            const timerDisplay = document.getElementById('cprTimerDisplay');
-            
-            window.arrestTimerInterval = setInterval(() => {
-                if (!state.arrestStartTime) return;
-                
-                const diff = Date.now() - state.arrestStartTime;
-                const totalSeconds = Math.floor(diff / 1000);
-                
-                const m = Math.floor(totalSeconds / 60);
-                const s = totalSeconds % 60;
-                
-                // Format: 02:30
-                if (timerDisplay) {
-                    timerDisplay.textContent = `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-                }
-            }, 100); // Update frequently for accuracy
-        }
-        
-        // Helper for metronome sound
-        function playMetronomeTick() {
-            const AudioCtx = window.AudioContext || window.webkitAudioContext;
-            // Use the global audioCtx we fixed earlier
-            if (!AudioCtx || !audioCtx) return; 
-            
-            // Short high-pitched beep
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.frequency.value = 1200;
-            gain.gain.value = 0.1;
-            
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-            osc.start();
-            osc.stop(audioCtx.currentTime + 0.05);
-        }
-
-        function updateCprButton() {
-            const btn = document.getElementById('cprToggleBtn');
-            const span = btn.querySelector('span');
-            if (state.cprActive) {
-                btn.style.background = "#e74c3c"; // Red for STOP
-                btn.style.borderColor = "#c0392b";
-                span.textContent = "STOP CPR";
-            } else {
-                btn.style.background = ""; // Default
-                btn.style.borderColor = "";
-                span.textContent = "START CPR";
-            }
-        }
-
-        // --- NEW: CPR Panel Minimise Logic ---
-        const cprPanel = document.getElementById('cprPanel');
-        const cprMinBtn = document.getElementById('cprMinimiseBtn');
-
-        if (cprMinBtn && cprPanel) {
-            cprMinBtn.addEventListener('click', () => {
-                cprPanel.classList.toggle('minimised');
-                const isMin = cprPanel.classList.contains('minimised');
-                cprMinBtn.textContent = isMin ? "◀" : "▶";
-            });
-        }
-
-        // 3. New Listeners for Panel Buttons
-
-        // 3. New Listeners for Panel Buttons
-        document.querySelectorAll('.cpr-action-btn').forEach(btn => {
-            btn.addEventListener('click', function() {
-                const action = this.dataset.action;
-                const time = document.getElementById('cprTimerDisplay').textContent;
-                
-                if (action === 'cpr-toggle') {
-                    state.cprActive = !state.cprActive;
-                    updateCprButton();
-                    const status = state.cprActive ? "Started" : "Stopped";
-                    logAction(`CPR ${status}`, `Time: ${time}`);
-                    return; // Don't do the visual flash for toggle
-                }
-
-                // Visual click feedback for momentary buttons
-                const originalSpan = this.querySelector('span').textContent;
-                const originalBg = this.style.background;
-                this.querySelector('span').textContent = "DONE";
-                this.style.background = "#27ae60"; 
-                setTimeout(() => {
-                    this.querySelector('span').textContent = originalSpan;
-                    this.style.background = originalBg;
-                }, 800);
-
-                if (action === 'adrenaline') {
-                    logAction(`Adrenaline 1mg Given`, `Time: ${time}`);
-                } else if (action === 'amiodarone') {
-                    logAction(`Amiodarone 300mg Given`, `Time: ${time}`);
-                } else if (action === 'next-cycle') {
-                    // Reset Timer Logic
-                    if (window.arrestTimerInterval) clearInterval(window.arrestTimerInterval);
-                    startArrestTimer(); // Restart from 0
-                    logAction(`Cycle Advanced`, `Timer Reset`);
-                }
-            });
-        });
-   
-    }); // End of DOMContentLoaded
-    </script>
+    <script src="js/rhythms.js"></script>
+    <script src="js/data.js"></script>
+    <script src="js/app.js"></script>
 </body>
 </html>
