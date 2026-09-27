@@ -29,7 +29,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const ENERGY_LEVELS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 20, 30, 50, 75, 100, 120, 150, 200]; // ZOLL R Series adult selections
     const ARREST_MIN_ENERGY = 150;     // RCUK 2025: first biphasic shock at least 150J
     const CARDIOVERSION_MIN_ENERGY = 70;
-    const PACING_CAPABLE = ['chb', 'brady', 'sinus_brady', 'idioventricular'];
+    const PACING_CAPABLE = ['chb', 'brady', 'sinus_brady', 'idioventricular', 'mobitz2'];
+    const SHOCKABLE_ARREST = ['vfib', 'vfib_fine', 'vt_pulseless'];
+    const CARDIOVERTIBLE = ['svt', 'afib', 'flutter', 'vtach'];
+    const FREE_PLAY_CAPTURE_THRESHOLD = 60;   // mA
+    const MECHANICAL_CAPTURE_MARGIN = 10;     // mA above electrical threshold for a palpable pulse
 
     const state = {
         machineState: APP_STATES.IDLE,
@@ -64,7 +68,18 @@ document.addEventListener('DOMContentLoaded', () => {
         cprActive: false,
         arrestStartTime: null,
         amiodaroneDoses: 0,
+        adrenalineTimes: [],
+        amiodaroneTimes: [],
+        arrestShocks: 0,             // Shocks delivered during the current arrest
         ecgGain: 1,
+        lead: 'II',
+        pacerDemand: true,
+        mechanicalCapture: false,
+        baseHr: 0,
+        preCapture: null,
+        rOnT: 'always',
+        refib: 'off',
+        refibDone: false,
         flashUntil: 0,
         noise: {
             movement: false,
@@ -85,7 +100,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- TIMERS ---
     let cycleTime = 120; // 2 minutes in seconds
     let cycleInterval = null;
-    let metronomeInterval = null;
+    let metronomeTimer = null;
     let arrestTimerInterval = null;
     let countdownInterval = null;
     let etco2SettleInterval = null;
@@ -246,9 +261,28 @@ document.addEventListener('DOMContentLoaded', () => {
         window.waveformX = 0; // Use global
     }
 
-    // The newest part of the trace is drawn at the right-hand edge
+    // Trace position currently being written by the sweep
     function traceNowX() {
         return window.waveformX + logicalWidth;
+    }
+
+    // What the monitor is showing now, recorded into the trace history so any
+    // change sweeps in from the write position
+    function traceEntry() {
+        return {
+            rhythm: state.isCaptured ? (state.originalRhythm || 'nsr') : state.rhythm,
+            hr: state.isCaptured ? state.baseHr : state.hr,
+            lead: state.lead,
+            gain: state.ecgGain,
+            pacing: state.pacingActive,
+            pacerRate: state.pacerRate,
+            demand: state.pacerDemand,
+            captured: state.isCaptured
+        };
+    }
+
+    function markTrace() {
+        if (window.ecgTrace) window.ecgTrace.set(traceNowX(), traceEntry());
     }
 
     function desiredArtefacts() {
@@ -270,6 +304,7 @@ document.addEventListener('DOMContentLoaded', () => {
         lastTimestamp = 0;
         window.waveformX = 0;
         if (window.ecgArtefacts) window.ecgArtefacts.reset(desiredArtefacts());
+        if (window.ecgTrace) window.ecgTrace.reset(traceEntry());
     }
 
     function setVitals(rhythm) {
@@ -294,11 +329,16 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    const SWEEP_GAP = 20; // Erase bar ahead of the sweep (px)
+
+    // Sweep-and-erase display: the trace is written left to right and wraps,
+    // overwriting the oldest trace just behind a short erase gap.
+    // Trace position gx is drawn at screen x = gx mod screen width.
     function animate(timestamp) {
         if (!canvas || !ctx) { animationId = requestAnimationFrame(animate); return; }
 
         if (lastTimestamp === 0) lastTimestamp = timestamp;
-        const deltaTime = (timestamp - lastTimestamp) / 1000;
+        const deltaTime = Math.min((timestamp - lastTimestamp) / 1000, 0.5);
         lastTimestamp = timestamp;
 
         const dpr = window.devicePixelRatio || 1;
@@ -306,95 +346,72 @@ document.addEventListener('DOMContentLoaded', () => {
         const logicalH = canvas.height / dpr;
         logicalWidth = logicalW;
 
-        // 1. Draw Grid
+        // 1. Move the sweep and advance the simulation (pacer) to it
+        window.waveformX += (window.ecgSpeed || 125) * deltaTime;
+        const nowX = traceNowX();
+        const fromX = Math.max(0, nowX - logicalW + SWEEP_GAP);
+        markTrace();
+        window.ecgTrace.advance(nowX, nowX - logicalW);
+
+        // 2. Draw Grid
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
         ctx.shadowBlur = 0;
-        if (window.drawECGGrid) {
-            window.drawECGGrid(ctx, logicalW, logicalH);
-        } else {
-            ctx.fillStyle = '#000';
-            ctx.fillRect(0, 0, logicalW, logicalH);
-        }
+        window.drawECGGrid(ctx, logicalW, logicalH);
 
-        // 2. Draw Trace
+        const toScreen = gx => gx - Math.floor(gx / logicalW) * logicalW;
         const baselineY = logicalH / 2;
-        const rhythmFn = window.rhythms && window.rhythms[state.rhythm];
 
-        if (rhythmFn) {
-            if (typeof window.waveformX === 'undefined') window.waveformX = 0;
+        // 3. Draw Trace
+        const step = 0.5;
+        ctx.strokeStyle = '#39ff14';
+        ctx.lineWidth = 2.5;
+        ctx.lineJoin = 'round';
+        ctx.lineCap = 'round';
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = 'rgba(57, 255, 20, 0.8)';
+        ctx.beginPath();
+        let prevSx = Infinity;
+        for (let gx = Math.ceil(fromX / step) * step; gx <= nowX; gx += step) {
+            const sx = toScreen(gx);
+            let yVal = window.ecgTrace.y(gx, logicalH);
+            if (!isFinite(yVal)) yVal = baselineY;
+            if (sx < prevSx) ctx.moveTo(sx, yVal); // Start, or wrapped to the left edge
+            else ctx.lineTo(sx, yVal);
+            prevSx = sx;
+        }
+        ctx.stroke();
+        ctx.shadowBlur = 0;
 
-            const step = 0.5;
-            const startGlobalX = Math.floor(window.waveformX / step) * step;
-            const endGlobalX = window.waveformX + logicalW;
-
-            ctx.strokeStyle = '#39ff14';
-            ctx.lineWidth = 2.5;
-            ctx.lineJoin = 'round';
-            ctx.lineCap = 'round';
-            ctx.shadowBlur = 10;
-            ctx.shadowColor = 'rgba(57, 255, 20, 0.8)';
+        // 4. Pacer / pacemaker spikes (pink)
+        const spikes = window.ecgTrace.spikes(fromX, nowX);
+        if (spikes.length) {
+            ctx.save();
+            ctx.strokeStyle = '#ff00ff';
+            ctx.lineWidth = 2;
             ctx.beginPath();
-
-            let firstPoint = true;
-
-            // --- PASS 1: DRAW GREEN TRACE ---
-            for (let gx = startGlobalX; gx <= endGlobalX + step; gx += step) {
-                const screenX = gx - window.waveformX;
-                let yVal = rhythmFn(gx, state.hr, 0, {height: logicalH});
-
-                if (!isFinite(yVal)) yVal = baselineY;
-
-                if (firstPoint) {
-                    ctx.moveTo(screenX, yVal);
-                    firstPoint = false;
-                } else {
-                    ctx.lineTo(screenX, yVal);
-                }
-            }
+            spikes.forEach(p => {
+                const sx = toScreen(p);
+                ctx.moveTo(sx, baselineY - 60);
+                ctx.lineTo(sx, baselineY + 60);
+            });
             ctx.stroke();
-            ctx.shadowBlur = 0;
-
-            // --- PASS 2: OVERLAYS (Pacer & Sync) ---
-            // 1. Pacer Spikes (Pink Line)
-            if (state.pacingActive) {
-                const pacerCycle = (60 / state.pacerRate) * window.ecgSpeed;
-                ctx.save();
-                ctx.strokeStyle = '#ff00ff';
-                ctx.lineWidth = 2;
-                ctx.beginPath();
-                for (let n = Math.ceil(startGlobalX / pacerCycle); n * pacerCycle <= endGlobalX; n++) {
-                    const screenX = n * pacerCycle - window.waveformX;
-                    ctx.moveTo(screenX, baselineY - 60);
-                    ctx.lineTo(screenX, baselineY + 60);
-                }
-                ctx.stroke();
-                ctx.restore();
-            }
-
-            // 2. Sync Markers (White Bar at Top of Screen) on every detected R-wave
-            if (state.syncMode && window.rhythmPeaks) {
-                const peaks = window.rhythmPeaks(state.rhythm, startGlobalX, endGlobalX, state.hr);
-                ctx.save();
-                ctx.fillStyle = '#ffffff'; // Pure White
-                ctx.shadowBlur = 5;
-                ctx.shadowColor = 'white';
-                peaks.forEach(px => ctx.fillRect(px - window.waveformX - 3, 30, 6, 20));
-                ctx.restore();
-            }
+            ctx.restore();
         }
 
-        // 3. Shock flash
+        // 5. Sync Markers (White Bar at Top of Screen) on every detected R-wave
+        if (state.syncMode) {
+            ctx.save();
+            ctx.fillStyle = '#ffffff'; // Pure White
+            ctx.shadowBlur = 5;
+            ctx.shadowColor = 'white';
+            window.ecgTrace.peaks(fromX, nowX).forEach(p => ctx.fillRect(toScreen(p) - 3, 30, 6, 20));
+            ctx.restore();
+        }
+
+        // 6. Shock flash
         if (performance.now() < state.flashUntil) {
             ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
             ctx.fillRect(0, 0, logicalW, logicalH);
-        }
-
-        // 4. Move Paper
-        const speed = window.ecgSpeed || 125;
-        const logicalMove = speed * deltaTime;
-
-        if (typeof window.waveformX !== 'undefined') {
-            window.waveformX += logicalMove;
         }
 
         animationId = requestAnimationFrame(animate);
@@ -429,7 +446,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('outputDisplay').textContent = state.pacerOutput;
         document.getElementById('rateDisplay').textContent = state.pacerRate;
         document.getElementById('modeInfo').textContent = `MODE: ${state.deviceMode.toUpperCase()}`;
-        document.getElementById('leadInfo').textContent = `LEAD: II  x${state.ecgGain}`;
+        document.getElementById('leadInfo').textContent = `LEAD: ${state.lead}  x${state.ecgGain}`;
 
         document.getElementById('syncIndicator').textContent = state.syncMode ? 'SYNC' : '';
         document.getElementById('syncIndicator').className = state.syncMode ? 'screen-info sync-indicator' : 'screen-info';
@@ -551,9 +568,14 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('syncBtn').classList.remove('active');
         state.pacingActive = false;
         state.isCaptured = false;
+        state.mechanicalCapture = false;
+        state.preCapture = null;
         state.originalRhythm = null;
         state.pacerOutput = 0;
         state.pacerRate = 60;
+        state.pacerDemand = true;
+        updatePacerModeButton();
+        state.refibDone = false;
         setPacerDial('output', 0);
         setPacerDial('rate', 60);
 
@@ -563,7 +585,11 @@ document.addEventListener('DOMContentLoaded', () => {
         state.roscAchieved = false;
         state.converted = false;
         state.amiodaroneDoses = 0;
+        state.adrenalineTimes = [];
+        state.amiodaroneTimes = [];
+        state.arrestShocks = 0;
         updateAmiodaroneButton();
+        updateDrugPanel();
         state.actions = [];
 
         // Clear the CPR panel for the new session
@@ -801,8 +827,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 goodPoints.push('✓ Pacing output adjusted');
 
                 const captureAchieved = pacingActions.find(a => a.action === 'Pacing capture achieved');
+                const electricalOnly = state.actions.find(a => a.action === 'Electrical capture');
                 if (captureAchieved) {
                     goodPoints.push('✓ Electrical and mechanical capture achieved');
+                } else if (electricalOnly) {
+                    improvementPoints.push('⚠ Electrical capture only - no palpable pulse at the paced rate. Increase output until mechanical capture');
                 } else {
                     improvementPoints.push('⚠ Increase output until capture achieved (check for palpable pulse)');
                 }
@@ -900,10 +929,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Leaving pacer mode: return to the underlying rhythm
         if (mode !== 'pacer') {
             state.pacingActive = false;
-            if (state.isCaptured) {
-                state.isCaptured = false;
-                setVitals(state.originalRhythm || 'nsr');
-            }
+            if (state.isCaptured) releaseCapture();
         }
 
         const screenEl = document.querySelector('.screen');
@@ -923,7 +949,7 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('bpDisplay').textContent = '--/--';
             document.getElementById('messageBar').textContent = '';
             document.getElementById('messageBar').className = 'message-bar';
-            document.getElementById('leadInfo').textContent = 'LEAD: II';
+            document.getElementById('leadInfo').textContent = `LEAD: ${state.lead}`;
             document.getElementById('syncIndicator').textContent = '';
             document.getElementById('modeInfo').textContent = 'MODE: OFF';
 
@@ -1024,9 +1050,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // Milliseconds until the next R-wave reaches the "live" edge of the trace,
     // or null if there is no R-wave to synchronise to (e.g. VF, asystole)
     function msToNextRWave() {
+        markTrace();
         const now = traceNowX();
         const speed = window.ecgSpeed || 125;
-        const peaks = window.rhythmPeaks ? window.rhythmPeaks(state.rhythm, now, now + 3 * speed, state.hr) : [];
+        const peaks = window.ecgTrace.peaks(now, now + 3 * speed);
         if (!peaks.length) return null;
         return Math.max(0, (peaks[0] - now) / speed * 1000);
     }
@@ -1060,6 +1087,7 @@ document.addEventListener('DOMContentLoaded', () => {
         later(() => {
             if (state.machineState !== APP_STATES.DISCHARGING) return; // Cancelled
             state.shockCount++;
+            if (state.arrestStartTime) state.arrestShocks++;
             playSound('shock');
             logAction(`Shock ${state.shockCount} delivered`, `${energy}J (${sync ? 'SYNC' : 'UNSYNC'})`);
             transitionTo(APP_STATES.IDLE);
@@ -1093,9 +1121,19 @@ document.addEventListener('DOMContentLoaded', () => {
     function resolveShockOutcome(rhythm, energy, sync) {
         if (state.rhythm !== rhythm) return; // Rhythm changed by the instructor meanwhile
 
-        const isArrest = rhythm === 'vfib' || rhythm === 'vt_pulseless';
-        const isTachy = ['svt', 'afib', 'vtach'].includes(rhythm) && state.hasPulse;
+        const isArrest = SHOCKABLE_ARREST.includes(rhythm);
+        const isTachy = CARDIOVERTIBLE.includes(rhythm) && state.hasPulse;
         let failReason = '';
+
+        // Unsynchronised shock on a perfusing rhythm can land on the T wave
+        if (!sync && state.hasPulse && window.rhythmPeaks(rhythm, 0, 2000, state.hr).length && causesROnT()) {
+            setMessage('UNSYNCHRONISED SHOCK ON T WAVE - VF', 'alert');
+            later(() => {
+                applyRhythm('vfib', { keepMode: true });
+                logAction('VF induced', 'Unsynchronised shock (R-on-T)');
+            }, 800);
+            return;
+        }
 
         if (isArrest) {
             if (energy < ARREST_MIN_ENERGY) failReason = `ENERGY TOO LOW (<${ARREST_MIN_ENERGY}J)`;
@@ -1141,6 +1179,12 @@ document.addEventListener('DOMContentLoaded', () => {
         later(() => convertRhythm(isArrest), 1000);
     }
 
+    function causesROnT() {
+        if (state.rOnT === 'always') return true;
+        if (state.rOnT === 'sometimes') return Math.random() < 1 / 3;
+        return false;
+    }
+
     function currentScenario() {
         return state.sessionType === 'scenario' ? scenarios[state.selectedScenario] : null;
     }
@@ -1155,6 +1199,18 @@ document.addEventListener('DOMContentLoaded', () => {
         state.converted = true;
         logAction('Rhythm converted', rhythmNames[state.rhythm]);
         setMessage(isArrest ? 'ORGANISED RHYTHM - CHECK FOR PULSE' : 'RHYTHM CONVERTED', 'ready');
+
+        // Optional refibrillation: VF returns once, 30-90s after ROSC
+        if (isArrest && state.refib === 'once' && !state.refibDone && !state.customScenarioActive) {
+            state.refibDone = true;
+            const convertedTo = state.rhythm;
+            later(() => {
+                if (state.rhythm !== convertedTo) return;
+                applyRhythm('vfib', { keepMode: true });
+                logAction('VF recurred', 'Refibrillation');
+                setMessage('VF - REFIBRILLATION', 'alert');
+            }, 30000 + Math.random() * 60000);
+        }
     }
 
     function analyseRhythm() {
@@ -1175,7 +1231,7 @@ document.addEventListener('DOMContentLoaded', () => {
             state.analyseTimer = null;
             transitionTo(APP_STATES.IDLE);
             const r = state.rhythm;
-            const shockable = r === 'vfib' || r === 'vt_pulseless' || (r === 'vtach' && !state.hasPulse);
+            const shockable = SHOCKABLE_ARREST.includes(r) || (r === 'vtach' && !state.hasPulse);
             if (shockable) {
                 setMessage('SHOCKABLE RHYTHM DETECTED', 'alert');
                 logAction('Analysis result', 'Shockable');
@@ -1193,40 +1249,69 @@ document.addEventListener('DOMContentLoaded', () => {
         dial.style.setProperty('--dial-rotation', `${rotation}deg`);
     }
 
-    // Work out whether the current output captures the underlying rhythm
+    function captureThreshold() {
+        const scenario = currentScenario();
+        if (scenario && scenario.requiresPacing) return scenario.currentThreshold || scenario.captureThreshold;
+        return FREE_PLAY_CAPTURE_THRESHOLD;
+    }
+
+    // Work out whether the current output captures the underlying rhythm.
+    // Electrical capture (broad complex after every spike) comes first; mechanical
+    // capture (a palpable pulse at the paced rate) needs a little more output.
     function evaluateCapture() {
         if (state.deviceMode !== 'pacer') return;
         const scenario = currentScenario();
         const base = state.originalRhythm || state.rhythm;
+        const threshold = captureThreshold();
+        const electrical = PACING_CAPABLE.includes(base) && state.pacerOutput >= threshold;
+        const mechanical = electrical && state.pacerOutput >= threshold + MECHANICAL_CAPTURE_MARGIN;
+        const wasElectrical = state.isCaptured;
+        const wasMechanical = state.mechanicalCapture;
+        if (electrical === wasElectrical && mechanical === wasMechanical) return;
 
-        let captureThreshold = 60;
-        if (scenario && scenario.requiresPacing) {
-            captureThreshold = scenario.currentThreshold || scenario.captureThreshold;
-        }
-        const capable = PACING_CAPABLE.includes(base);
-        const nowCaptured = capable && state.pacerOutput >= captureThreshold;
-
-        if (nowCaptured === state.isCaptured) return;
-        state.isCaptured = nowCaptured;
-
-        if (nowCaptured) {
-            const successVitals = (scenario && scenario.requiresPacing) ? scenario.successVitals : rhythmVitals['paced'];
-            logAction('Pacing capture achieved', `at ${state.pacerOutput}mA`);
+        if (electrical && !wasElectrical) {
+            state.preCapture = { hr: state.hr, spo2: state.spo2, etco2: state.etco2, bpSys: state.bpSys, bpDia: state.bpDia, hasPulse: state.hasPulse };
+            state.baseHr = state.hr;
+            state.isCaptured = true;
             state.rhythm = 'paced';
             state.hr = state.pacerRate;
+            logAction('Electrical capture', `at ${state.pacerOutput}mA`);
+            setMessage(`ELECTRICAL CAPTURE AT ${state.pacerOutput}mA - CHECK PULSE`, 'ready');
+        }
+
+        if (mechanical && !wasMechanical) {
+            const successVitals = (scenario && scenario.requiresPacing) ? scenario.successVitals : rhythmVitals['paced'];
+            state.mechanicalCapture = true;
             state.hasPulse = true;
-            state.spo2 = successVitals.spo2;
-            state.etco2 = successVitals.etco2;
-            state.bpSys = successVitals.bpSys;
-            state.bpDia = successVitals.bpDia;
-            setMessage(`CAPTURE ACHIEVED AT ${state.pacerOutput}mA`, 'ready');
+            applyVitals({ spo2: successVitals.spo2, etco2: successVitals.etco2, bpSys: successVitals.bpSys, bpDia: successVitals.bpDia });
+            logAction('Pacing capture achieved', `Mechanical capture at ${state.pacerOutput}mA`);
             if (state.customScenarioActive) advanceCustomScenario('pacing');
-        } else {
-            logAction('Pacing capture lost');
-            setVitals(base || 'nsr');
+        } else if (!mechanical && wasMechanical) {
+            state.mechanicalCapture = false;
+            if (state.preCapture) applyVitals({ spo2: state.preCapture.spo2, etco2: state.preCapture.etco2, bpSys: state.preCapture.bpSys, bpDia: state.preCapture.bpDia });
+            logAction('Pacing capture lost', 'Mechanical capture lost');
+        }
+
+        if (!electrical && wasElectrical) {
+            releaseCapture();
+            logAction('Electrical capture lost');
             setMessage('CAPTURE LOST', 'alert');
         }
         updateDisplays();
+    }
+
+    // Return to the underlying rhythm and its vitals
+    function releaseCapture() {
+        const base = state.originalRhythm || 'nsr';
+        const before = state.preCapture;
+        state.isCaptured = false;
+        state.mechanicalCapture = false;
+        state.preCapture = null;
+        setVitals(base);
+        if (before) {
+            applyVitals(before);
+            state.hasPulse = before.hasPulse;
+        }
     }
 
     function adjustPacer(param, change) {
@@ -1260,6 +1345,8 @@ document.addEventListener('DOMContentLoaded', () => {
         applyVitals(opts.vitals);
         state.originalRhythm = rhythm;
         state.isCaptured = false;
+        state.mechanicalCapture = false;
+        state.preCapture = null;
         state.episodeShocks = 0;
         state.roscAchieved = !!opts.rosc;
         if (opts.rosc) state.hasPulse = true;
@@ -1308,12 +1395,21 @@ document.addEventListener('DOMContentLoaded', () => {
         if (state.deviceMode === 'off') return;
 
         const currentPulseState = state.hasPulse;
+        const captured = state.isCaptured;
+        const electricalOnly = captured && !state.mechanicalCapture;
+        const pacedRate = state.pacerRate;
 
         logAction('Pulse check performed');
         setMessage('CHECKING FOR PULSE...', '');
 
         later(() => {
-            if (currentPulseState) {
+            if (electricalOnly) {
+                setMessage(`PULSE DOES NOT MATCH PACED RATE (${pacedRate}/MIN) - NO MECHANICAL CAPTURE`, 'alert');
+                logAction('Pulse check result', 'Electrical capture only - no mechanical capture');
+            } else if (captured) {
+                setMessage(`PULSE PRESENT - MATCHES PACED RATE (${pacedRate}/MIN)`, 'ready');
+                logAction('Pulse check result', 'Pulse matches paced rate');
+            } else if (currentPulseState) {
                 setMessage('PULSE PRESENT - CAROTID PULSE PALPABLE', 'ready');
                 logAction('Pulse check result', 'Pulse present');
             } else {
@@ -1507,34 +1603,46 @@ document.addEventListener('DOMContentLoaded', () => {
         if (timeEl) {
             timeEl.textContent = now.toTimeString().split(' ')[0];
         }
-        // Keep vitals (e.g. ETCO2 during CPR / after ROSC) live on screen
+        // Keep vitals (e.g. ETCO2 during CPR / after ROSC) and drug timers live
         if (state.deviceMode !== 'off') updateDisplays();
+        updateDrugPanel();
     }, 1000);
 
     // --- EVENT LISTENERS ---
 
-    // --- NEW: Guideline Modal Listeners ---
+    // --- Guideline Modal (dialog) ---
+    let modalReturnFocus = null;
+
+    function openModal(title, html) {
+        modalReturnFocus = document.activeElement;
+        modalTitle.textContent = title;
+        modalBody.innerHTML = html;
+        modalOverlay.classList.remove('hidden');
+        closeModalBtn.focus();
+    }
+
+    function closeModal() {
+        if (modalOverlay.classList.contains('hidden')) return;
+        modalOverlay.classList.add('hidden');
+        if (modalReturnFocus && typeof modalReturnFocus.focus === 'function') modalReturnFocus.focus();
+        modalReturnFocus = null;
+    }
+
     hintButtons.forEach(btn => {
         btn.addEventListener('click', () => {
-            const guidelineKey = btn.dataset.guideline;
-            const data = guidelineData[guidelineKey];
-
-            if (data) {
-                modalTitle.textContent = data.title;
-                modalBody.innerHTML = data.content;
-                modalOverlay.classList.remove('hidden');
-            }
+            const data = guidelineData[btn.dataset.guideline];
+            if (data) openModal(data.title, data.content);
         });
     });
 
-    closeModalBtn.addEventListener('click', () => {
-        modalOverlay.classList.add('hidden');
-    });
+    closeModalBtn.addEventListener('click', closeModal);
 
     modalOverlay.addEventListener('click', (e) => {
-        if (e.target === modalOverlay) {
-            modalOverlay.classList.add('hidden');
-        }
+        if (e.target === modalOverlay) closeModal();
+    });
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closeModal();
     });
     // --- End of Modal Listeners ---
 
@@ -1605,6 +1713,15 @@ document.addEventListener('DOMContentLoaded', () => {
         state.shockResponse = e.target.value;
         logAction('Shock response set', e.target.options[e.target.selectedIndex].text);
     });
+    document.getElementById('rOnTSelect').addEventListener('change', (e) => {
+        state.rOnT = e.target.value;
+        logAction('Unsynchronised shock setting', e.target.options[e.target.selectedIndex].text);
+    });
+    document.getElementById('refibSelect').addEventListener('change', (e) => {
+        state.refib = e.target.value;
+        state.refibDone = false;
+        logAction('Refibrillation setting', e.target.options[e.target.selectedIndex].text);
+    });
 
     // Device Controls - Softkeys
     document.getElementById('checkPulseBtn').addEventListener('click', checkPulse);
@@ -1620,6 +1737,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const gains = [0.5, 1, 2, 4];
         state.ecgGain = gains[(gains.indexOf(state.ecgGain) + 1) % gains.length];
         setMessage(`ECG SIZE x${state.ecgGain}`, 'ready');
+        updateDisplays();
+    });
+    document.getElementById('leadBtn').addEventListener('click', () => {
+        if (state.deviceMode === 'off') return;
+        const leads = ['PADS', 'I', 'II', 'III'];
+        state.lead = leads[(leads.indexOf(state.lead) + 1) % leads.length];
+        logAction('Lead changed', state.lead);
+        setMessage(`LEAD ${state.lead}`, 'ready');
         updateDisplays();
     });
     document.getElementById('recorderBtn').addEventListener('click', () => {
@@ -1648,18 +1773,47 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('.pacer-btn').forEach(btn => {
         btn.addEventListener('click', () => adjustPacer(btn.dataset.pacerParam, parseInt(btn.dataset.pacerDir)));
     });
+    document.getElementById('pacerModeBtn').addEventListener('click', () => {
+        if (state.deviceMode !== 'pacer') return;
+        state.pacerDemand = !state.pacerDemand;
+        updatePacerModeButton();
+        logAction('Pacer mode', state.pacerDemand ? 'Demand' : 'Asynchronous (fixed rate)');
+        setMessage(state.pacerDemand ? 'DEMAND PACING' : 'ASYNCHRONOUS PACING', 'ready');
+        updateDisplays();
+    });
+
+    function updatePacerModeButton() {
+        document.getElementById('pacerModeBtn').textContent = state.pacerDemand ? 'MODE: DEMAND' : 'MODE: ASYNC';
+    }
 
     // --- Custom Scenario Logic ---
     const MAX_CUSTOM_STEPS = 5;
+    const STEP_TRIGGERS = {
+        manual: 'On Analyse (rhythm check)',
+        shock: 'On Shock Success',
+        pacing: 'On Pacing Capture',
+        timer_30: 'Timer: 30s',
+        timer_60: 'Timer: 60s',
+        timer_120: 'Timer: 2m'
+    };
+    const STORAGE_KEY = 'defibSim.customScenarios';
+    const stepsContainer = document.getElementById('customScenarioSteps');
+    const addStepBtn = document.getElementById('addStepBtn');
 
     function getScenarioStepHTML(index) {
         const rhythmOpts = Object.keys(rhythmNames)
             .map(key => `<option value="${key}">${rhythmNames[key]}</option>`)
             .join('');
+        const triggerOpts = Object.keys(STEP_TRIGGERS)
+            .map(key => `<option value="${key}">${STEP_TRIGGERS[key]}</option>`)
+            .join('');
 
         return `
         <div class="scenario-step-card" id="step-${index}">
-            <h5>Step ${index + 1}</h5>
+            <div class="step-header">
+                <h5>Step ${index + 1}</h5>
+                <button type="button" class="remove-step-btn" aria-label="Remove step ${index + 1}">×</button>
+            </div>
             <div>
                 <label>Rhythm</label>
                 <select class="scenario-rhythm-select step-rhythm">
@@ -1669,32 +1823,165 @@ document.addEventListener('DOMContentLoaded', () => {
             <div>
                 <label>Trigger to Next</label>
                 <select class="scenario-rhythm-select step-trigger">
-                    <option value="manual">On Analyse (rhythm check)</option>
-                    <option value="shock">On Shock Success</option>
-                    <option value="pacing">On Pacing Capture</option>
-                    <option value="timer_30">Timer: 30s</option>
-                    <option value="timer_60">Timer: 60s</option>
-                    <option value="timer_120">Timer: 2m</option>
+                    ${triggerOpts}
                 </select>
             </div>
         </div>`;
     }
 
-    const addStepBtn = document.getElementById('addStepBtn');
-    addStepBtn.addEventListener('click', () => {
-        const container = document.getElementById('customScenarioSteps');
-        const count = container.querySelectorAll('.scenario-step-card').length;
-        if (count >= MAX_CUSTOM_STEPS) return;
+    function stepCards() {
+        return [...stepsContainer.querySelectorAll('.scenario-step-card')];
+    }
 
-        const placeholder = container.querySelector('.steps-placeholder');
-        if (placeholder) placeholder.remove();
-
-        container.insertAdjacentHTML('beforeend', getScenarioStepHTML(count));
-        if (count + 1 >= MAX_CUSTOM_STEPS) {
-            addStepBtn.disabled = true;
-            addStepBtn.textContent = `Maximum ${MAX_CUSTOM_STEPS} steps`;
+    // Keep step numbers, ids and the Add button in step with the cards
+    function refreshStepCards() {
+        const cards = stepCards();
+        cards.forEach((card, i) => {
+            card.id = `step-${i}`;
+            card.querySelector('h5').textContent = `Step ${i + 1}`;
+            card.querySelector('.remove-step-btn').setAttribute('aria-label', `Remove step ${i + 1}`);
+        });
+        if (!cards.length && !stepsContainer.querySelector('.steps-placeholder')) {
+            stepsContainer.innerHTML = '<div class="steps-placeholder">Click "Add Step" to begin</div>';
         }
+        const full = cards.length >= MAX_CUSTOM_STEPS;
+        addStepBtn.disabled = full;
+        addStepBtn.textContent = full ? `Maximum ${MAX_CUSTOM_STEPS} steps` : '+ Add Step';
+    }
+
+    function addStep(step) {
+        const count = stepCards().length;
+        if (count >= MAX_CUSTOM_STEPS) return;
+        const placeholder = stepsContainer.querySelector('.steps-placeholder');
+        if (placeholder) placeholder.remove();
+        stepsContainer.insertAdjacentHTML('beforeend', getScenarioStepHTML(count));
+        if (step) {
+            const card = stepCards()[count];
+            card.querySelector('.step-rhythm').value = step.rhythm;
+            card.querySelector('.step-trigger').value = step.trigger;
+        }
+        refreshStepCards();
+    }
+
+    function readSteps() {
+        return stepCards().map(card => ({
+            rhythm: card.querySelector('.step-rhythm').value,
+            trigger: card.querySelector('.step-trigger').value
+        }));
+    }
+
+    function loadSteps(steps) {
+        stepCards().forEach(card => card.remove());
+        steps.slice(0, MAX_CUSTOM_STEPS).forEach(step => addStep(step));
+        refreshStepCards();
+    }
+
+    // Only accept steps that use known rhythms and triggers
+    function validSteps(steps) {
+        return Array.isArray(steps) && steps.length > 0 && steps.every(s =>
+            s && Object.prototype.hasOwnProperty.call(rhythmNames, s.rhythm) &&
+            Object.prototype.hasOwnProperty.call(STEP_TRIGGERS, s.trigger));
+    }
+
+    addStepBtn.addEventListener('click', () => addStep());
+
+    stepsContainer.addEventListener('click', (e) => {
+        const btn = e.target.closest('.remove-step-btn');
+        if (!btn) return;
+        btn.closest('.scenario-step-card').remove();
+        refreshStepCards();
     });
+
+    // --- Saved scenarios (stored in this browser only) ---
+    function readSaved() {
+        try {
+            const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+            return (saved && typeof saved === 'object') ? saved : {};
+        } catch (e) {
+            return {};
+        }
+    }
+
+    function writeSaved(saved) {
+        try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
+            return true;
+        } catch (e) {
+            window.alert('Could not save in this browser (storage unavailable). Use "Export file" instead.');
+            return false;
+        }
+    }
+
+    function refreshSavedList(selectName) {
+        const select = document.getElementById('savedScenarioSelect');
+        const names = Object.keys(readSaved()).sort();
+        select.innerHTML = names.length
+            ? names.map(n => `<option></option>`).join('')
+            : '<option value="">- None saved -</option>';
+        names.forEach((n, i) => { select.options[i].value = n; select.options[i].textContent = n; });
+        if (selectName) select.value = selectName;
+    }
+
+    document.getElementById('saveScenarioBtn').addEventListener('click', () => {
+        const steps = readSteps();
+        if (!steps.length) {
+            window.alert('Add at least one step first.');
+            return;
+        }
+        const name = (window.prompt('Name for this scenario:') || '').trim();
+        if (!name) return;
+        const saved = readSaved();
+        if (saved[name] && !window.confirm(`Replace the saved scenario "${name}"?`)) return;
+        saved[name] = steps;
+        if (writeSaved(saved)) refreshSavedList(name);
+    });
+
+    document.getElementById('loadScenarioBtn').addEventListener('click', () => {
+        const name = document.getElementById('savedScenarioSelect').value;
+        const steps = readSaved()[name];
+        if (!name || !validSteps(steps)) return;
+        loadSteps(steps);
+    });
+
+    document.getElementById('deleteScenarioBtn').addEventListener('click', () => {
+        const name = document.getElementById('savedScenarioSelect').value;
+        if (!name || !window.confirm(`Delete the saved scenario "${name}"?`)) return;
+        const saved = readSaved();
+        delete saved[name];
+        if (writeSaved(saved)) refreshSavedList();
+    });
+
+    document.getElementById('exportScenarioBtn').addEventListener('click', () => {
+        const steps = readSteps();
+        if (!steps.length) {
+            window.alert('Add at least one step first.');
+            return;
+        }
+        const blob = new Blob([JSON.stringify({ app: 'defib-sim', version: 1, steps }, null, 2)], { type: 'application/json' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = 'defib-scenario.json';
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+    });
+
+    const importInput = document.getElementById('importScenarioInput');
+    document.getElementById('importScenarioBtn').addEventListener('click', () => importInput.click());
+    importInput.addEventListener('change', () => {
+        const file = importInput.files[0];
+        importInput.value = '';
+        if (!file) return;
+        file.text().then(text => {
+            const data = JSON.parse(text);
+            const steps = Array.isArray(data) ? data : data && data.steps;
+            if (!validSteps(steps)) throw new Error('invalid');
+            loadSteps(steps);
+        }).catch(() => window.alert('That file is not a valid scenario file.'));
+    });
+
+    refreshSavedList();
 
     function startCustomScenario() {
         if (state.customScenario.length === 0) return;
@@ -1713,13 +2000,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     document.getElementById('startCustomScenarioBtn').addEventListener('click', () => {
-        const steps = [];
-        document.querySelectorAll('.scenario-step-card').forEach(card => {
-            steps.push({
-                rhythm: card.querySelector('.step-rhythm').value,
-                trigger: card.querySelector('.step-trigger').value
-            });
-        });
+        const steps = readSteps();
         if (steps.length === 0) {
             window.alert('Add at least one step first.');
             return;
@@ -1802,10 +2083,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 1000);
     }
 
+    const METRONOME_BPM = 110;
+    let nextClickTime = 0;
+
     function stopMetronome() {
-        if (metronomeInterval) {
-            clearInterval(metronomeInterval);
-            metronomeInterval = null;
+        if (metronomeTimer) {
+            clearInterval(metronomeTimer);
+            metronomeTimer = null;
         }
         const btn = document.getElementById('metronomeBtn');
         if (btn) btn.style.background = "#2c3e50";
@@ -1814,21 +2098,36 @@ document.addEventListener('DOMContentLoaded', () => {
     function toggleMetronome() {
         const btn = document.getElementById('metronomeBtn');
 
-        if (metronomeInterval) {
+        if (metronomeTimer) {
             stopMetronome();
             logAction('Metronome', 'OFF');
-        } else {
-            logAction('Metronome', 'ON (110 bpm)');
-            btn.style.background = "#27ae60";
+            return;
+        }
+        const ctx = getAudioContext();
+        if (!ctx) {
+            logAction('Metronome', 'Audio not available in this browser');
+            return;
+        }
+        logAction('Metronome', `ON (${METRONOME_BPM} bpm)`);
+        btn.style.background = "#27ae60";
+        nextClickTime = ctx.currentTime + 0.05;
+        scheduleMetronome();
+        metronomeTimer = setInterval(scheduleMetronome, 25);
+    }
 
-            // 110 BPM = 545ms interval
-            metronomeInterval = setInterval(() => {
-                playMetronomeClick();
-            }, 545);
+    // Clicks are scheduled slightly ahead on the audio clock, so the beat stays
+    // exactly 110/min even when the browser delays timers
+    function scheduleMetronome() {
+        const ctx = audioCtx;
+        if (!ctx) return;
+        if (nextClickTime < ctx.currentTime) nextClickTime = ctx.currentTime + 0.02; // Resume after the tab was asleep
+        while (nextClickTime < ctx.currentTime + 0.12) {
+            playMetronomeClick(nextClickTime);
+            nextClickTime += 60 / METRONOME_BPM;
         }
     }
 
-    function playMetronomeClick() {
+    function playMetronomeClick(when) {
         const ctx = getAudioContext();
         if (!ctx) return;
 
@@ -1842,8 +2141,8 @@ document.addEventListener('DOMContentLoaded', () => {
         osc.connect(gain);
         gain.connect(ctx.destination);
 
-        osc.start();
-        osc.stop(ctx.currentTime + 0.05);
+        osc.start(when);
+        osc.stop(when + 0.05);
     }
 
     // LISTENERS
@@ -1909,6 +2208,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (!state.arrestStartTime) {
                 state.arrestStartTime = Date.now();
+                state.arrestShocks = 0;
                 logAction('Cardiac Arrest Detected', 'Timer Started');
 
                 // --- AUTO-START CYCLE TIMER ---
@@ -1982,6 +2282,48 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    function formatElapsed(ms) {
+        const s = Math.max(0, Math.floor(ms / 1000));
+        return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+    }
+
+    // Drug timers are always shown; prompts are hidden in assessment mode
+    function drugPromptsAllowed() {
+        return !(state.sessionType === 'scenario' && state.selectedMode === 'assessment');
+    }
+
+    // RCUK ALS drug timing: adrenaline ASAP (non-shockable) or after the 3rd
+    // shock, then every 3-5 min; amiodarone 300mg after 3 shocks, 150mg after 5
+    function updateDrugPanel() {
+        const now = Date.now();
+        const adr = state.adrenalineTimes;
+        const amio = state.amiodaroneTimes;
+
+        document.getElementById('adrenalineStatus').textContent = adr.length
+            ? `${adr.length} dose${adr.length > 1 ? 's' : ''}, last ${formatElapsed(now - adr[adr.length - 1])} ago`
+            : 'not given';
+        document.getElementById('amiodaroneStatus').textContent = amio.length
+            ? `${amio.map((t, i) => i === 0 ? '300mg' : '150mg').join(' + ')}, last ${formatElapsed(now - amio[amio.length - 1])} ago`
+            : 'not given';
+
+        const prompts = [];
+        if (state.arrestStartTime && drugPromptsAllowed()) {
+            const shockablePath = state.arrestShocks > 0 || SHOCKABLE_ARREST.includes(state.rhythm);
+            if (shockablePath) {
+                if (state.arrestShocks >= 3 && !adr.length) prompts.push('Adrenaline 1mg due (after 3rd shock)');
+                if (state.arrestShocks >= 3 && amio.length === 0) prompts.push('Amiodarone 300mg due (after 3rd shock)');
+                if (state.arrestShocks >= 5 && amio.length === 1) prompts.push('Amiodarone 150mg due (after 5th shock)');
+            } else if (!adr.length) {
+                prompts.push('Adrenaline 1mg due now (non-shockable rhythm)');
+            }
+            if (adr.length && now - adr[adr.length - 1] >= 180000) prompts.push('Adrenaline due (3-5 min since last dose)');
+        }
+        const promptEl = document.getElementById('drugPrompt');
+        const text = prompts.join(' • ');
+        if (promptEl.textContent !== text) promptEl.textContent = text;
+        promptEl.classList.toggle('hidden', !prompts.length);
+    }
+
     function updateAmiodaroneButton() {
         const btn = document.querySelector('.cpr-action-btn[data-action="amiodarone"]');
         if (!btn) return;
@@ -2021,14 +2363,17 @@ document.addEventListener('DOMContentLoaded', () => {
             }, 800);
 
             if (action === 'adrenaline') {
+                state.adrenalineTimes.push(Date.now());
                 logAction(`Adrenaline 1mg Given`, `Time: ${time}`);
             } else if (action === 'amiodarone') {
                 // RCUK: 300mg after 3 shocks, further 150mg after 5 shocks
                 const dose = state.amiodaroneDoses === 0 ? '300mg' : '150mg';
                 state.amiodaroneDoses++;
+                state.amiodaroneTimes.push(Date.now());
                 logAction(`Amiodarone ${dose} Given`, `Time: ${time}`);
                 updateAmiodaroneButton();
             }
+            updateDrugPanel();
         });
     });
 

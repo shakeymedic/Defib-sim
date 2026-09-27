@@ -59,6 +59,9 @@
             <button class="rhythm-btn" data-rhythm="paced">Paced</button>
             <button class="rhythm-btn" data-rhythm="idioventricular">Idioventricular</button>
             <button class="rhythm-btn" data-rhythm="brady">Junctional Brady</button>
+            <button class="rhythm-btn" data-rhythm="mobitz2">Mobitz II</button>
+            <button class="rhythm-btn" data-rhythm="flutter">Flutter</button>
+            <button class="rhythm-btn" data-rhythm="vfib_fine">Fine VF</button>
         </div>
     </div>
 
@@ -104,6 +107,22 @@
 
                 <div class="creator-actions">
                     <button class="menu-option" id="addStepBtn" style="padding: 15px; font-size: 16px; background: #34495e;">+ Add Step</button>
+                    <div class="saved-scenarios">
+                        <label for="savedScenarioSelect">Saved scenarios (this browser)</label>
+                        <select id="savedScenarioSelect" class="scenario-rhythm-select">
+                            <option value="">- None saved -</option>
+                        </select>
+                        <div class="saved-scenario-buttons">
+                            <button type="button" class="small-btn" id="saveScenarioBtn">Save</button>
+                            <button type="button" class="small-btn" id="loadScenarioBtn">Load</button>
+                            <button type="button" class="small-btn" id="deleteScenarioBtn">Delete</button>
+                        </div>
+                        <div class="saved-scenario-buttons">
+                            <button type="button" class="small-btn" id="exportScenarioBtn">Export file</button>
+                            <button type="button" class="small-btn" id="importScenarioBtn">Import file</button>
+                            <input type="file" id="importScenarioInput" accept="application/json,.json" hidden>
+                        </div>
+                    </div>
                     <div style="flex-grow: 1;"></div>
                     <button class="menu-option" id="startCustomScenarioBtn" style="padding: 20px; background: linear-gradient(180deg,#27ae60 0%,#229954 100%);">START</button>
                     <button class="menu-option" id="cancelCustomScenarioBtn" style="padding: 15px; background: #c0392b;">Cancel</button>
@@ -322,6 +341,12 @@
                 </button>
             </div>
 
+            <div class="drug-status">
+                <div>Adrenaline: <span id="adrenalineStatus">not given</span></div>
+                <div>Amiodarone: <span id="amiodaroneStatus">not given</span></div>
+                <div id="drugPrompt" class="drug-prompt hidden" role="status" aria-live="polite"></div>
+            </div>
+
             <div id="cprLog" style="
                 margin-top: 10px; 
                 background: rgba(0,0,0,0.3); 
@@ -379,6 +404,11 @@
                         <button class="rhythm-btn" data-rhythm="chb">CHB</button>
                         <button class="rhythm-btn" data-rhythm="paced">PACED</button>
                         <button class="rhythm-btn" data-rhythm="idioventricular">IVR</button>
+                        <button class="rhythm-btn" data-rhythm="vfib_fine">Fine VF</button>
+                        <button class="rhythm-btn" data-rhythm="pea">PEA</button>
+                        <button class="rhythm-btn" data-rhythm="flutter">Flutter</button>
+                        <button class="rhythm-btn" data-rhythm="mobitz2">Mobitz II</button>
+                        <button class="rhythm-btn" data-rhythm="brady">JUNCT</button>
                     </div>
                 </div>
 
@@ -403,6 +433,21 @@
                             <option value="4">4th adequate shock</option>
                             <option value="5">5th adequate shock</option>
                             <option value="never">Never (refractory)</option>
+                        </select>
+                    </div>
+                    <div class="control-row">
+                        <label for="rOnTSelect">Unsync shock with pulse</label>
+                        <select id="rOnTSelect" style="width: 150px;">
+                            <option value="always">Always causes VF</option>
+                            <option value="sometimes">Sometimes (1 in 3)</option>
+                            <option value="never">No effect</option>
+                        </select>
+                    </div>
+                    <div class="control-row">
+                        <label for="refibSelect">After ROSC</label>
+                        <select id="refibSelect" style="width: 150px;">
+                            <option value="off">Stays in ROSC</option>
+                            <option value="once">VF recurs once (30-90s)</option>
                         </select>
                     </div>
                     <div style="color: #bdc3c7; font-size: 11px; line-height: 1.5;">Adequate = at least 150J for VF/pVT; synchronised and at least 70J for tachycardias with a pulse.</div>
@@ -446,7 +491,7 @@
                     </div>
                     
                     <div class="ecg-canvas-container">
-                        <canvas id="ecgCanvas"></canvas>
+                        <canvas id="ecgCanvas" role="img" aria-label="ECG trace"></canvas>
                     </div>
 
                     <div class="vitals-display">
@@ -472,7 +517,7 @@
                         </div>
                     </div>
 
-                    <div class="message-bar ready" id="messageBar">SIMULATOR READY</div>
+                    <div class="message-bar ready" id="messageBar" role="status" aria-live="polite">SIMULATOR READY</div>
                 </div>
 
                 <div class="softkeys">
@@ -493,7 +538,7 @@
                 </div>
 
                 <div class="side-buttons">
-                    <button class="side-btn" disabled title="Not simulated">LEAD</button>
+                    <button class="side-btn" id="leadBtn" title="Change monitoring lead">LEAD</button>
                     <button class="side-btn" id="sizeBtn" title="Change ECG size (gain)">SIZE</button>
                     <button class="side-btn" disabled title="Not simulated">ALARM SUSPEND</button>
                     <button class="side-btn" id="recorderBtn" title="Log an ECG strip print">RECORDER</button>
@@ -523,10 +568,10 @@
                 <div class="mode-dial-container">
                     <div class="mode-dial" id="modeDial" style="--dial-rotation: 0deg;"></div>
                     <div class="mode-labels">
-                        <div class="mode-label active" data-mode="monitor">MONITOR</div>
-                        <div class="mode-label" data-mode="defib">DEFIB</div>
-                        <div class="mode-label" data-mode="pacer">PACER</div>
-                        <div class="mode-label" data-mode="off">OFF</div>
+                        <button type="button" class="mode-label active" data-mode="monitor">MONITOR</button>
+                        <button type="button" class="mode-label" data-mode="defib">DEFIB</button>
+                        <button type="button" class="mode-label" data-mode="pacer">PACER</button>
+                        <button type="button" class="mode-label" data-mode="off">OFF</button>
                     </div>
                 </div>
 
@@ -542,8 +587,8 @@
                         <div class="pacer-value" id="outputDisplay">0</div>
                         <div class="pacer-label">mA</div>
                         <div class="pacer-controls-btn">
-                            <button class="pacer-btn" data-pacer-param="output" data-pacer-dir="-5">-</button>
-                            <button class="pacer-btn" data-pacer-param="output" data-pacer-dir="5">+</button>
+                            <button class="pacer-btn" data-pacer-param="output" data-pacer-dir="-5" aria-label="Decrease pacing output">-</button>
+                            <button class="pacer-btn" data-pacer-param="output" data-pacer-dir="5" aria-label="Increase pacing output">+</button>
                         </div>
                     </div>
                     <div>
@@ -552,10 +597,11 @@
                         <div class="pacer-value" id="rateDisplay">60</div>
                         <div class="pacer-label">ppm</div>
                         <div class="pacer-controls-btn">
-                            <button class="pacer-btn" data-pacer-param="rate" data-pacer-dir="-5">-</button>
-                            <button class="pacer-btn" data-pacer-param="rate" data-pacer-dir="5">+</button>
+                            <button class="pacer-btn" data-pacer-param="rate" data-pacer-dir="-5" aria-label="Decrease pacing rate">-</button>
+                            <button class="pacer-btn" data-pacer-param="rate" data-pacer-dir="5" aria-label="Increase pacing rate">+</button>
                         </div>
                     </div>
+                    <button class="pacer-mode-btn" id="pacerModeBtn" title="Switch between demand and asynchronous (fixed-rate) pacing">MODE: DEMAND</button>
                 </div>
 
             <div class="zoll-branding">
@@ -570,8 +616,8 @@
     </footer>
 
     <div id="modalOverlay" class="hidden">
-        <div class="modal-content">
-            <button id="closeModalBtn">×</button>
+        <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+            <button id="closeModalBtn" aria-label="Close">×</button>
             <div class="modal-header">
                 <img src="images/logo-192.png" alt="WMEBEM Logo">
                 <h2 id="modalTitle">RCUK 2025 Guideline Hint</h2>
