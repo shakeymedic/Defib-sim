@@ -70,7 +70,9 @@ document.addEventListener('DOMContentLoaded', () => {
         amiodaroneDoses: 0,
         adrenalineTimes: [],
         amiodaroneTimes: [],
-        arrestShocks: 0,             // Shocks delivered during the current arrest
+        // Defibrillation shocks given in cardiac arrest this session. RCUK counts
+        // them for drug timing whether VF is refractory or recurrent.
+        arrestShocks: 0,
         ecgGain: 1,
         lead: 'II',
         pacerDemand: true,
@@ -769,13 +771,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     improvementPoints.push(`⚠ Recommended energy: ${scenario.recommendedEnergy}J or higher`);
                 }
 
+                // RCUK: in hospital, defibrillate shockable rhythms rapidly (< 3 min)
                 const timeToShock = firstShock.time;
-                if (timeToShock <= 60) {
-                    goodPoints.push(`✓ Rapid defibrillation (${timeToShock}s) - excellent`);
-                } else if (timeToShock <= 180) {
-                    goodPoints.push(`✓ Timely defibrillation (${timeToShock}s)`);
+                if (timeToShock <= 180) {
+                    goodPoints.push(`✓ First shock within 3 minutes (${timeToShock}s)`);
                 } else {
-                    improvementPoints.push(`⚠ Delay to first shock: ${timeToShock}s (aim for <60s in witnessed arrest)`);
+                    improvementPoints.push(`⚠ Delay to first shock: ${timeToShock}s (RCUK in-hospital target is less than 3 minutes)`);
                 }
             } else {
                 improvementPoints.push('✗ No shocks delivered - shockable rhythm requires defibrillation');
@@ -798,20 +799,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 const firstShock = shocks[0];
                 const energyUsed = parseInt(firstShock.details.match(/(\d+)J/)?.[1] || '0');
-                if (Math.abs(energyUsed - scenario.recommendedEnergy) <= 30) {
-                    goodPoints.push(`✓ Appropriate energy used (${energyUsed}J)`);
+                const [minJ, maxJ] = scenario.energyRange || [scenario.recommendedEnergy, scenario.recommendedEnergy];
+                if (energyUsed >= minJ && energyUsed <= maxJ) {
+                    goodPoints.push(`✓ Appropriate initial energy (${energyUsed}J)`);
                 } else {
-                    improvementPoints.push(`⚠ Recommended energy: ${scenario.recommendedEnergy}J for this rhythm`);
+                    improvementPoints.push(`⚠ First shock ${energyUsed}J - RCUK recommends ${scenario.energyAdvice || scenario.recommendedEnergy + 'J'}`);
                 }
 
-                const timeToShock = firstShock.time;
-                if (timeToShock <= 60) {
-                    goodPoints.push(`✓ Rapid cardioversion (${timeToShock}s)`);
-                } else {
-                    improvementPoints.push(`⚠ Time to cardioversion: ${timeToShock}s (aim for <60s when unstable)`);
-                }
+                goodPoints.push(`ℹ Time to first cardioversion: ${firstShock.time}s`);
             } else {
-                improvementPoints.push('✗ No cardioversion attempted - patient has adverse features');
+                improvementPoints.push('✗ No cardioversion attempted - patient has life-threatening features');
             }
 
         } else if (scenario.category === 'pacing') {
@@ -2078,7 +2075,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 cycleInterval = null;
                 nextBtn.classList.add('highlight-btn');
                 playSound('alarm'); // Use existing beep
-                logAction('CYCLE ENDED', 'Assess Rhythm');
+                logAction('CYCLE ENDED', 'Assess rhythm - swap compressor');
             }
         }, 1000);
     }
@@ -2208,7 +2205,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (!state.arrestStartTime) {
                 state.arrestStartTime = Date.now();
-                state.arrestShocks = 0;
                 logAction('Cardiac Arrest Detected', 'Timer Started');
 
                 // --- AUTO-START CYCLE TIMER ---
@@ -2313,6 +2309,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (state.arrestShocks >= 3 && !adr.length) prompts.push('Adrenaline 1mg due (after 3rd shock)');
                 if (state.arrestShocks >= 3 && amio.length === 0) prompts.push('Amiodarone 300mg due (after 3rd shock)');
                 if (state.arrestShocks >= 5 && amio.length === 1) prompts.push('Amiodarone 150mg due (after 5th shock)');
+                if (state.arrestShocks >= 3 && SHOCKABLE_ARREST.includes(state.rhythm)) prompts.push('Refractory VF: consider antero-posterior pads (vector change)');
             } else if (!adr.length) {
                 prompts.push('Adrenaline 1mg due now (non-shockable rhythm)');
             }

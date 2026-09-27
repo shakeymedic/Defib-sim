@@ -125,6 +125,6 @@ test.describe('Defibrillator controls', () => {
     await page.keyboard.press('c');
     await tick(page, 2500);
     expect(await sim(page, 'state.machineState')).toBe('IDLE');
-    await expect(page.locator('#modalBody')).toContainText('Adrenaline 1mg');
+    await expect(page.locator('#modalBody')).toContainText('adrenaline 1 mg');
   });
 });

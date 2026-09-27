@@ -70,6 +70,7 @@
         <button class="hint-btn" data-guideline="nonshockable">RCUK Hint: Non-Shockable Arrest</button>
         <button class="hint-btn" data-guideline="tachy">RCUK Hint: Tachycardia</button>
         <button class="hint-btn" data-guideline="brady">RCUK Hint: Bradycardia</button>
+        <button class="hint-btn" data-guideline="postrosc">RCUK Hint: Post-ROSC</button>
     </div>
 
     <div class="menu-wrapper hidden" id="menuWrapper">
@@ -158,14 +159,14 @@
                     <div style="display: grid; gap: 10px;">
                         <button class="menu-option" style="padding: 20px; text-align: left;" data-scenario="unstable-vt">
                             <div style="font-size: 16px;">VT with Pulse (Unstable)</div>
-                            <div class="subtitle">Conscious patient with adverse features - needs synchronised shock</div>
+                            <div class="subtitle">Conscious patient with life-threatening features - needs synchronised shock</div>
                         </button>
                         <button class="menu-option" style="padding: 20px; text-align: left;" data-scenario="unstable-svt">
-                            <div style="font-size: 16px;">SVT with Adverse Features</div>
+                            <div style="font-size: 16px;">SVT with Life-Threatening Features</div>
                             <div class="subtitle">Narrow complex tachycardia causing haemodynamic compromise</div>
                         </button>
                         <button class="menu-option" style="padding: 20px; text-align: left;" data-scenario="fast-af">
-                            <div style="font-size: 16px;">Fast AF with Adverse Features</div>
+                            <div style="font-size: 16px;">Fast AF with Life-Threatening Features</div>
                             <div class="subtitle">Rapid atrial fibrillation with shock or heart failure</div>
                         </button>
                     </div>
@@ -176,7 +177,7 @@
                     <div style="display: grid; gap: 10px;">
                         <button class="menu-option" style="padding: 20px; text-align: left;" data-scenario="complete-hb">
                             <div style="font-size: 16px;">Complete Heart Block</div>
-                            <div class="subtitle">3rd degree AV block with adverse features requiring pacing</div>
+                            <div class="subtitle">3rd degree AV block with broad QRS and life-threatening features - requires pacing</div>
                         </button>
                         <button class="menu-option" style="padding: 20px; text-align: left;" data-scenario="symptomatic-brady">
                             <div style="font-size: 16px;">Symptomatic Bradycardia</div>
@@ -321,12 +322,12 @@
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px;">
                     <button class="cause-btn" data-cause="Hypoxia">Hypoxia</button>
                     <button class="cause-btn" data-cause="Hypovolaemia">Hypovolaemia</button>
-                    <button class="cause-btn" data-cause="Hypothermia">Hypothermia</button>
-                    <button class="cause-btn" data-cause="Hyperkalaemia / metabolic">H+ / K+</button>
+                    <button class="cause-btn" data-cause="Hypo/hyperthermia">Hypo/hyperthermia</button>
+                    <button class="cause-btn" data-cause="Hyper/hypokalaemia / metabolic">K+ / metabolic</button>
                     <button class="cause-btn" data-cause="Toxins">Toxins</button>
-                    <button class="cause-btn" data-cause="Tamponade">Tamponade</button>
+                    <button class="cause-btn" data-cause="Tamponade (cardiac)">Tamponade</button>
                     <button class="cause-btn" data-cause="Tension Pneumo">Tension PTX</button>
-                    <button class="cause-btn" data-cause="Thrombosis">Thrombosis</button>
+                    <button class="cause-btn" data-cause="Thrombosis (coronary/pulmonary)">Thrombosis</button>
                 </div>
             </div>
 

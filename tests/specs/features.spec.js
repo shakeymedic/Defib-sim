@@ -163,15 +163,45 @@ test.describe('Drug timing prompts', () => {
     await expect(prompt).toContainText('Adrenaline 1mg due');
     await expect(prompt).toContainText('Amiodarone 300mg due');
 
+    await expect(prompt).toContainText('antero-posterior pads');
+
     await page.click('.cpr-action-btn[data-action="adrenaline"]');
     await page.click('.cpr-action-btn[data-action="amiodarone"]');
-    await expect(prompt).toBeHidden();
+    await expect(prompt).not.toContainText('Adrenaline 1mg due');
+    await expect(prompt).not.toContainText('Amiodarone 300mg due');
     await expect(page.locator('#adrenalineStatus')).toContainText('1 dose');
 
     for (let i = 0; i < 2; i++) await chargeAndShock(page);
     await expect(prompt).toContainText('Amiodarone 150mg due');
     await page.click('.cpr-action-btn[data-action="amiodarone"]');
     await expect(page.locator('#amiodaroneStatus')).toContainText('300mg + 150mg');
+  });
+
+  test('amiodarone timing counts shocks across recurrent VF (RCUK)', async ({ page }) => {
+    await openInstructor(page);
+    await page.selectOption('#shockResponseSelect', '2');
+    await setRhythm(page, 'vfib');
+    await setMode(page, 'defib');
+    await setEnergy(page, 150);
+    await chargeAndShock(page);
+    await chargeAndShock(page);                 // 2nd shock converts
+    expect(await sim(page, 'state.rhythm')).toBe('nsr');
+    await setRhythm(page, 'vfib');              // VF recurs
+    await chargeAndShock(page);                 // 3rd shock in total
+    await expect(page.locator('#drugPrompt')).toContainText('Amiodarone 300mg due');
+  });
+
+  test('cardioversion feedback uses the RCUK energy for AF (maximum output)', async ({ page }) => {
+    await page.click('#openScenariosBtn');
+    await page.click('[data-select-mode="education"]');
+    await page.click('[data-scenario="fast-af"]');
+    await tick(page, 3100);
+    await setMode(page, 'defib');
+    await page.click('#syncBtn');
+    await setEnergy(page, 120);
+    await chargeAndShock(page);
+    await page.click('#endScenarioBtn');
+    await expect(page.locator('#summaryFeedback')).toContainText('maximum output');
   });
 
   test('non-shockable arrest: adrenaline now, then every 3-5 minutes', async ({ page }) => {
