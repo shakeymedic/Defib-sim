@@ -380,11 +380,18 @@ function lastSpikeIndexAtOrBefore(x) {
     return found;
 }
 
+// Start of the unbroken run of captured segments containing segment i, so a
+// rate/lead/size change during capture doesn't interrupt the paced complexes
+function captureRunStart(i) {
+    while (i > 0 && timeline[i - 1].captured) i--;
+    return timeline[i].x;
+}
+
 // Is the ventricle being paced at x? (captured segment with a spike already fired)
-function capturedSpikeAt(seg, x) {
-    if (!seg.captured) return -1;
+function capturedSpikeAt(segIndex, x) {
+    if (!timeline[segIndex].captured) return -1;
     var i = lastSpikeIndexAtOrBefore(x);
-    return (i >= 0 && spikes[i] >= seg.x) ? i : -1;
+    return (i >= 0 && spikes[i] >= captureRunStart(segIndex)) ? i : -1;
 }
 
 // Intrinsic (non-paced) R-waves of a segment
@@ -414,7 +421,8 @@ function advancePacer(toX) {
             pacer.lastEvent = pacer.cursor - cycle + 0.1 * window.ecgSpeed;
             pacer.wasPacing = true;
         }
-        var candidate = pacer.lastEvent + cycle;
+        // Never schedule a pulse behind the cursor (e.g. after the rate is increased)
+        var candidate = Math.max(pacer.lastEvent + cycle, pacer.cursor);
 
         if (seg.demand && !seg.captured) {
             var sensed = intrinsicPeaks(seg, pacer.cursor + 0.001, Math.min(candidate, end));
@@ -480,14 +488,15 @@ window.ecgTrace = {
     y: function(x, height) {
         var baseline = (height || 300) / 2;
         if (!timeline.length) return baseline;
-        var seg = timeline[segmentIndexAt(x)];
+        var segIndex = segmentIndexAt(x);
+        var seg = timeline[segIndex];
         var y;
-        var si = capturedSpikeAt(seg, x);
+        var si = capturedSpikeAt(segIndex, x);
         if (si >= 0) {
             // Paced ventricular complexes follow each spike
             var rr = 60 / seg.pacerRate;
             y = wideBeat((x - spikes[si]) / window.ecgSpeed, rr, PACED_R);
-            if (si > 0 && spikes[si - 1] >= seg.x) y += wideBeat((x - spikes[si - 1]) / window.ecgSpeed, rr, PACED_R);
+            if (si > 0 && spikes[si - 1] >= captureRunStart(segIndex)) y += wideBeat((x - spikes[si - 1]) / window.ecgSpeed, rr, PACED_R);
         } else {
             var r = rhythms[seg.rhythm];
             y = r ? r.y(x, seg.hr) : 0;
@@ -507,7 +516,8 @@ window.ecgTrace = {
             if (seg.captured) {
                 // Each paced complex peaks PACED_R after its pacer spike
                 var off = PACED_R * window.ecgSpeed;
-                pacerSpikes(a - off, b - off).forEach(function(p) { if (p >= seg.x) out.push(p + off); });
+                var runStart = captureRunStart(i);
+                pacerSpikes(a - off, b - off).forEach(function(p) { if (p >= runStart) out.push(p + off); });
             } else {
                 out = out.concat(intrinsicPeaks(seg, a, b));
             }

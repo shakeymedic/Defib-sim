@@ -422,17 +422,20 @@ document.addEventListener('DOMContentLoaded', () => {
     function updateDisplays() {
         if (state.deviceMode === 'off') return;
 
+        // The monitor counts QRS complexes on the ECG: it shows a rate in PEA or
+        // pulseless VT, and no rate in VF or asystole
         let displayHR;
         if (state.isCaptured) {
             displayHR = state.pacerRate;
-        } else if (!state.hasPulse) {
-            displayHR = 0;
-        } else {
+        } else if (window.rhythmPeaks(state.rhythm, 0, 5 * window.ecgSpeed, state.hr).length) {
             displayHR = state.hr;
+        } else {
+            displayHR = null;
         }
 
-        document.getElementById('hrDisplay').textContent = displayHR;
-        document.getElementById('spo2Display').textContent = state.spo2;
+        document.getElementById('hrDisplay').textContent = displayHR === null ? '---' : displayHR;
+        // No pulse oximetry or NIBP reading without a perfusing rhythm
+        document.getElementById('spo2Display').textContent = state.spo2 > 0 ? state.spo2 : '---';
 
         // --- ETCO2 LOGIC UPDATE ---
         let displayEtco2 = state.etco2;
@@ -443,7 +446,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('etco2Display').textContent = displayEtco2.toFixed(1);
         // --------------------------
 
-        document.getElementById('bpDisplay').textContent = `${state.bpSys}/${state.bpDia}`;
+        document.getElementById('bpDisplay').textContent = state.bpSys > 0 ? `${state.bpSys}/${state.bpDia}` : '---/---';
         document.getElementById('energyDisplay').textContent = state.energy;
         document.getElementById('outputDisplay').textContent = state.pacerOutput;
         document.getElementById('rateDisplay').textContent = state.pacerRate;
@@ -453,9 +456,10 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('syncIndicator').textContent = state.syncMode ? 'SYNC' : '';
         document.getElementById('syncIndicator').className = state.syncMode ? 'screen-info sync-indicator' : 'screen-info';
 
+        // Alarm when there is no rate or it is outside 40-150/min
         const hrEl = document.getElementById('hrDisplay');
         hrEl.className = 'vital-value';
-        if (displayHR === 0) {
+        if (displayHR === null || displayHR < 40 || displayHR > 150) {
             hrEl.classList.add('critical');
         }
 
@@ -524,6 +528,11 @@ document.addEventListener('DOMContentLoaded', () => {
         quickRhythmPanel.classList.remove('hidden');
         hintsPanel.classList.remove('hidden');
         requestAnimationFrame(resizeCanvas);
+        // The ECG is paused while a summary is shown; restart it if the device is on
+        if (state.deviceMode !== 'off' && !animationId) {
+            resetTrace();
+            animationId = requestAnimationFrame(animate);
+        }
     }
 
     function showInstructorPanel(subtitle) {
@@ -1570,6 +1579,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.target.closest && e.target.closest('input, select, textarea, [contenteditable="true"]')) return;
         if (!modalOverlay.classList.contains('hidden') || simulatorContainer.classList.contains('hidden')) return;
 
+        if (typeof e.key !== 'string') return;
         const key = e.key.toLowerCase();
 
         if (key === 'c') {
@@ -1893,7 +1903,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function readSaved() {
         try {
             const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
-            return (saved && typeof saved === 'object') ? saved : {};
+            return (saved && typeof saved === 'object' && !Array.isArray(saved)) ? saved : {};
         } catch (e) {
             return {};
         }
@@ -1927,16 +1937,21 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         const name = (window.prompt('Name for this scenario:') || '').trim();
         if (!name) return;
+        if (name === '__proto__') {
+            window.alert('Please choose a different name.');
+            return;
+        }
         const saved = readSaved();
-        if (saved[name] && !window.confirm(`Replace the saved scenario "${name}"?`)) return;
+        if (Object.prototype.hasOwnProperty.call(saved, name) && !window.confirm(`Replace the saved scenario "${name}"?`)) return;
         saved[name] = steps;
         if (writeSaved(saved)) refreshSavedList(name);
     });
 
     document.getElementById('loadScenarioBtn').addEventListener('click', () => {
         const name = document.getElementById('savedScenarioSelect').value;
-        const steps = readSaved()[name];
-        if (!name || !validSteps(steps)) return;
+        const saved = readSaved();
+        if (!name || !Object.prototype.hasOwnProperty.call(saved, name) || !validSteps(saved[name])) return;
+        const steps = saved[name];
         loadSteps(steps);
     });
 
@@ -2200,7 +2215,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Add active class slightly later for CSS transition
             later(() => {
-                cprPanel.classList.add('active');
+                if (state.arrestStartTime) cprPanel.classList.add('active');
             }, 50);
 
             if (!state.arrestStartTime) {
@@ -2304,16 +2319,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const prompts = [];
         if (state.arrestStartTime && drugPromptsAllowed()) {
-            const shockablePath = state.arrestShocks > 0 || SHOCKABLE_ARREST.includes(state.rhythm);
-            if (shockablePath) {
-                if (state.arrestShocks >= 3 && !adr.length) prompts.push('Adrenaline 1mg due (after 3rd shock)');
+            const shockable = SHOCKABLE_ARREST.includes(state.rhythm);
+            // Adrenaline: as soon as possible in a non-shockable rhythm, after the 3rd shock in a shockable one
+            if (!adr.length) {
+                if (!shockable) prompts.push('Adrenaline 1mg due now (non-shockable rhythm)');
+                else if (state.arrestShocks >= 3) prompts.push('Adrenaline 1mg due (after 3rd shock)');
+            } else if (now - adr[adr.length - 1] >= 180000) {
+                prompts.push('Adrenaline due (3-5 min since last dose)');
+            }
+            // Amiodarone: only while in VF/pVT, counting all shocks this arrest
+            if (shockable) {
                 if (state.arrestShocks >= 3 && amio.length === 0) prompts.push('Amiodarone 300mg due (after 3rd shock)');
                 if (state.arrestShocks >= 5 && amio.length === 1) prompts.push('Amiodarone 150mg due (after 5th shock)');
-                if (state.arrestShocks >= 3 && SHOCKABLE_ARREST.includes(state.rhythm)) prompts.push('Refractory VF: consider antero-posterior pads (vector change)');
-            } else if (!adr.length) {
-                prompts.push('Adrenaline 1mg due now (non-shockable rhythm)');
+                if (state.arrestShocks >= 3) prompts.push('Refractory VF: consider antero-posterior pads (vector change)');
             }
-            if (adr.length && now - adr[adr.length - 1] >= 180000) prompts.push('Adrenaline due (3-5 min since last dose)');
         }
         const promptEl = document.getElementById('drugPrompt');
         const text = prompts.join(' • ');
@@ -2349,13 +2368,15 @@ document.addEventListener('DOMContentLoaded', () => {
             const action = this.dataset.action;
             const time = document.getElementById('cprTimerDisplay').textContent;
 
-            // Visual click feedback for momentary buttons
+            // Visual click feedback for momentary buttons (label kept so a
+            // quick second click can't leave the button reading "DONE")
             const span = this.querySelector('span');
-            const originalText = span.textContent;
+            if (!span.dataset.label) span.dataset.label = span.textContent;
             span.textContent = "DONE";
             this.style.background = "#27ae60";
-            setTimeout(() => {
-                span.textContent = originalText;
+            clearTimeout(this.doneTimer);
+            this.doneTimer = setTimeout(() => {
+                span.textContent = span.dataset.label;
                 this.style.background = "";
             }, 800);
 
