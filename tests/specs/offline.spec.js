@@ -16,9 +16,22 @@ test('app loads and runs offline after the first visit', async ({ page, context 
     }
     return keys;
   });
-  for (const file of ['/index.html', '/css/styles.css', '/js/rhythms.js', '/js/data.js', '/js/app.js']) {
+  for (const file of ['/index.html', '/instructor.html', '/css/styles.css', '/css/instructor.css', '/js/rhythms.js', '/js/data.js', '/js/link.js', '/js/app.js', '/js/instructor.js']) {
     expect(cached, file).toContain(file);
   }
+  // Visiting the instructor window online must not replace the cached simulator page
+  const code = await page.locator('#sessionCodeDisplay').textContent();
+  const visit = await context.newPage();
+  await visit.goto(`/instructor.html?session=${code}`);
+  await expect(visit.locator('#joinPanel')).toBeHidden();
+  const cachedPage = path => page.evaluate(async p => {
+    const r = await caches.match(p);
+    return r ? r.text() : '';
+  }, path);
+  await expect.poll(() => cachedPage('/instructor.html')).toContain('id="joinPanel"');
+  expect(await cachedPage('/index.html')).toContain('id="zollDevice"');
+  await visit.close();
+
   // Make sure files come from the service worker, not the browser's HTTP cache
   const cdp = await context.newCDPSession(page);
   await cdp.send('Network.clearBrowserCache');
@@ -28,4 +41,11 @@ test('app loads and runs offline after the first visit', async ({ page, context 
   await page.click('.quick-rhythm-panel [data-rhythm="svt"]');
   expect(await page.evaluate(() => state.rhythm)).toBe('svt');
   expect(await page.$eval('.main-header img', i => i.naturalWidth)).toBeGreaterThan(0);
+
+  // The instructor window also opens offline, as itself rather than as the simulator
+  const instructor = await context.newPage();
+  await instructor.goto(`/instructor.html?session=${code}`);
+  await expect(instructor.locator('#connectionStatus')).toHaveText('Connected to the simulator');
+  await instructor.click('#rhythmButtons [data-rhythm="afib"]');
+  await expect.poll(() => page.evaluate(() => state.rhythm)).toBe('afib');
 });
