@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Instructor Controls - ZOLL R Series Simulator - WMEBEM</title>
+    <link rel="icon" type="image/png" href="images/logo-192.png">
+    <meta name="theme-color" content="#2c3e50">
+    <script>
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('sw.js').catch(err => console.warn('Service Worker registration failed:', err));
+      }
+    </script>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/instructor.css">
+</head>
+<body class="instructor-window">
+    <header class="main-header">
+        <div class="main-header-brand">
+            <img src="images/logo-192.png" alt="WMEBEM Logo">
+            <div>
+                <h1>Instructor Controls</h1>
+                <p>ZOLL R Series Simulator</p>
+            </div>
+        </div>
+        <div class="ic-connection">
+            <div class="ic-code">Session <strong id="codeDisplay">------</strong></div>
+            <div class="ic-status" id="connectionStatus" role="status" aria-live="polite">Not connected</div>
+        </div>
+    </header>
+
+    <section class="ic-join hidden" id="joinPanel">
+        <h2>Join a simulator session</h2>
+        <p>Enter the six-character code shown on the simulator's <strong>Instructor Window</strong> button. The simulator must be open in this browser on this computer.</p>
+        <form id="joinForm">
+            <label for="joinCode">Session code</label>
+            <input id="joinCode" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="12" placeholder="K7MX2P">
+            <button type="submit" class="small-btn">Join</button>
+        </form>
+        <div class="ic-join-error hidden" id="joinError" role="alert">That is not a valid session code.</div>
+    </section>
+
+    <fieldset class="ic-grid hidden" id="controls" disabled>
+        <section class="control-section ic-monitor">
+            <h4>Learner's Monitor</h4>
+            <div class="ic-rhythm"><span id="rhythmName">-</span> <span class="ic-underlying" id="underlyingRhythm"></span></div>
+            <div class="ic-vitals">
+                <div><span>HR</span><strong id="hrValue">-</strong></div>
+                <div><span>SpO₂</span><strong id="spo2Value">-</strong></div>
+                <div><span>ETCO₂</span><strong id="etco2Value">-</strong></div>
+                <div><span>NIBP</span><strong id="bpValue">-</strong></div>
+            </div>
+            <div class="message-bar" id="messageMirror"></div>
+            <div class="ic-device">
+                <div>Mode: <strong id="deviceMode">-</strong></div>
+                <div>Energy: <strong id="deviceEnergy">-</strong></div>
+                <div>Device: <strong id="deviceState">-</strong></div>
+                <div>Shocks: <strong id="shockCount">0</strong></div>
+                <div>Sync: <strong id="syncState">OFF</strong></div>
+                <div>Pacing: <strong id="pacingState">OFF</strong></div>
+                <div>Pulse: <strong id="pulseState">-</strong></div>
+            </div>
+        </section>
+
+        <section class="control-section">
+            <h4>Session</h4>
+            <div class="ic-session">Now: <strong id="sessionName">Free play</strong> <span id="sessionDetail"></span></div>
+            <div class="ic-field">
+                <label for="scenarioSelect">Scenario</label>
+                <select id="scenarioSelect"></select>
+            </div>
+            <div class="ic-field">
+                <label for="scenarioModeSelect">Mode</label>
+                <select id="scenarioModeSelect">
+                    <option value="education">Education</option>
+                    <option value="assessment">Assessment (no prompts on the simulator)</option>
+                </select>
+            </div>
+            <button type="button" class="ic-btn ic-btn-go" id="startScenarioBtn">Start scenario</button>
+            <div class="ic-btn-row">
+                <button type="button" class="ic-btn" id="endScenarioBtn">End scenario</button>
+                <button type="button" class="ic-btn" id="resetScenarioBtn">Reset scenario</button>
+            </div>
+            <div class="ic-btn-row">
+                <button type="button" class="ic-btn" id="tryAgainBtn">Try again</button>
+                <button type="button" class="ic-btn" id="freePlayBtn">Free play (device off)</button>
+            </div>
+            <p class="ic-note">Custom scenarios are built and started on the simulator screen (use <em>Show controls here</em> there).</p>
+        </section>
+
+        <section class="control-section">
+            <h4>Rhythm</h4>
+            <div class="rhythm-buttons" id="rhythmButtons"></div>
+        </section>
+
+        <section class="control-section ic-arrest" id="arrestSection">
+            <h4>Cardiac Arrest</h4>
+            <p class="ic-note" id="arrestIdle">No cardiac arrest in progress. These controls become available when a rhythm without a pulse is running.</p>
+            <div class="ic-timers">
+                <div><span>Total downtime</span><strong id="downtime">00:00</strong></div>
+                <div id="cycleBox"><span>Cycle remaining</span><strong id="cycleTime">02:00</strong></div>
+            </div>
+            <div class="ic-btn-row">
+                <button type="button" class="ic-btn" id="cprBtn" data-command="cpr">Start CPR</button>
+                <button type="button" class="ic-btn" id="metronomeBtn" data-command="metronome" title="Plays on the simulator's speakers">Metronome 110</button>
+            </div>
+            <button type="button" class="ic-btn" id="nextCycleBtn" data-command="nextCycle">↺ Reset cycle (2 min)</button>
+            <div class="ic-subhead">Reversible causes (log when mentioned)</div>
+            <div class="ic-causes" id="causeButtons"></div>
+            <div class="ic-btn-row">
+                <button type="button" class="ic-btn" data-drug="adrenaline">Adrenaline 1mg</button>
+                <button type="button" class="ic-btn" data-drug="amiodarone" id="amiodaroneBtn">Amiodarone 300mg</button>
+            </div>
+            <div class="drug-status">
+                <div>Adrenaline: <span id="adrenalineStatus">not given</span></div>
+                <div>Amiodarone: <span id="amiodaroneStatus">not given</span></div>
+                <div id="drugPrompt" class="drug-prompt hidden"></div>
+            </div>
+            <button type="button" class="rosc-btn" id="roscBtn" data-command="rosc">❤️ Confirm ROSC</button>
+        </section>
+
+        <section class="control-section">
+            <h4>Shock Response</h4>
+            <div class="ic-field">
+                <label for="shockResponseSelect">Converts on</label>
+                <select id="shockResponseSelect" data-setting="shockResponse">
+                    <option value="auto">Auto (arrest: 3rd, cardioversion: 1st)</option>
+                    <option value="1">1st adequate shock</option>
+                    <option value="2">2nd adequate shock</option>
+                    <option value="3">3rd adequate shock</option>
+                    <option value="4">4th adequate shock</option>
+                    <option value="5">5th adequate shock</option>
+                    <option value="never">Never (refractory)</option>
+                </select>
+            </div>
+            <div class="ic-field">
+                <label for="rOnTSelect">Unsync shock with pulse</label>
+                <select id="rOnTSelect" data-setting="rOnT">
+                    <option value="always">Always causes VF</option>
+                    <option value="sometimes">Sometimes (1 in 3)</option>
+                    <option value="never">No effect</option>
+                </select>
+            </div>
+            <div class="ic-field">
+                <label for="refibSelect">After ROSC</label>
+                <select id="refibSelect" data-setting="refib">
+                    <option value="off">Stays in ROSC</option>
+                    <option value="once">VF recurs once (30-90s)</option>
+                </select>
+            </div>
+            <p class="ic-note">Adequate = at least 150J for VF/pVT; synchronised and at least 70J for tachycardias with a pulse.</p>
+        </section>
+
+        <section class="control-section">
+            <h4>Artefact Overlays</h4>
+            <label class="ic-check"><input type="checkbox" data-artefact="movement"> Movement / patient motion</label>
+            <label class="ic-check"><input type="checkbox" data-artefact="cpr"> CPR interference</label>
+            <label class="ic-check"><input type="checkbox" data-artefact="leadoff"> Lead-off / poor contact</label>
+        </section>
+
+        <section class="control-section ic-log-section">
+            <h4>Event Log</h4>
+            <div class="ic-log" id="eventLog"></div>
+        </section>
+    </fieldset>
+
+    <footer class="app-footer">
+        © 2025 West Midlands Evidence Based Emergency Medicine. Author: Dr Jake Turner.
+    </footer>
+
+    <script src="js/data.js"></script>
+    <script src="js/link.js"></script>
+    <script src="js/instructor.js"></script>
+</body>
+</html>

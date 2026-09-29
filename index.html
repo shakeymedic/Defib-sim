@@ -31,8 +31,17 @@
         <div class="header-actions">
             <button class="menu-option" id="openScenariosBtn">Training Scenarios</button>
             <button class="menu-option" id="openScenarioCreatorBtn">Create Custom Scenario</button>
+            <button class="menu-option" id="popoutInstructorBtn" title="Open the instructor controls in a separate window (for example on a second screen)">
+                Instructor Window
+                <div class="subtitle">Session <span id="sessionCodeDisplay">------</span></div>
+            </button>
         </div>
     </header>
+
+    <div class="remote-banner hidden" id="remoteBanner" role="status">
+        <span id="remoteBannerText"></span>
+        <button type="button" class="small-btn" id="remoteControlsBtn"></button>
+    </div>
 
     <div class="quick-rhythm-panel">
         <h4>Quick Rhythm Select</h4>
@@ -629,6 +638,7 @@
 
     <script src="js/rhythms.js"></script>
     <script src="js/data.js"></script>
+    <script src="js/link.js"></script>
     <script src="js/app.js"></script>
 </body>
 </html>

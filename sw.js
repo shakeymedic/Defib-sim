@@ -1,15 +1,19 @@
 // sw.js - Offline support
 // Bump CACHE_VERSION when the precached file list changes.
-const CACHE_VERSION = 'defib-sim-v3';
+const CACHE_VERSION = 'defib-sim-v4';
 
 const PRECACHE = [
   './',
   './index.html',
+  './instructor.html',
   './manifest.json',
   './css/styles.css',
+  './css/instructor.css',
   './js/rhythms.js',
   './js/data.js',
+  './js/link.js',
   './js/app.js',
+  './js/instructor.js',
   './images/logo-192.png',
   './images/logo-512.png'
 ];
@@ -55,13 +59,17 @@ self.addEventListener('fetch', function(e) {
   const url = new URL(request.url);
   const sameOrigin = url.origin === self.location.origin;
 
-  // Pages: network first, fall back to the cached app when offline
+  // Pages: network first, fall back to the cached copy of that page when
+  // offline (ignoring ?session=...), then to the simulator itself
   if (request.mode === 'navigate') {
+    const page = new URL(url.pathname, url.origin).href;
     e.respondWith(
       fetch(request).then(function(response) {
-        return putInCache('./index.html', response);
+        return sameOrigin ? putInCache(page, response) : response;
       }).catch(function() {
-        return caches.match('./index.html');
+        return caches.match(page).then(function(cached) {
+          return cached || caches.match('./index.html');
+        });
       })
     );
     return;

@@ -107,6 +107,17 @@ document.addEventListener('DOMContentLoaded', () => {
     let countdownInterval = null;
     let etco2SettleInterval = null;
 
+    // Separate instructor window (see js/link.js)
+    let link = null;
+    let sessionCode = null;
+    let instructorWin = null;
+    let controlsShownHere = false;   // Instructor chose to show the controls here too
+    let publishQueued = false;
+    const instructors = new Map();   // instructor window id -> last heard from (ms)
+    const logEntries = [];           // Event log sent to the instructor window
+    let logCount = 0;                // Changes whenever the log does
+    const MAX_LOG_ENTRIES = 100;
+
     // setTimeout wrapper so every pending scenario/device callback can be
     // cancelled on reset (prevents stale callbacks acting on a new scenario)
     const pendingTimeouts = new Set();
@@ -472,6 +483,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('shockCounter').textContent = state.shockCount;
         document.getElementById('syncStatus').textContent = state.syncMode ? 'ON' : 'OFF';
         document.getElementById('pacingStatus').textContent = state.pacingActive ? (state.isCaptured ? 'CAPTURED' : 'ACTIVE') : 'OFF';
+        requestPublish();
     }
 
     function setMessage(text, type = 'ready') {
@@ -480,6 +492,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!msgEl) return;
         msgEl.textContent = text;
         msgEl.className = 'message-bar ' + type;
+        requestPublish();
     }
 
     function logAction(action, details = '') {
@@ -492,12 +505,17 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         console.log(`[${timestamp}s] ${action}${details ? ': ' + details : ''}`);
 
+        const timeStr = document.getElementById('cprTimerDisplay').textContent || "00:00";
+        logEntries.push({ time: timeStr, action: action, details: details });
+        logCount++;
+        if (logEntries.length > MAX_LOG_ENTRIES) logEntries.shift();
+        requestPublish();
+
         // Update Visual Log in CPR Panel (newest entry sits at the bottom)
         const cprLog = document.getElementById('cprLog');
         if (cprLog) {
             const placeholder = cprLog.querySelector('.log-placeholder');
             if (placeholder) placeholder.remove();
-            const timeStr = document.getElementById('cprTimerDisplay').textContent || "00:00";
             const entry = document.createElement('div');
             entry.className = 'log-entry';
             const timeEl = document.createElement('span');
@@ -519,6 +537,7 @@ document.addEventListener('DOMContentLoaded', () => {
         quickRhythmPanel.classList.add('hidden');
         hintsPanel.classList.add('hidden');
         window.scrollTo(0, 0);
+        requestPublish();
     }
 
     function showSimulator() {
@@ -533,6 +552,7 @@ document.addEventListener('DOMContentLoaded', () => {
             resetTrace();
             animationId = requestAnimationFrame(animate);
         }
+        requestPublish();
     }
 
     function showInstructorPanel(subtitle) {
@@ -607,6 +627,8 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('cprTimerDisplay').textContent = '00:00';
         document.getElementById('cycleTimerDisplay').textContent = '02:00';
         document.getElementById('cprLog').innerHTML = '<div class="log-placeholder">Waiting for start...</div>';
+        logEntries.length = 0;
+        logCount++;
         document.querySelectorAll('.cause-btn.checked').forEach(b => b.classList.remove('checked'));
     }
 
@@ -663,9 +685,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 1000);
     }
 
-    function endScenario() {
+    // confirmed: the instructor window has already asked
+    function endScenario(confirmed) {
         if (state.sessionType === 'custom') {
-            if (state.customScenarioActive && !window.confirm('End the custom scenario?')) return;
+            if (state.customScenarioActive && !confirmed && !window.confirm('End the custom scenario?')) return;
             returnToMenu();
             return;
         }
@@ -674,7 +697,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        if (!window.confirm('End the current scenario?')) {
+        if (!confirmed && !window.confirm('End the current scenario?')) {
              return;
         }
 
@@ -690,12 +713,12 @@ document.addEventListener('DOMContentLoaded', () => {
         showSummary();
     }
 
-    function resetScenario() {
+    function resetScenario(confirmed) {
         if (state.sessionType === 'custom') {
-            if (!window.confirm('Reset this custom scenario?')) return;
+            if (!confirmed && !window.confirm('Reset this custom scenario?')) return;
             startCustomScenario();
         } else if (state.sessionType === 'scenario' && state.selectedScenario) {
-            if (!window.confirm('Reset this scenario?')) return;
+            if (!confirmed && !window.confirm('Reset this scenario?')) return;
             selectScenario(state.selectedScenario);
         }
     }
@@ -1613,6 +1636,8 @@ document.addEventListener('DOMContentLoaded', () => {
         // Keep vitals (e.g. ETCO2 during CPR / after ROSC) and drug timers live
         if (state.deviceMode !== 'off') updateDisplays();
         updateDrugPanel();
+        checkInstructors();
+        requestPublish();
     }, 1000);
 
     // --- EVENT LISTENERS ---
@@ -1705,8 +1730,8 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('backToSummaryBtn').addEventListener('click', backToSummary);
 
     // Simulator Container Buttons
-    endScenarioBtn.addEventListener('click', endScenario);
-    resetScenarioBtn.addEventListener('click', resetScenario);
+    endScenarioBtn.addEventListener('click', () => endScenario());
+    resetScenarioBtn.addEventListener('click', () => resetScenario());
 
     // Instructor Panel
     document.getElementById('minimiseBtn').addEventListener('click', toggleInstructorPanel);
@@ -2317,8 +2342,21 @@ document.addEventListener('DOMContentLoaded', () => {
             ? `${amio.map((t, i) => i === 0 ? '300mg' : '150mg').join(' + ')}, last ${formatElapsed(now - amio[amio.length - 1])} ago`
             : 'not given';
 
+        const prompts = drugPromptsAllowed() ? drugPrompts() : [];
+        const promptEl = document.getElementById('drugPrompt');
+        const text = prompts.join(' • ');
+        if (promptEl.textContent !== text) promptEl.textContent = text;
+        promptEl.classList.toggle('hidden', !prompts.length);
+    }
+
+    // RCUK prompts for the current point in the arrest (shown to the
+    // instructor window in every mode)
+    function drugPrompts() {
+        const now = Date.now();
+        const adr = state.adrenalineTimes;
+        const amio = state.amiodaroneTimes;
         const prompts = [];
-        if (state.arrestStartTime && drugPromptsAllowed()) {
+        if (state.arrestStartTime) {
             const shockable = SHOCKABLE_ARREST.includes(state.rhythm);
             // Adrenaline: as soon as possible in a non-shockable rhythm, after the 3rd shock in a shockable one
             if (!adr.length) {
@@ -2334,10 +2372,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (state.arrestShocks >= 3) prompts.push('Refractory VF: consider antero-posterior pads (vector change)');
             }
         }
-        const promptEl = document.getElementById('drugPrompt');
-        const text = prompts.join(' • ');
-        if (promptEl.textContent !== text) promptEl.textContent = text;
-        promptEl.classList.toggle('hidden', !prompts.length);
+        return prompts;
     }
 
     function updateAmiodaroneButton() {
@@ -2395,7 +2430,263 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
+    // --- SEPARATE INSTRUCTOR WINDOW ---
+    // This window stays in charge; the instructor window shows a snapshot of
+    // the simulator and sends commands (js/link.js, js/instructor.js)
+    const SESSION_CODE_KEY = 'defibSim.sessionCode';
+    // BroadcastChannel has no presence, so an instructor window that vanishes
+    // without saying goodbye is dropped after this long. Kept generous because
+    // browsers slow timers in background tabs to about once a minute.
+    const INSTRUCTOR_TIMEOUT = 90000;
+    const popoutBtn = document.getElementById('popoutInstructorBtn');
+    const remoteBanner = document.getElementById('remoteBanner');
+    const remoteBannerText = document.getElementById('remoteBannerText');
+    const remoteControlsBtn = document.getElementById('remoteControlsBtn');
+
+    function getSessionCode() {
+        if (sessionCode) return sessionCode;
+        let code = null;
+        try { code = sessionStorage.getItem(SESSION_CODE_KEY); } catch (e) { /* storage unavailable */ }
+        if (!window.SimLink.isValidCode(code)) {
+            code = window.SimLink.newCode();
+            try { sessionStorage.setItem(SESSION_CODE_KEY, code); } catch (e) { /* storage unavailable */ }
+        }
+        sessionCode = code;
+        return code;
+    }
+
+    function openLink() {
+        if (link) return link;
+        if (!window.SimLink || !window.SimLink.supported) return null;
+        link = window.SimLink.connect({ code: getSessionCode(), role: 'simulator', onMessage: handleLinkMessage });
+        document.getElementById('sessionCodeDisplay').textContent = sessionCode;
+        link.send('hello');
+        return link;
+    }
+
+    function handleLinkMessage(msg) {
+        if (msg.role !== 'instructor') return;
+        if (msg.type === 'hello' || msg.type === 'heartbeat') {
+            const joined = !instructors.has(msg.from);
+            instructors.set(msg.from, Date.now());
+            if (joined) {
+                controlsShownHere = false;
+                updateRemoteView();
+            }
+            if (msg.type === 'hello') publishState();
+        } else if (msg.type === 'bye') {
+            if (instructors.delete(msg.from)) updateRemoteView();
+        } else if (msg.type === 'command') {
+            if (!instructors.has(msg.from)) {
+                instructors.set(msg.from, Date.now());
+                updateRemoteView();
+            }
+            if (typeof msg.name === 'string') runCommand(msg.name, (msg.args && typeof msg.args === 'object') ? msg.args : {});
+            publishState();
+        }
+    }
+
+    // Drop instructor windows that have closed or gone quiet
+    function checkInstructors() {
+        if (!instructors.size) return;
+        const now = Date.now();
+        let changed = false;
+        instructors.forEach((seen, id) => {
+            if (now - seen > INSTRUCTOR_TIMEOUT) {
+                instructors.delete(id);
+                changed = true;
+            }
+        });
+        // A window opened from here can be checked directly
+        if (instructorWin && instructorWin.closed) {
+            instructorWin = null;
+            if (instructors.size) {
+                instructors.clear();
+                changed = true;
+            }
+        }
+        if (changed) updateRemoteView();
+    }
+
+    // With an instructor window connected this window becomes the learner's
+    // view: the device, monitor and guideline hints only
+    function updateRemoteView() {
+        const connected = instructors.size > 0;
+        const learnerView = connected && !controlsShownHere;
+        document.body.classList.toggle('remote-instructor', learnerView);
+        remoteBanner.classList.toggle('hidden', !connected);
+        remoteBannerText.textContent = learnerView
+            ? 'Instructor controls are open in a separate window'
+            : 'Instructor window connected - controls are also shown here';
+        remoteControlsBtn.textContent = learnerView ? 'Show controls here' : 'Hide controls';
+        requestAnimationFrame(resizeCanvas);
+    }
+
+    remoteControlsBtn.addEventListener('click', () => {
+        controlsShownHere = !controlsShownHere;
+        updateRemoteView();
+    });
+
+    popoutBtn.addEventListener('click', () => {
+        if (!openLink()) {
+            window.alert('This browser cannot link windows. Please use an up-to-date version of Chrome, Edge, Firefox or Safari.');
+            return;
+        }
+        if (instructorWin && !instructorWin.closed) {
+            instructorWin.focus();
+            return;
+        }
+        const url = `instructor.html?session=${sessionCode}`;
+        instructorWin = window.open(url, `defibInstructor${sessionCode}`, 'popup,width=1100,height=900');
+        if (!instructorWin) {
+            window.alert(`The new window was blocked. Allow pop-ups for this site, or open ${url} in another tab.`);
+        }
+    });
+
+    window.addEventListener('pagehide', () => {
+        if (link) link.send('bye');
+    });
+
+    const SETTING_SELECTS = { shockResponse: 'shockResponseSelect', rOnT: 'rOnTSelect', refib: 'refibSelect' };
+    const ARREST_BUTTONS = { cpr: 'cprToggleBtn', metronome: 'metronomeBtn', nextCycle: 'nextCycleBtn', rosc: 'roscBtn' };
+
+    // Commands from the instructor window run through the same controls as
+    // the on-screen panels, so both stay in step. Anything unexpected is ignored.
+    function runCommand(name, args) {
+        const has = (obj, key) => typeof key === 'string' && Object.prototype.hasOwnProperty.call(obj, key);
+
+        if (name === 'setRhythm') {
+            if (has(rhythmVitals, args.rhythm)) quickSetRhythm(args.rhythm);
+        } else if (name === 'artefact') {
+            if (!has(state.noise, args.type)) return;
+            const box = [...document.querySelectorAll('#instructorPanel input[data-artefact]')].find(b => b.dataset.artefact === args.type);
+            if (!box || box.checked === !!args.on) return;
+            box.checked = !!args.on;
+            box.dispatchEvent(new Event('change'));
+        } else if (name === 'setting') {
+            if (!has(SETTING_SELECTS, args.setting)) return;
+            const select = document.getElementById(SETTING_SELECTS[args.setting]);
+            if (select.value === args.value || ![...select.options].some(o => o.value === args.value)) return;
+            select.value = args.value;
+            select.dispatchEvent(new Event('change'));
+        } else if (has(ARREST_BUTTONS, name)) {
+            // These buttons only exist on screen during a cardiac arrest
+            if (state.arrestStartTime) document.getElementById(ARREST_BUTTONS[name]).click();
+        } else if (name === 'drug') {
+            if (!state.arrestStartTime || (args.drug !== 'adrenaline' && args.drug !== 'amiodarone')) return;
+            document.querySelector(`.cpr-action-btn[data-action="${args.drug}"]`).click();
+        } else if (name === 'cause') {
+            if (!state.arrestStartTime) return;
+            const btn = [...document.querySelectorAll('.cause-btn')].find(b => b.dataset.cause === args.cause);
+            if (btn) btn.click();
+        } else if (name === 'startScenario') {
+            if (!has(scenarios, args.scenario) || (args.mode !== 'education' && args.mode !== 'assessment')) return;
+            state.selectedMode = args.mode;
+            document.getElementById('modeTitle').textContent = args.mode === 'education' ? 'Education Mode' : 'Assessment Mode';
+            selectScenario(args.scenario);
+        } else if (name === 'endScenario') {
+            if (state.sessionType !== 'free' && currentView() === 'simulator') endScenario(true);
+        } else if (name === 'resetScenario') {
+            resetScenario(true);
+        } else if (name === 'tryAgain') {
+            if (state.sessionType === 'scenario' && state.selectedScenario) tryAgain();
+        } else if (name === 'freePlay') {
+            returnToMenu();
+        }
+    }
+
+    function currentView() {
+        if (!simulatorContainer.classList.contains('hidden')) return 'simulator';
+        if (!summaryScreen.classList.contains('hidden')) return 'summary';
+        if (!certificateScreen.classList.contains('hidden')) return 'certificate';
+        return 'menu';
+    }
+
+    // Everything the instructor window shows, as plain text and values so it
+    // can be sent to another computer later without clock differences mattering
+    function snapshot() {
+        const text = id => document.getElementById(id).textContent;
+        const scenario = currentScenario();
+        const msgClass = document.getElementById('messageBar').className;
+        let sessionName = 'Free play';
+        if (scenario) sessionName = scenario.name;
+        else if (state.sessionType === 'custom') sessionName = 'Custom scenario';
+        return {
+            view: currentView(),
+            session: {
+                type: state.sessionType,
+                mode: state.selectedMode,
+                scenario: state.selectedScenario,
+                name: sessionName,
+                running: sessionInProgress(),
+                step: state.customScenarioActive ? `${state.currentScenarioStep + 1} of ${state.customScenario.length}` : ''
+            },
+            rhythm: state.rhythm,
+            rhythmName: rhythmNames[state.rhythm] || state.rhythm,
+            underlying: state.isCaptured ? (rhythmNames[state.originalRhythm] || '') : '',
+            hasPulse: state.hasPulse,
+            device: {
+                mode: state.deviceMode,
+                machine: state.machineState,
+                energy: state.energy,
+                sync: state.syncMode,
+                pacing: state.pacingActive,
+                captured: state.isCaptured,
+                mechanical: state.mechanicalCapture,
+                pacerOutput: state.pacerOutput,
+                pacerRate: state.pacerRate,
+                pacerDemand: state.pacerDemand,
+                shocks: state.shockCount
+            },
+            monitor: {
+                hr: text('hrDisplay'),
+                spo2: text('spo2Display'),
+                etco2: text('etco2Display'),
+                bp: text('bpDisplay'),
+                message: text('messageBar'),
+                messageType: msgClass.includes('alert') ? 'alert' : (msgClass.includes('ready') ? 'ready' : '')
+            },
+            settings: {
+                shockResponse: state.shockResponse,
+                rOnT: state.rOnT,
+                refib: state.refib
+            },
+            artefacts: Object.assign({}, state.noise),
+            arrest: {
+                active: !!state.arrestStartTime,
+                downtime: text('cprTimerDisplay'),
+                cycle: text('cycleTimerDisplay'),
+                cycleWarning: document.getElementById('cycleTimerContainer').classList.contains('cycle-warning'),
+                cycleEnded: document.getElementById('nextCycleBtn').classList.contains('highlight-btn'),
+                cpr: state.cprActive,
+                metronome: metronomeTimer !== null,
+                causes: [...document.querySelectorAll('.cause-btn.checked')].map(b => b.dataset.cause),
+                adrenaline: text('adrenalineStatus'),
+                amiodarone: text('amiodaroneStatus'),
+                amiodaroneDose: state.amiodaroneDoses === 0 ? '300mg' : '150mg',
+                prompts: drugPrompts()
+            },
+            log: logEntries.slice(),
+            logCount: logCount
+        };
+    }
+
+    function publishState() {
+        publishQueued = false;
+        if (!link || !instructors.size) return;
+        link.send('state', { state: snapshot() });
+    }
+
+    // Changes often come in bursts: send one snapshot shortly afterwards
+    function requestPublish() {
+        if (publishQueued || !link || !instructors.size) return;
+        publishQueued = true;
+        setTimeout(publishState, 50);
+    }
+
     // --- INITIALISATION ---
+    openLink();
+    if (!link) popoutBtn.classList.add('hidden');
     initCanvas();
     if ('ResizeObserver' in window) {
         new ResizeObserver(() => resizeCanvas()).observe(canvas);

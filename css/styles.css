@@ -516,7 +516,20 @@ button, .menu-option, .mode-label, .softkey, .side-btn, .energy-arrow, .pacer-bt
     }
 }
 
+/* --- SEPARATE INSTRUCTOR WINDOW --- */
+.header-actions .menu-option .subtitle { font-size: 12px; margin-top: 4px; }
+#sessionCodeDisplay { font-family: 'Share Tech Mono', monospace; letter-spacing: 2px; font-weight: bold; }
+.remote-banner { display: flex; justify-content: center; align-items: center; gap: 12px; flex-wrap: wrap; max-width: 1600px; margin: 0 auto 15px auto; padding: 6px 12px; border-radius: 8px; background: #1f2d3a; border: 1px solid #34495e; color: #95a5a6; font-size: 12px; }
+.remote-banner .small-btn { flex: 0 0 auto; padding: 4px 10px; font-size: 11px; }
+/* Learner view: the instructor has the controls in the other window */
+body.remote-instructor .header-actions,
+body.remote-instructor .quick-rhythm-panel,
+body.remote-instructor #instructorPanel,
+body.remote-instructor #cprPanel,
+body.remote-instructor #endScenarioBtn,
+body.remote-instructor #resetScenarioBtn { display: none !important; }
+
 /* --- PRINT: certificate only --- */
 @media print {
-    .main-header, .quick-rhythm-panel, .guideline-hints-panel, #simulatorContainer, .app-footer, #modalOverlay { display: none !important; }
+    .main-header, .remote-banner, .quick-rhythm-panel, .guideline-hints-panel, #simulatorContainer, .app-footer, #modalOverlay { display: none !important; }
 }
