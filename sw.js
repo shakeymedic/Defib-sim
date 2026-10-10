@@ -1,6 +1,6 @@
 // sw.js - Offline support
 // Bump CACHE_VERSION when the precached file list changes.
-const CACHE_VERSION = 'defib-sim-v4';
+const CACHE_VERSION = 'defib-sim-v5';
 
 const PRECACHE = [
   './',
