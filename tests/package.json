@@ -1,7 +1,7 @@
 {
   "name": "defib-sim-tests",
   "private": true,
-  "description": "Browser tests for the ZOLL R Series simulator",
+  "description": "Browser tests for the defibrillator simulator",
   "scripts": {
     "test": "playwright test"
   },

@@ -257,7 +257,7 @@
     function start(code) {
         link = window.SimLink.connect({ code, role: 'instructor', onMessage });
         setText('codeDisplay', code);
-        document.title = `Instructor ${code} - ZOLL R Series Simulator`;
+        document.title = `Instructor ${code} - Defibrillator Simulator`;
         $('joinPanel').classList.add('hidden');
         controls.classList.remove('hidden');
         setStatus('waiting', 'Waiting for the simulator window...');
