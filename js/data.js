@@ -77,7 +77,7 @@
             recommendedEnergy: 200,
             successEnergy: 200,
             energyRange: [200, 200],
-            energyAdvice: 'maximum output (200J on the R Series) for AF',
+            energyAdvice: 'maximum output (200J on this device) for AF',
             successRhythm: 'nsr',
             successVitals: { hr: 80, spo2: 96, etco2: 4.7, bpSys: 118, bpDia: 72 },
             requiresSync: true,
