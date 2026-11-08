@@ -1,7 +1,7 @@
 {
   "name": "Defibrillator Simulator",
   "short_name": "Defib Sim",
-  "description": "WMEBEM defibrillator training simulator (RCUK 2025 guidelines)",
+  "description": "EM Evidence defibrillator training simulator (RCUK 2025 guidelines)",
   "lang": "en-GB",
   "start_url": "./index.html",
   "scope": "./",
